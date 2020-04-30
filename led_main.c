@@ -199,6 +199,7 @@ int main(int argc, char *argv[])
             sleep_time = FRAME_TIME - delta_us;
         }
         usleep(sleep_time);
+        update_leds(&fire_source, frame, &ledstring);
         if ((ret = ws2811_render(&ledstring)) != WS2811_SUCCESS)
         {
             fprintf(stderr, "ws2811_render failed: %s\n", ws2811_get_return_t_str(ret));
