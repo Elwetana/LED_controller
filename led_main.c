@@ -2,33 +2,34 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#ifdef __linux__
+//#ifdef __linux__
 #  include <time.h>
 #  include <unistd.h>
+#include <getopt.h>
+
+/*
 #else
 #  include "faketime.h"
 #  include "fakesignal.h"
 #  include "getopt.h"
-#endif
+#endif */
 #include <math.h>
 #include <signal.h>
 
 #include "ws2811.h"
 #include "source.h"
-
+#include "colours.h"
 
 // defaults for cmdline options
 #define TARGET_FREQ             WS2811_TARGET_FREQ
 #define GPIO_PIN                18
 #define DMA                     10
-#define STRIP_TYPE              WS2811_STRIP_RGB		// WS2812/SK6812RGB integrated chip+leds
-//#define STRIP_TYPE            WS2811_STRIP_GBR		// WS2812/SK6812RGB integrated chip+leds
-//#define STRIP_TYPE            SK6812_STRIP_RGBW		// SK6812RGBW (NOT SK6812RGB)
+#define STRIP_TYPE              WS2811_STRIP_GRB
 
 #define LED_COUNT               454
 
 #define FPS_SAMPLES             50
-#define FRAME_TIME              20000
+#define FRAME_TIME              40000
 
 int led_count = LED_COUNT;
 
@@ -114,7 +115,7 @@ static void setup_handlers(void)
     sigaction(SIGTERM, &sa, NULL);
 }
 
-void parseargs(int argc, char **argv, ws2811_t *ws2811)
+void parseargs(int argc, char **argv)
 {
 	int index;
 	int c;
@@ -162,7 +163,7 @@ int main(int argc, char *argv[])
 {
     printf("Starting\n");
     ws2811_return_t ret;
-    parseargs(argc, argv, &ledstring);
+    parseargs(argc, argv);
     init_FireSource(&fire_source, led_count, 1);
 
     setup_handlers();
@@ -175,29 +176,29 @@ int main(int argc, char *argv[])
     printf("Init successful\n");
     srand(time(NULL));
 
-    long last_update_ns = 0;
+    uint64_t last_update_ns = 0;
     long frame = 0;
-    long fps_time_ns = 0;
+    uint64_t fps_time_ns = 0;
 
     while (running)
     {
-        struct timespec start_frame;
-        clock_gettime(CLOCK_PROCESS_CPUTIME_ID, &start_frame);
-        long current_ns = start_frame.tv_sec * (long)1e9 + start_frame.tv_nsec;
+        struct timespec now;
+        clock_gettime(CLOCK_MONOTONIC_RAW, &now);
+        uint64_t current_ns = now.tv_sec * (long long)1e9 + now.tv_nsec;
         long delta_us = (current_ns - last_update_ns) / (long)1e3;
-        last_update_ns = current_ns;
         frame++;
         if(frame % FPS_SAMPLES == 0)
         {
-            float fps = (float)FPS_SAMPLES / (float)(current_ns - fps_time_ns) * 1e9;
+            double fps = (double)FPS_SAMPLES / (double)(current_ns - fps_time_ns) * 1e9;
+            printf("FPS: %f %llu - %llu = %llu\n", fps, current_ns, fps_time_ns, current_ns - fps_time_ns);
             fps_time_ns = current_ns;
-            printf("FPS: %f\n", fps);
         }
-        int sleep_time = 1000;
+        long sleep_time = 1000;
         if(delta_us < FRAME_TIME)
         {
             sleep_time = FRAME_TIME - delta_us;
         }
+	//printf("D %li, S %li\n", delta_us, sleep_time);
         usleep(sleep_time);
         update_leds(&fire_source, frame, &ledstring);
         if ((ret = ws2811_render(&ledstring)) != WS2811_SUCCESS)
@@ -211,7 +212,7 @@ int main(int argc, char *argv[])
     {
         for(int i = 0; i < led_count; i++)
         {
-            ledstring.channel[0].leds[i] = 0x0;
+            ledstring.channel[0].leds[i] = 0x00; //GBR: FF0000 - blue, FF00 - green, FF - red;  RGB: FF0000 - green, FF00 - red, FF - blue
         }
     	ws2811_render(&ledstring);
     }

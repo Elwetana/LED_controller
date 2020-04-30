@@ -4,6 +4,9 @@
 
 #include "colours.h"
 
+#define min(x,y)  ((x) < (y)) ? (x) : (y)
+#define max(x,y)  ((x) > (y)) ? (x) : (y)
+
 void rgb2hsl(ws2811_led_t rgb, float* hsl)
 {
     int r = ((rgb >> 16) & 0xFF);
@@ -14,9 +17,9 @@ void rgb2hsl(ws2811_led_t rgb, float* hsl)
     int vmax = max(r, max(g, b));  // Max. value of RGB
     int diff = vmax - vmin;        // Delta RGB value
 
-    float vsum = vmin + vmax;
+    int vsum = vmin + vmax;
 
-    hsl[2] = vsum / 2.0f / 255.0f; //this is l
+    hsl[2] = (float)vsum / 2.0f / 255.0f; //this is l
 
     if(diff < FLOAT_ERROR)  // This is a gray, no chroma...
     {
@@ -39,7 +42,7 @@ void rgb2hsl(ws2811_led_t rgb, float* hsl)
     float dg = (((float)(vmax - g) / 6.0f) + ((float)diff / 2.0f)) / (float)diff;
     float db = (((float)(vmax - b) / 6.0f) + ((float)diff / 2.0f)) / (float)diff;
 
-    float h;
+    float h = 0;
     if(vmax == r)
         h = db - dg;
     if(vmax == g)
@@ -114,8 +117,8 @@ void fill_gradient(ws2811_led_t* gradient, int offset, ws2811_led_t from_color, 
 void test_rgb2hsl()
 {
     const int n_tests = 5;
-    ws2811_led_t inputs[n_tests] = {0x00FF0000, 0x00808000, 0x00000080, 0x00A0A0A0, 0x0050C0F0};
-    float outputs[n_tests][3] = {
+    ws2811_led_t inputs[5] = {0x00FF0000, 0x00808000, 0x00000080, 0x00A0A0A0, 0x0050C0F0};
+    float outputs[5][3] = {
         {0.0f, 1.0f, 0.5f},
         {1.0f/6.0f, 1.0f, 0.25f},
         {4.0f/6.0f, 1.0f, 0.25f},
