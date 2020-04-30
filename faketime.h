@@ -23,3 +23,8 @@ int time(char* p)
 {
     return 1;
 }
+
+void usleep(long l)
+{
+    
+}
