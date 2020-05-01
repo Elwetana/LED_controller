@@ -4,8 +4,10 @@
 
 #include "colours.h"
 
+#ifndef min
 #define min(x,y)  ((x) < (y)) ? (x) : (y)
 #define max(x,y)  ((x) > (y)) ? (x) : (y)
+#endif
 
 void rgb2hsl(ws2811_led_t rgb, float* hsl)
 {
