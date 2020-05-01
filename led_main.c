@@ -8,8 +8,9 @@
 #  include <getopt.h>
 #else
 #  include "faketime.h"
-#  include "fakesignal.h"
+//#  include "fakesignal.h"
 #  include "getopt.h"
+#  include "windows.h"
 #endif
 #include <math.h>
 #include <signal.h>
@@ -50,6 +51,7 @@ ws2811_t ledstring =
     },
 };
 
+#ifdef __linux__
 static void ctrl_c_handler(int signum)
 {
 	(void)(signum);
@@ -66,6 +68,21 @@ static void setup_handlers(void)
     sigaction(SIGINT, &sa, NULL);
     sigaction(SIGTERM, &sa, NULL);
 }
+#else
+BOOL WINAPI consoleHandler(DWORD signal) 
+{
+    if (signal == CTRL_C_EVENT)
+        running = 0;
+    return TRUE;
+}
+static void setup_handlers(void)
+{
+    if (!SetConsoleCtrlHandler(consoleHandler, TRUE)) 
+    {
+        printf("\nERROR: Could not set control handler"); 
+    }
+}
+#endif
 
 struct ArgOptions
 {
@@ -208,6 +225,6 @@ int main(int argc, char *argv[])
     destruct_source();
     ws2811_fini(&ledstring);
 
-    printf ("\n");
+    printf ("Finished\n");
     return ret;
 }
