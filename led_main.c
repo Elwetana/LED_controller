@@ -186,7 +186,7 @@ int main(int argc, char *argv[])
         struct timespec now;
         clock_gettime(CLOCK_MONOTONIC_RAW, &now);
         uint64_t current_ns = now.tv_sec * (long long)1e9 + now.tv_nsec;
-        long delta_us = (current_ns - last_update_ns) / (long)1e3;
+        uint64_t delta_us = (current_ns - last_update_ns) / (long)1e3;
         frame++;
         if(frame % FPS_SAMPLES == 0)
         {
@@ -199,7 +199,7 @@ int main(int argc, char *argv[])
         {
             sleep_time = FRAME_TIME - delta_us;
         }
-        //printf("D %li, S %li\n", delta_us, sleep_time);
+        //printf("D %lli, S %li\n", delta_us, sleep_time);
         usleep(sleep_time);
 
         // Now we have to save the current time so that we know how much time we spent working

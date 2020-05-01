@@ -12,7 +12,7 @@ ws2811_return_t ws2811_init(ws2811_t *ws2811)
 {
     ws2811_channel_t *channel = &ws2811->channel[0];
     channel->leds = malloc(sizeof(ws2811_led_t) * channel->count);
-    fopen_s(&_fake_led_output, "led_output.csv", "w");
+    _fake_led_output = fopen("led_output.csv", "w");
     return WS2811_SUCCESS;
 }
 
