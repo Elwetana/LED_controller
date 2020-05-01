@@ -148,6 +148,7 @@ int main(int argc, char *argv[])
     destruct_source = destruct_FireSource;
 
     init_source(led_count, 1);
+    printf("Init source\n");
 
     setup_handlers();
 
@@ -157,7 +158,7 @@ int main(int argc, char *argv[])
         return ret;
     }
     printf("Init successful\n");
-    srand(time(NULL));
+    srand(0); //for testing we want random to be stable
 
     uint64_t last_update_ns = 0;
     long frame = 0;

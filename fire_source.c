@@ -43,7 +43,7 @@ void init_Ember(Ember* e, int i, EmberData* ember_data, int age, enum EmberType 
         {
             float osc = e->osc_amp * tcos;
             int x_index = x + 6 * e->sigma;
-            float f = (x / e->sigma * e->amp / (e->amp + osc)); 
+            float f = ((float)x / e->sigma * e->amp / (e->amp + osc)); 
             e->contrib_table[t][x_index] = (e->amp + osc) * expf(-0.5 * f * f);
         }
     }
@@ -57,6 +57,7 @@ void destruct_Ember(Ember* e)
     }
     free(e->contrib_table);
     free(e->cos_table);
+    //printf("Destroying ember\n");
 }
 
 float get_Ember_contrib(Ember* e, int x, int t)
