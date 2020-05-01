@@ -2,22 +2,20 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-//#ifdef __linux__
+#ifdef __linux__
 #  include <time.h>
 #  include <unistd.h>
-#include <getopt.h>
-
-/*
+#  include <getopt.h>
 #else
 #  include "faketime.h"
 #  include "fakesignal.h"
 #  include "getopt.h"
-#endif */
+#endif
 #include <math.h>
 #include <signal.h>
 
 #include "ws2811.h"
-#include "source.h"
+#include "fire_source.h"
 #include "colours.h"
 
 // defaults for cmdline options
@@ -34,7 +32,6 @@
 int led_count = LED_COUNT;
 
 static uint8_t running = 1;
-int clear_on_exit = 0;
 
 ws2811_t ledstring =
 {
@@ -51,51 +48,6 @@ ws2811_t ledstring =
             .strip_type = STRIP_TYPE,
         }
     },
-};
-
-FireSource fire_source =
-{
-    .ember_data = {
-        [0] = 
-        {
-            .amp = 0.4f,
-            .amp_rand = 0.1f,
-            .x_space = 100,
-            .sigma = 30,
-            .sigma_rand = 2,
-            .osc_amp = 0.2f,
-            .osc_freq = 0.005f,
-            .osc_freq_rand = 0.01,
-            .decay = 0.0,
-            .decay_rand = 0
-        },
-        [1] =
-        {
-            .amp = 0.2f,
-            .amp_rand = 0.05f,
-            .x_space = 60.0f,
-            .sigma = 9.0f,
-            .sigma_rand = 2.0f,
-            .osc_amp = 0.2f,
-            .osc_freq = 0.01f,
-            .osc_freq_rand = 0.005f,
-            .decay = 0.0f,
-            .decay_rand = 0.0f
-        },
-        [2] = 
-        {
-            .amp = 0.1f,
-            .amp_rand = 0.2f,
-            .x_space = 25.0f,
-            .sigma = 3.0f,
-            .sigma_rand = 1.0f,
-            .osc_amp = 0.2f,
-            .osc_freq = 0.01f,
-            .osc_freq_rand = 0.01f,
-            .decay = 0.001f,
-            .decay_rand = 0.001f
-        }
-    }
 };
 
 static void ctrl_c_handler(int signum)
@@ -115,6 +67,18 @@ static void setup_handlers(void)
     sigaction(SIGTERM, &sa, NULL);
 }
 
+struct ArgOptions
+{
+    int clear_on_exit;
+    int time_speed;
+};
+
+static struct ArgOptions arg_options = 
+{ 
+    .clear_on_exit = 0,
+    .time_speed = 1
+};
+
 void parseargs(int argc, char **argv)
 {
 	int index;
@@ -125,13 +89,16 @@ void parseargs(int argc, char **argv)
 		{"help", no_argument, 0, 'h'},
 		{"clear", no_argument, 0, 'c'},
 		{"version", no_argument, 0, 'v'},
+        {"speed", required_argument, 0, 's'},
 		{0, 0, 0, 0}
 	};
+
+    static const char shortopts[] = "hcvs:";
 
 	while (1)
 	{
 		index = 0;
-		c = getopt_long(argc, argv, "hcv", longopts, &index);
+		c = getopt_long(argc, argv, shortopts, longopts, &index);
 
 		if (c == -1)
 			break;
@@ -148,12 +115,18 @@ void parseargs(int argc, char **argv)
 				"-h (--help)    - this information\n"
 				"-c (--clear)   - clear matrix on exit.\n"
 				"-v (--version) - version information\n"
+                "-s (--speed)   - simulation speed\n"
 				, argv[0]);
 			exit(-1);
 		case 'c':
-			clear_on_exit=1;
+			arg_options.clear_on_exit = 1;
 			break;
-
+        case 's':
+			if (optarg)
+            {
+				arg_options.time_speed = atoi(optarg);
+            }
+            break;
         //TODO more cases
         }
     }
@@ -161,10 +134,20 @@ void parseargs(int argc, char **argv)
 
 int main(int argc, char *argv[])
 {
+    void (*init_source)(int, int);
+    void (*update_leds)(int, ws2811_t*);
+    void (*destruct_source)();
+
     printf("Starting\n");
     ws2811_return_t ret;
     parseargs(argc, argv);
-    init_FireSource(&fire_source, led_count, 1);
+
+    //this could be set up by command line parameters or by communication with some controller
+    init_source = init_FireSource;
+    update_leds = update_leds_FireSource;
+    destruct_source = destruct_FireSource;
+
+    init_source(led_count, 1);
 
     setup_handlers();
 
@@ -190,7 +173,7 @@ int main(int argc, char *argv[])
         if(frame % FPS_SAMPLES == 0)
         {
             double fps = (double)FPS_SAMPLES / (double)(current_ns - fps_time_ns) * 1e9;
-            printf("FPS: %f %llu - %llu = %llu\n", fps, current_ns, fps_time_ns, current_ns - fps_time_ns);
+            printf("FPS: %f\n", fps);
             fps_time_ns = current_ns;
         }
         long sleep_time = 1000;
@@ -198,9 +181,9 @@ int main(int argc, char *argv[])
         {
             sleep_time = FRAME_TIME - delta_us;
         }
-	//printf("D %li, S %li\n", delta_us, sleep_time);
+        //printf("D %li, S %li\n", delta_us, sleep_time);
         usleep(sleep_time);
-        update_leds(&fire_source, frame, &ledstring);
+        update_leds(frame, &ledstring);
         if ((ret = ws2811_render(&ledstring)) != WS2811_SUCCESS)
         {
             fprintf(stderr, "ws2811_render failed: %s\n", ws2811_get_return_t_str(ret));
@@ -208,7 +191,7 @@ int main(int argc, char *argv[])
         }
     }
 
-    if (clear_on_exit) 
+    if (arg_options.clear_on_exit) 
     {
         for(int i = 0; i < led_count; i++)
         {
@@ -217,6 +200,7 @@ int main(int argc, char *argv[])
     	ws2811_render(&ledstring);
     }
 
+    destruct_source();
     ws2811_fini(&ledstring);
 
     printf ("\n");
