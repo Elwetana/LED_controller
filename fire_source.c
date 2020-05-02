@@ -4,17 +4,15 @@
 #include <string.h>
 #include <time.h>
 #include <math.h>
-#include "ws2811.h"
+#ifdef __linux__
+  #include "ws2811.h"
+#else
+  #include "fakeled.h"
+#endif // __linux__
 
+#include "common_source.h"
 #include "fire_source.h"
 #include "colours.h"
-
-#define M_PI           3.14159265358979323846  /* pi */
-
-float random_01()
-{
-    return (double)rand() / (double)RAND_MAX;
-}
 
 void init_Ember(Ember* e, int i, EmberData* ember_data, int age, enum EmberType ember_type) 
 {
@@ -75,7 +73,7 @@ void build_embers(FireSource* fs)
     int n_embers = 0;
     for(int ember_type = 0; ember_type < N_EMBER_TYPES; ++ember_type)
     {
-        fs->n_embers_per_type[ember_type] = 1 + (fs->n_leds + 1) / fs->ember_data[ember_type].x_space;
+        fs->n_embers_per_type[ember_type] = 1 + (fs->basic.n_leds + 1) / fs->ember_data[ember_type].x_space;
         n_embers += fs->n_embers_per_type[ember_type];
     }
     fs->embers = (Ember*) malloc(sizeof(Ember) * n_embers);
@@ -93,24 +91,14 @@ void build_embers(FireSource* fs)
     fs->n_embers = n_embers;
 }
 
-//TODO: this is not very nice, the colours should be somewhere more convenient
-void build_gradient(FireSource* fs)
-{
-    ws2811_led_t colors[] = {0x110000, 0xBF2100, 0xFFB20F, 0xFFFFAF};
-    int steps[] = {40, 50, 51};
-    int offset = 0;
-    for(int i = 0; i < 3; i++)
-    {
-        fill_gradient(fs->gradient, offset, colors[i], colors[i+1], steps[i], 99);
-        offset += steps[i];
-    }
-}
 
 void init_FireSource(int n_leds, int time_speed)
 {
-    fire_source.n_leds = n_leds;
-    fire_source.time_speed = time_speed;
-    build_gradient(&fire_source);
+    init_BasicSource(&fire_source.basic, n_leds, time_speed);
+
+    ws2811_led_t colors[] = { 0x110000, 0xBF2100, 0xFFB20F, 0xFFFFAF };
+    int steps[] = { 40, 50, 51 };
+    build_gradient(&fire_source.gradient, colors, steps, 3);
     build_embers(&fire_source);
 }
 
@@ -145,7 +133,7 @@ void update_embers(FireSource* fs, int frame)
     }
 }
 
-int get_gradient_index(FireSource* fs, int led, int frame)
+int get_gradient_index_FireSource(FireSource* fs, int led, int frame)
 {
     float y = 0.0f;
     for(int ember = 0; ember < fs->n_embers; ember++)
@@ -153,7 +141,7 @@ int get_gradient_index(FireSource* fs, int led, int frame)
         Ember* e = &(fs->embers[ember]);
         if(fabs(led - e->x) < 6.0f * e->sigma)
         {
-	    float contrib = get_Ember_contrib(e, led, fs->time_speed * frame);
+	    float contrib = get_Ember_contrib(e, led, fs->basic.time_speed * frame);
             y += contrib; 
         }
     }
@@ -166,12 +154,13 @@ void update_leds_FireSource(int frame, ws2811_t* ledstrip)
 {
     if(frame % 4 == 0)
     {
-        update_embers(&fire_source, fire_source.time_speed * frame);
+        update_embers(&fire_source, fire_source.basic.time_speed * frame);
     }
-    for(int led = 0; led < fire_source.n_leds; ++led)
+    //TODO: move into common_source and/or main loop
+    for(int led = 0; led < fire_source.basic.n_leds; ++led)
     {
-        int y = get_gradient_index(&fire_source, led, frame);
-        ledstrip->channel[0].leds[led] = fire_source.gradient[y];
+        int y = get_gradient_index_FireSource(&fire_source, led, frame);
+        ledstrip->channel[0].leds[led] = fire_source.gradient.colors[y];
     }
 }
 

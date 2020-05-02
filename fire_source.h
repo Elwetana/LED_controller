@@ -1,5 +1,5 @@
-#ifndef __SOURCE_H__
-#define __SOURCE_H__
+#ifndef __FIRE_SOURCE_H__
+#define __FIRE_SOURCE_H__
 
 #ifdef __cplusplus
 extern "C" {
@@ -43,13 +43,12 @@ typedef struct Ember {
 
 typedef struct FireSource
 {
+    BasicSource basic;
     EmberData ember_data[N_EMBER_TYPES];
-    int n_leds;
-    ws2811_led_t gradient[100];
+    SourceGradient gradient;
     Ember* embers;
     int n_embers_per_type[N_EMBER_TYPES];
     int n_embers;
-    int time_speed;
 } FireSource;
 
 extern FireSource fire_source;
@@ -62,4 +61,4 @@ void update_leds_FireSource(int frame, ws2811_t* ledstrip);
 }
 #endif
 
-#endif /* __SOURCE_H__ */
+#endif /* __FIRE_SOURCE_H__ */

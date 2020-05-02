@@ -17,8 +17,15 @@
 #include <math.h>
 #include <signal.h>
 
+#include "common_source.h"
 #include "fire_source.h"
+#include "perlin_source.h"
 #include "colours.h"
+
+#ifdef _MSC_VER
+#define strncasecmp _strnicmp
+#define strcasecmp _stricmp
+#endif
 
 // defaults for cmdline options
 #define TARGET_FREQ             WS2811_TARGET_FREQ
@@ -89,6 +96,7 @@ struct ArgOptions
 {
     int clear_on_exit;
     int time_speed;
+    enum SourceType source_type;
 };
 
 static struct ArgOptions arg_options = 
@@ -107,11 +115,12 @@ void parseargs(int argc, char **argv)
 		{"help", no_argument, 0, 'h'},
 		{"clear", no_argument, 0, 'c'},
 		{"version", no_argument, 0, 'v'},
-        {"speed", required_argument, 0, 's'},
+        {"time_speed", required_argument, 0, 't'},
+        {"source", required_argument, 0, 's'},
 		{0, 0, 0, 0}
 	};
 
-    static const char shortopts[] = "hcvs:";
+    static const char shortopts[] = "hcvt:s:";
 
 	while (1)
 	{
@@ -130,22 +139,40 @@ void parseargs(int argc, char **argv)
 		case 'h':
 			//fprintf(stderr, "%s version %s\n", argv[0], VERSION);
 			fprintf(stderr, "Usage: %s \n"
-				"-h (--help)    - this information\n"
-				"-c (--clear)   - clear matrix on exit.\n"
-				"-v (--version) - version information\n"
-                "-s (--speed)   - simulation speed\n"
+				"-h (--help)       - this information\n"
+				"-c (--clear)      - clear matrix on exit.\n"
+				"-v (--version)    - version information\n"
+                "-t (--time_speed) - simulation speed\n"
+                "-s (--source)     - source. Can be EMBERS, PERLIN or COLOR\n"
 				, argv[0]);
 			exit(-1);
 		case 'c':
 			arg_options.clear_on_exit = 1;
 			break;
-        case 's':
+        case 't':
 			if (optarg)
             {
 				arg_options.time_speed = atoi(optarg);
             }
             break;
-        //TODO more cases
+        case 's':
+            if (optarg)
+            {
+                if (!strncasecmp("EMBERS", optarg, 6)) {
+                    arg_options.source_type = EMBERS;
+                }
+                else if (!strncasecmp("PERLIN", optarg, 6)) {
+                    arg_options.source_type = PERLIN;
+                }
+                else if (!strncasecmp("COLOR", optarg, 5)) {
+                    arg_options.source_type = COLOR;
+                }
+                else {
+                    printf("Unknown source");
+                    exit(-1);
+                }
+            }
+            break;
         }
     }
 }
@@ -164,7 +191,23 @@ int main(int argc, char *argv[])
     init_source = init_FireSource;
     update_leds = update_leds_FireSource;
     destruct_source = destruct_FireSource;
-
+    switch(arg_options.source_type)
+    {
+    case EMBERS:
+        /*init_source = init_FireSource;
+        update_leds = update_leds_FireSource;
+        destruct_source = destruct_FireSource;*/
+        break;
+    case PERLIN:
+        init_source = init_PerlinSource;
+        update_leds = update_leds_PerlinSource;
+        destruct_source = destruct_PerlinSource;
+        break;
+    case COLOR:
+        printf("Not implemented yet");
+        exit(-2);
+        break;
+    }
     init_source(led_count, 1);
     printf("Init source\n");
 

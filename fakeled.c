@@ -3,7 +3,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include "ws2811.h"
+#include "fakeled.h"
 
 FILE* _fake_led_output;
 char line[12*500]; //TODO: it would be better to allocate in init, based on number of LEDs
@@ -32,7 +32,7 @@ ws2811_return_t ws2811_render(ws2811_t *ws2811)
         strcat(line, s);
     }
     strcat(line, "\n");
-    fputs(line, _fake_led_output);
+    //fputs(line, _fake_led_output);
     return WS2811_SUCCESS;
 }
 

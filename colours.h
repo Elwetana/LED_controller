@@ -5,7 +5,12 @@
 extern "C" {
 #endif
 
-#include "ws2811.h"
+#ifdef __linux__
+  #include "ws2811.h"
+#else
+  #include "fakeled.h"
+#endif // __linux__
+
 
 #define float2int(c)   ((int)(c * 255 + 0.5 - FLOAT_ERROR))
 #define FLOAT_ERROR    0.0000005
