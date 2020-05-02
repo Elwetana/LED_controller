@@ -207,6 +207,10 @@ int main(int argc, char *argv[])
         printf("Not implemented yet");
         exit(-2);
         break;
+    case N_SOURCE_TYPES:
+	printf("This can never happen");
+	exit(-3);
+	break;
     }
     init_source(led_count, 1);
     printf("Init source\n");
