@@ -26,6 +26,11 @@ void init_Ember(Ember* e, int i, EmberData* ember_data, int age, enum EmberType 
     e->sigma = ember_data->sigma + random_01() * ember_data->sigma_rand;
     e->decay = ember_data->decay + random_01() * ember_data->decay_rand;
     e->age = age;
+    if (e->decay > 0.0) //decaying embers have their birthday in future, because they need to start glowing slowly
+    {
+        int peak_age = (int)sqrtf(10.0f / e->decay);
+        e->age += peak_age;
+    }
     e->type = ember_type;
     e->cos_table_length = (2 * M_PI) / e->osc_freq;
     //printf(.cos %i\n., cos_table_length);
@@ -123,7 +128,7 @@ void update_embers(FireSource* fs, int frame)
     for(i = spark_offset; i < spark_offset + spark_count; i++)
     {
         Ember* e = &(fs->embers[i]);
-        if(e->age < frame && e->decay * (e->age - frame) * (e->age - frame) > 10.0f)
+        if(e->age < frame && e->decay * (e->age - frame) * (e->age - frame) > 10.0f)  // d * dt^2 > 10 -> dt = sqrt(10 / d);
         {
             //printf("replacing ember")
             int ei = e->i;
