@@ -47,7 +47,7 @@ void destruct_PerlinSource()
 {
     for (int f = 0; f < PERLIN_FREQ_N; ++f)
     {
-        //free(perlin_source.noise[f]);
+        free(perlin_source.noise[f]);
     }
 }
 
@@ -57,14 +57,12 @@ the result is in range - 0.5.. + 0.5
 */
 double sample_noise(int freq, double x, float p, int frame)
 {
-	printf("Sample\n");
     struct noise_t* noise = perlin_source.noise[freq];
     int i = (int)x;
     double dx = x - i;
     double n0 = dx * noise[i].amplitude * cos(frame * p + noise[i].phase); 
     double n1 = (dx - 1) * noise[i + 1].amplitude * cos(frame * p + noise[i + 1].phase);
     double w = dx * dx * (3 - 2 * dx);  // 3 dx ^ 2 - 2 dx ^ 3
-    printf("yy %f\n", w);
     /*
     2(a - b)x - (3a - 5b)x - 3bx + ax  https ://eev.ee/blog/2016/05/29/perlin-noise/
     ax(1 - 3x ^ 2 + 2x ^ 3) + b(x - 1)(3x ^ 2 - 2x ^ 3)
@@ -78,24 +76,20 @@ double sample_noise(int freq, double x, float p, int frame)
 int get_gradient_index_PerlinSource(int led, int frame)
 {
     double y = 0;
-    printf("yy %f\n", y);
     for (int f = 0; f < PERLIN_FREQ_N; ++f)
     {
         float freq = perlin_source.noise_freq[f];
         double x = led * (freq - 2.0) / perlin_source.basic_source.n_leds + 0.5;
-        y += sample_noise(freq, x, freq / 1000.0, perlin_source.basic_source.time_speed * frame) * perlin_source.noise_weight[f];
+        y += sample_noise(f, x, freq / 1000.0, perlin_source.basic_source.time_speed * frame) * perlin_source.noise_weight[f];
     }
     return (int)(GRADIENT_N * GAIN(y, 0.1));
 }
 
 void update_leds_PerlinSource(int frame, ws2811_t* ledstrip)
 {
-    printf("Perlin1\n");
     for (int led = 0; led < perlin_source.basic_source.n_leds; ++led)
     {
         int y = get_gradient_index_PerlinSource(led, frame);
-	printf("%i\n", y);
         ledstrip->channel[0].leds[led] = perlin_source.gradient.colors[y];
     }
-    printf("------------------------------\n");
 }
