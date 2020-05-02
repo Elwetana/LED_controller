@@ -6,16 +6,17 @@
 #  include <time.h>
 #  include <unistd.h>
 #  include <getopt.h>
+#  include "ws2811.h"
 #else
 #  include "faketime.h"
 //#  include "fakesignal.h"
 #  include "getopt.h"
 #  include "windows.h"
+#  include "fakeled.h"
 #endif
 #include <math.h>
 #include <signal.h>
 
-#include "ws2811.h"
 #include "fire_source.h"
 #include "colours.h"
 
