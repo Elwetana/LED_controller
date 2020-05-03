@@ -36,9 +36,7 @@ static void PerlinSource_build_noise()
 
 void PerlinSource_init(int n_leds, int time_speed)
 {
-    ws2811_led_t colors[] = { 0x0000AD, 0x5040A0 };
-    int steps[] = { 101 };
-    BasicSource_init(&perlin_source.basic_source, n_leds, time_speed, colors, steps, 1);
+    BasicSource_init(&perlin_source.basic_source, n_leds, time_speed, source_config.perlin_colors);
     PerlinSource_build_noise();
 }
 

@@ -147,10 +147,7 @@ static void FireSource_build_embers(FireSource* fs)
 
 void FireSource_init(int n_leds, int time_speed)
 {
-    ws2811_led_t colors[] = { 0x110000, 0xBF2100, 0xFFB20F, 0xFFFFAF };
-    int steps[] = { 40, 50, 51 };
-
-    BasicSource_init(&fire_source.basic, n_leds, time_speed, colors, steps, 3);
+    BasicSource_init(&fire_source.basic, n_leds, time_speed, source_config.embers_colors);
     FireSource_build_embers(&fire_source);
 }
 

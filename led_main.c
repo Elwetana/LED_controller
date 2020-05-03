@@ -19,13 +19,9 @@
 #include "common_source.h"
 #include "fire_source.h"
 #include "perlin_source.h"
+#include "color_source.h"
 #include "colours.h"
 #include "listener.h"
-
-#ifdef _MSC_VER
-#define strncasecmp _strnicmp
-#define strcasecmp _stricmp
-#endif
 
 //#define PRINT_FPS
 // defaults for cmdline options
@@ -106,23 +102,6 @@ static struct ArgOptions arg_options =
     .time_speed = 1
 };
 
-static void set_source_arg(char* source)
-{
-    if (!strncasecmp("EMBERS", source, 6)) {
-        arg_options.source_type = EMBERS;
-    }
-    else if (!strncasecmp("PERLIN", source, 6)) {
-        arg_options.source_type = PERLIN;
-    }
-    else if (!strncasecmp("COLOR", source, 5)) {
-        arg_options.source_type = COLOR;
-    }
-    else {
-        printf("Unknown source");
-        exit(-1);
-    }
-}
-
 void parseargs(int argc, char **argv)
 {
 	int index;
@@ -176,16 +155,16 @@ void parseargs(int argc, char **argv)
         case 's':
             if (optarg)
             {
-                set_source_arg(optarg);
+                arg_options.source_type = string_to_SourceType(optarg);
             }
             break;
         }
     }
 }
 
-static void set_source(void(**init)(int, int), void(**update)(int, ws2811_t*), void(**destruct)())
+static void set_source(void(**init)(int, int), void(**update)(int, ws2811_t*), void(**destruct)(), enum SourceType source_type)
 {
-    switch (arg_options.source_type)
+    switch (source_type)
     {
     case EMBERS:
         *init = FireSource_init;
@@ -198,8 +177,9 @@ static void set_source(void(**init)(int, int), void(**update)(int, ws2811_t*), v
         *destruct = PerlinSource_destruct;
         break;
     case COLOR:
-        printf("Not implemented yet");
-        exit(-2);
+        *init = ColorSource_init;
+        *update = ColorSource_update_leds;
+        *destruct = ColorSource_destruct;
         break;
     case N_SOURCE_TYPES:
         printf("This can never happen");
@@ -211,6 +191,8 @@ static void set_source(void(**init)(int, int), void(**update)(int, ws2811_t*), v
 
 int main(int argc, char *argv[])
 {
+    read_config();
+
     void (*init_source)(int, int) = FireSource_init;
     void (*update_leds)(int, ws2811_t*) = FireSource_update_leds;
     void (*destruct_source)() = FireSource_destruct;
@@ -219,7 +201,7 @@ int main(int argc, char *argv[])
     ws2811_return_t ret;
     parseargs(argc, argv);
 
-    set_source(&init_source, &update_leds, &destruct_source);
+    set_source(&init_source, &update_leds, &destruct_source, arg_options.source_type);
     printf("Init source\n");
 
     setup_handlers();
@@ -282,8 +264,38 @@ int main(int argc, char *argv[])
             {
                 if (!strncasecmp(command, "SOURCE", 6))
                 {
-                    set_source_arg(param);
-                    set_source(&init_source, &update_leds, &destruct_source);
+                    char source_name[16];
+                    int color = -1;
+                    char* sep = strchr(param, '?');
+                    if (sep != NULL)
+                    {
+                        int n = sep - param;
+                        strncpy(source_name, param, n);
+                        source_name[n] = 0x0;
+                        color = strtol(sep + 1, NULL, 16);
+                    }
+                    else if (!strncasecmp("OFF", param, 3))
+                    {
+                        strcpy(source_name, "COLOR");
+                        color = 0x0;
+                    }
+                    else
+                    {
+                        strncpy(source_name, param, 16);
+                    }
+                    if (color != -1) // this is only possible for color source now
+                    {
+                        SourceColors_destruct(source_config.color_colors);
+                        SourceColors* sc = malloc(sizeof(SourceColors));
+                        sc->colors = malloc(sizeof(ws2811_led_t) * 2);
+                        sc->steps = malloc(sizeof(int) * 1);
+                        sc->n_steps = 1;
+                        sc->colors[0] = color;
+                        sc->colors[1] = color;
+                        sc->steps[0] = 1;
+                        SourceConfig_init(source_name, sc);
+                    }
+                    set_source(&init_source, &update_leds, &destruct_source, string_to_SourceType(source_name));
                     printf("Changing source to %s\n", param);
                 }
                 else
@@ -305,6 +317,7 @@ int main(int argc, char *argv[])
     	ws2811_render(&ledstring);
     }
 
+    SourceConfig_destruct();
     destruct_source();
     ws2811_fini(&ledstring);
 
