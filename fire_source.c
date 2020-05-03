@@ -15,7 +15,7 @@
 #include "colours.h"
 
 
-FireSource fire_source =
+static FireSource fire_source =
 {
     .ember_data = {
         [0] =
@@ -60,7 +60,7 @@ FireSource fire_source =
     }
 };
 
-void Ember_init(Ember* e, int i, EmberData* ember_data, int age, enum EmberType ember_type) 
+static void Ember_init(Ember* e, int i, EmberData* ember_data, int age, enum EmberType ember_type) 
 {
     float amp = ember_data->amp + random_01() * ember_data->amp_rand;
     e->i = i;
@@ -98,7 +98,7 @@ void Ember_init(Ember* e, int i, EmberData* ember_data, int age, enum EmberType 
     }
 }
 
-void Ember_destruct(Ember* e)
+static void Ember_destruct(Ember* e)
 {
     for (int i = 0; i < e->cos_table_length; ++i)
     {
@@ -109,7 +109,7 @@ void Ember_destruct(Ember* e)
     //printf("Destroying ember\n");
 }
 
-float Ember_get_contrib(Ember* e, int x, int t)
+static float Ember_get_contrib(Ember* e, int x, int t)
 {
     int cos_t = t % e->cos_table_length;
     int dx = (int)e->x - x + (int)(6.0f * e->sigma);
@@ -119,7 +119,7 @@ float Ember_get_contrib(Ember* e, int x, int t)
         return e->contrib_table[cos_t][dx] * exp(-0.5 * e->decay * (e->age - t) * (e->age - t));
 }
 
-void FireSource_build_embers(FireSource* fs)
+static void FireSource_build_embers(FireSource* fs)
 {
     int n_embers = 0;
     for(int ember_type = 0; ember_type < N_EMBER_TYPES; ++ember_type)
@@ -163,7 +163,7 @@ void FireSource_destruct()
     free(fire_source.embers);
 }
 
-void FireSource_update_embers(FireSource* fs, int frame)
+static void FireSource_update_embers(FireSource* fs, int frame)
 {
     int spark_offset = 0;
     int spark_count = 0;
@@ -185,7 +185,7 @@ void FireSource_update_embers(FireSource* fs, int frame)
     }
 }
 
-int FireSource_get_gradient_index(FireSource* fs, int led, int frame)
+static int FireSource_get_gradient_index(FireSource* fs, int led, int frame)
 {
     float y = 0.0f;
     for(int ember = 0; ember < fs->n_embers; ember++)

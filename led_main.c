@@ -9,18 +9,18 @@
 #  include "ws2811.h"
 #else
 #  include "faketime.h"
-//#  include "fakesignal.h"
 #  include "getopt.h"
-#  include "windows.h"
 #  include "fakeled.h"
 #endif
 #include <math.h>
 #include <signal.h>
+#include <czmq.h>
 
 #include "common_source.h"
 #include "fire_source.h"
 #include "perlin_source.h"
 #include "colours.h"
+#include "listener.h"
 
 #ifdef _MSC_VER
 #define strncasecmp _strnicmp
@@ -105,6 +105,23 @@ static struct ArgOptions arg_options =
     .time_speed = 1
 };
 
+static void set_source_arg(char* source)
+{
+    if (!strncasecmp("EMBERS", source, 6)) {
+        arg_options.source_type = EMBERS;
+    }
+    else if (!strncasecmp("PERLIN", source, 6)) {
+        arg_options.source_type = PERLIN;
+    }
+    else if (!strncasecmp("COLOR", source, 5)) {
+        arg_options.source_type = COLOR;
+    }
+    else {
+        printf("Unknown source");
+        exit(-1);
+    }
+}
+
 void parseargs(int argc, char **argv)
 {
 	int index;
@@ -158,50 +175,26 @@ void parseargs(int argc, char **argv)
         case 's':
             if (optarg)
             {
-                if (!strncasecmp("EMBERS", optarg, 6)) {
-                    arg_options.source_type = EMBERS;
-                }
-                else if (!strncasecmp("PERLIN", optarg, 6)) {
-                    arg_options.source_type = PERLIN;
-                }
-                else if (!strncasecmp("COLOR", optarg, 5)) {
-                    arg_options.source_type = COLOR;
-                }
-                else {
-                    printf("Unknown source");
-                    exit(-1);
-                }
+                set_source_arg(optarg);
             }
             break;
         }
     }
 }
 
-int main(int argc, char *argv[])
+static void set_source(void(**init)(int, int), void(**update)(int, ws2811_t*), void(**destruct)())
 {
-    void (*init_source)(int, int);
-    void (*update_leds)(int, ws2811_t*);
-    void (*destruct_source)();
-
-    printf("Starting\n");
-    ws2811_return_t ret;
-    parseargs(argc, argv);
-
-    //this could be set up by command line parameters or by communication with some controller
-    init_source = FireSource_init;
-    update_leds = FireSource_update_leds;
-    destruct_source = FireSource_destruct;
-    switch(arg_options.source_type)
+    switch (arg_options.source_type)
     {
     case EMBERS:
-        /*init_source = FireSource_init;
-        update_leds = FireSource_update_leds;
-        destruct_source = FireSource_destruct;*/
+        *init = FireSource_init;
+        *update = FireSource_update_leds;
+        *destruct = FireSource_destruct;
         break;
     case PERLIN:
-        init_source = PerlinSource_init;
-        update_leds = PerlinSource_update_leds;
-        destruct_source = PerlinSource_destruct;
+        *init = PerlinSource_init;
+        *update = PerlinSource_update_leds;
+        *destruct = PerlinSource_destruct;
         break;
     case COLOR:
         printf("Not implemented yet");
@@ -210,12 +203,26 @@ int main(int argc, char *argv[])
     case N_SOURCE_TYPES:
         printf("This can never happen");
         exit(-3);
-	break;
+        break;
     }
-    init_source(led_count, 1);
+    (*init)(led_count, 1);
+}
+
+int main(int argc, char *argv[])
+{
+    void (*init_source)(int, int) = FireSource_init;
+    void (*update_leds)(int, ws2811_t*) = FireSource_update_leds;
+    void (*destruct_source)() = FireSource_destruct;
+
+    printf("Starting\n");
+    ws2811_return_t ret;
+    parseargs(argc, argv);
+
+    set_source(&init_source, &update_leds, &destruct_source);
     printf("Init source\n");
 
     setup_handlers();
+    Listener_init();
 
     if ((ret = ws2811_init(&ledstring)) != WS2811_SUCCESS)
     {
@@ -239,7 +246,7 @@ int main(int argc, char *argv[])
         if(frame % FPS_SAMPLES == 0)
         {
             double fps = (double)FPS_SAMPLES / (double)(current_ns - fps_time_ns) * 1e9;
-            printf("FPS: %f\n", fps);
+            //printf("FPS: %f\n", fps);
             fps_time_ns = current_ns;
         }
         long sleep_time = 1000;
@@ -258,6 +265,30 @@ int main(int argc, char *argv[])
         {
             fprintf(stderr, "ws2811_render failed: %s\n", ws2811_get_return_t_str(ret));
             break;
+        }
+
+        //poll server for remote command
+        char* msg = Listener_poll_message();
+        if (msg != NULL)
+        {
+            char command[32];
+            char param[32];
+            int n = sscanf(msg, "LED %s %s", &command, &param);
+            if (n == 2)
+            {
+                if (!strncasecmp(command, "SOURCE", 6))
+                {
+                    set_source_arg(param);
+                    set_source(&init_source, &update_leds, &destruct_source);
+                    printf("Changing source to %s\n", param);
+                }
+                else
+                    printf("Unknown command received, command: %s, param %s\n", command, param);
+            }
+            else {
+                printf("Unknown message received %s\N", msg);
+            }
+            free(msg);
         }
     }
 

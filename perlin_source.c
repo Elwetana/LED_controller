@@ -15,13 +15,13 @@
 #include "colours.h"
 
 
-PerlinSource perlin_source =
+static PerlinSource perlin_source =
 {
     .noise_freq = { 5, 11, 23, 47 },
     .noise_weight = { 8.0 / 15.0, 4.0 / 15.0, 2.0 / 15.0, 1.0 / 15.0 }
 };
 
-void PerlinSource_build_noise()
+static void PerlinSource_build_noise()
 {
     for (int f = 0; f < PERLIN_FREQ_N; ++f)
     {
@@ -54,7 +54,7 @@ void PerlinSource_destruct()
 Because the weights are - 1.. + 1, the value in the middle of the interval is 0.5 at most, therefore
 the result is in range - 0.5.. + 0.5
 */
-double PerlinSource_sample_noise(int freq, double x, float p, int frame)
+static double PerlinSource_sample_noise(int freq, double x, float p, int frame)
 {
     struct noise_t* noise = perlin_source.noise[freq];
     int i = (int)x;
@@ -72,7 +72,7 @@ double PerlinSource_sample_noise(int freq, double x, float p, int frame)
     return n + 0.5;
 }
 
-int PerlinSource_get_gradient_index(int led, int frame)
+static int PerlinSource_get_gradient_index(int led, int frame)
 {
     double y = 0;
     for (int f = 0; f < PERLIN_FREQ_N; ++f)

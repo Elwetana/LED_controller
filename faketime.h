@@ -1,12 +1,9 @@
+#define WIN32_LEAN_AND_MEAN
+#include <czmq.h>
 #include <Windows.h>
 
 #define CLOCK_MONOTONIC_RAW       0
 #define CLOCK_PROCESS_CPUTIME_ID  1
-
-struct timespec {
-    unsigned long tv_sec;
-    unsigned long tv_nsec;
-};
 
 void clock_gettime(int clock_type, struct timespec* t)
 {
@@ -17,11 +14,6 @@ void clock_gettime(int clock_type, struct timespec* t)
     QueryPerformanceCounter(&now);
     t->tv_sec = now.QuadPart / frequency.QuadPart;
     t->tv_nsec = (now.QuadPart % frequency.QuadPart) * (1e9 / (double)frequency.QuadPart);
-}
-
-int time(char* p)
-{
-    return 1;
 }
 
 void usleep(long usec)
