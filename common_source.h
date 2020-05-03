@@ -56,6 +56,7 @@ typedef struct SourceConfig {
 extern SourceConfig source_config;
 
 void BasicSource_init(BasicSource* basic_source, int n_leds, int time_speed, SourceColors* source_colors);
+//void BasicSource_destruct();
 //void BasicSource_build_gradient(BasicSource *bs, ws2811_led_t* colors, int* steps, int n_steps);
 float random_01();
 enum SourceType string_to_SourceType(char*);

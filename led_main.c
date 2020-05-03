@@ -295,6 +295,7 @@ int main(int argc, char *argv[])
                         sc->steps[0] = 1;
                         SourceConfig_init(source_name, sc);
                     }
+                    destruct_source();
                     set_source(&init_source, &update_leds, &destruct_source, string_to_SourceType(source_name));
                     printf("Changing source to %s\n", param);
                 }
