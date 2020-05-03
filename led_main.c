@@ -27,6 +27,7 @@
 #define strcasecmp _stricmp
 #endif
 
+//#define PRINT_FPS
 // defaults for cmdline options
 #define TARGET_FREQ             WS2811_TARGET_FREQ
 #define GPIO_PIN                18
@@ -234,8 +235,9 @@ int main(int argc, char *argv[])
 
     uint64_t last_update_ns = 0;
     long frame = 0;
+#ifdef PRINT_FPS
     uint64_t fps_time_ns = 0;
-
+#endif
     while (running)
     {
         struct timespec now;
@@ -243,12 +245,14 @@ int main(int argc, char *argv[])
         uint64_t current_ns = now.tv_sec * (long long)1e9 + now.tv_nsec;
         uint64_t delta_us = (current_ns - last_update_ns) / (long)1e3;
         frame++;
+#ifdef PRINT_FPS	
         if(frame % FPS_SAMPLES == 0)
         {
             double fps = (double)FPS_SAMPLES / (double)(current_ns - fps_time_ns) * 1e9;
-            //printf("FPS: %f\n", fps);
+            printf("FPS: %f\n", fps);
             fps_time_ns = current_ns;
         }
+#endif	
         long sleep_time = 1000;
         if(delta_us < FRAME_TIME)
         {
@@ -273,7 +277,7 @@ int main(int argc, char *argv[])
         {
             char command[32];
             char param[32];
-            int n = sscanf(msg, "LED %s %s", &command, &param);
+            int n = sscanf(msg, "LED %s %s", command, param);
             if (n == 2)
             {
                 if (!strncasecmp(command, "SOURCE", 6))
@@ -286,7 +290,7 @@ int main(int argc, char *argv[])
                     printf("Unknown command received, command: %s, param %s\n", command, param);
             }
             else {
-                printf("Unknown message received %s\N", msg);
+                printf("Unknown message received %s\n", msg);
             }
             free(msg);
         }

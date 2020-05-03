@@ -24,7 +24,6 @@ void Listener_destruct()
 {
     zmq_close(listener.subscriber);
     zmq_ctx_destroy(listener.context);
-    return 0;
 }
 
 char* Listener_poll_message()
@@ -42,3 +41,4 @@ char* Listener_poll_message()
     return strdup(buffer);
 #endif // __linux__
 }
+
