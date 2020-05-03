@@ -21,7 +21,7 @@ PerlinSource perlin_source =
     .noise_weight = { 8.0 / 15.0, 4.0 / 15.0, 2.0 / 15.0, 1.0 / 15.0 }
 };
 
-void build_noise()
+void PerlinSource_build_noise()
 {
     for (int f = 0; f < PERLIN_FREQ_N; ++f)
     {
@@ -34,16 +34,15 @@ void build_noise()
     }
 }
 
-void init_PerlinSource(int n_leds, int time_speed)
+void PerlinSource_init(int n_leds, int time_speed)
 {
-    init_BasicSource(&perlin_source.basic_source, n_leds, time_speed);
     ws2811_led_t colors[] = { 0x0000AD, 0x5040A0 };
     int steps[] = { 101 };
-    build_gradient(&(perlin_source.gradient), colors, steps, 1);
-    build_noise();
+    BasicSource_init(&perlin_source.basic_source, n_leds, time_speed, colors, steps, 1);
+    PerlinSource_build_noise();
 }
 
-void destruct_PerlinSource()
+void PerlinSource_destruct()
 {
     for (int f = 0; f < PERLIN_FREQ_N; ++f)
     {
@@ -55,7 +54,7 @@ void destruct_PerlinSource()
 Because the weights are - 1.. + 1, the value in the middle of the interval is 0.5 at most, therefore
 the result is in range - 0.5.. + 0.5
 */
-double sample_noise(int freq, double x, float p, int frame)
+double PerlinSource_sample_noise(int freq, double x, float p, int frame)
 {
     struct noise_t* noise = perlin_source.noise[freq];
     int i = (int)x;
@@ -73,23 +72,23 @@ double sample_noise(int freq, double x, float p, int frame)
     return n + 0.5;
 }
 
-int get_gradient_index_PerlinSource(int led, int frame)
+int PerlinSource_get_gradient_index(int led, int frame)
 {
     double y = 0;
     for (int f = 0; f < PERLIN_FREQ_N; ++f)
     {
         float freq = perlin_source.noise_freq[f];
         double x = led * (freq - 2.0) / perlin_source.basic_source.n_leds + 0.5;
-        y += sample_noise(f, x, freq / 1000.0, perlin_source.basic_source.time_speed * frame) * perlin_source.noise_weight[f];
+        y += PerlinSource_sample_noise(f, x, freq / 1000.0, perlin_source.basic_source.time_speed * frame) * perlin_source.noise_weight[f];
     }
     return (int)(GRADIENT_N * GAIN(y, 0.1));
 }
 
-void update_leds_PerlinSource(int frame, ws2811_t* ledstrip)
+void PerlinSource_update_leds(int frame, ws2811_t* ledstrip)
 {
     for (int led = 0; led < perlin_source.basic_source.n_leds; ++led)
     {
-        int y = get_gradient_index_PerlinSource(led, frame);
-        ledstrip->channel[0].leds[led] = perlin_source.gradient.colors[y];
+        int y = PerlinSource_get_gradient_index(led, frame);
+        ledstrip->channel[0].leds[led] = perlin_source.basic_source.gradient.colors[y];
     }
 }

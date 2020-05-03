@@ -45,17 +45,14 @@ typedef struct FireSource
 {
     BasicSource basic;
     EmberData ember_data[N_EMBER_TYPES];
-    SourceGradient gradient;
     Ember* embers;
     int n_embers_per_type[N_EMBER_TYPES];
     int n_embers;
 } FireSource;
 
-extern FireSource fire_source;
-
-void init_FireSource(int n_leds, int time_speed);
-void destruct_FireSource();
-void update_leds_FireSource(int frame, ws2811_t* ledstrip);
+void FireSource_init(int n_leds, int time_speed);
+void FireSource_destruct();
+void FireSource_update_leds(int frame, ws2811_t* ledstrip);
 
 #ifdef __cplusplus
 }

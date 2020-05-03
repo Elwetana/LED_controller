@@ -15,15 +15,14 @@ struct noise_t
 typedef struct PerlinSource
 {
 	BasicSource basic_source;
-	SourceGradient gradient;
 	struct noise_t* noise[PERLIN_FREQ_N];
 	int noise_freq[PERLIN_FREQ_N];
 	double noise_weight[PERLIN_FREQ_N];
 } PerlinSource;
 
-void init_PerlinSource(int n_leds, int time_speed);
-void destruct_PerlinSource();
-void update_leds_PerlinSource(int frame, ws2811_t* ledstrip);
+void PerlinSource_init(int n_leds, int time_speed);
+void PerlinSource_destruct();
+void PerlinSource_update_leds(int frame, ws2811_t* ledstrip);
 
 #ifdef __cplusplus
 }

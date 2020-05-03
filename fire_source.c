@@ -14,7 +14,53 @@
 #include "fire_source.h"
 #include "colours.h"
 
-void init_Ember(Ember* e, int i, EmberData* ember_data, int age, enum EmberType ember_type) 
+
+FireSource fire_source =
+{
+    .ember_data = {
+        [0] =
+        {
+            .amp = 0.4f,
+            .amp_rand = 0.1f,
+            .x_space = 100,
+            .sigma = 30,
+            .sigma_rand = 2,
+            .osc_amp = 0.2f,
+            .osc_freq = 0.005f,
+            .osc_freq_rand = 0.01,
+            .decay = 0.0,
+            .decay_rand = 0
+        },
+        [1] =
+        {
+            .amp = 0.2f,
+            .amp_rand = 0.05f,
+            .x_space = 60.0f,
+            .sigma = 9.0f,
+            .sigma_rand = 2.0f,
+            .osc_amp = 0.2f,
+            .osc_freq = 0.01f,
+            .osc_freq_rand = 0.005f,
+            .decay = 0.0f,
+            .decay_rand = 0.0f
+        },
+        [2] =
+        {
+            .amp = 0.1f,
+            .amp_rand = 0.2f,
+            .x_space = 25.0f,
+            .sigma = 3.0f,
+            .sigma_rand = 1.0f,
+            .osc_amp = 0.2f,
+            .osc_freq = 0.01f,
+            .osc_freq_rand = 0.01f,
+            .decay = 0.001f,
+            .decay_rand = 0.001f
+        }
+    }
+};
+
+void Ember_init(Ember* e, int i, EmberData* ember_data, int age, enum EmberType ember_type) 
 {
     float amp = ember_data->amp + random_01() * ember_data->amp_rand;
     e->i = i;
@@ -52,7 +98,7 @@ void init_Ember(Ember* e, int i, EmberData* ember_data, int age, enum EmberType 
     }
 }
 
-void destruct_Ember(Ember* e)
+void Ember_destruct(Ember* e)
 {
     for (int i = 0; i < e->cos_table_length; ++i)
     {
@@ -63,7 +109,7 @@ void destruct_Ember(Ember* e)
     //printf("Destroying ember\n");
 }
 
-float get_Ember_contrib(Ember* e, int x, int t)
+float Ember_get_contrib(Ember* e, int x, int t)
 {
     int cos_t = t % e->cos_table_length;
     int dx = (int)e->x - x + (int)(6.0f * e->sigma);
@@ -73,7 +119,7 @@ float get_Ember_contrib(Ember* e, int x, int t)
         return e->contrib_table[cos_t][dx] * exp(-0.5 * e->decay * (e->age - t) * (e->age - t));
 }
 
-void build_embers(FireSource* fs)
+void FireSource_build_embers(FireSource* fs)
 {
     int n_embers = 0;
     for(int ember_type = 0; ember_type < N_EMBER_TYPES; ++ember_type)
@@ -89,7 +135,7 @@ void build_embers(FireSource* fs)
         //int x = (n_embers_per_type[ember_type] * fs->ember_data[ember_type]->x_size - fs->n_leds) / 2;
         for(int i = 0; i < fs->n_embers_per_type[ember_type]; ++i)
         {
-            init_Ember(&(fs->embers[n_embers + i]), i, &(fs->ember_data[ember_type]), 0, ember_type);
+            Ember_init(&(fs->embers[n_embers + i]), i, &(fs->ember_data[ember_type]), 0, ember_type);
         }
         n_embers += fs->n_embers_per_type[ember_type];
     }
@@ -97,26 +143,27 @@ void build_embers(FireSource* fs)
 }
 
 
-void init_FireSource(int n_leds, int time_speed)
-{
-    init_BasicSource(&fire_source.basic, n_leds, time_speed);
+/* -- FIRE SOURCE -- */
 
+void FireSource_init(int n_leds, int time_speed)
+{
     ws2811_led_t colors[] = { 0x110000, 0xBF2100, 0xFFB20F, 0xFFFFAF };
     int steps[] = { 40, 50, 51 };
-    build_gradient(&fire_source.gradient, colors, steps, 3);
-    build_embers(&fire_source);
+
+    BasicSource_init(&fire_source.basic, n_leds, time_speed, colors, steps, 3);
+    FireSource_build_embers(&fire_source);
 }
 
-void destruct_FireSource()
+void FireSource_destruct()
 {
     for(int i = 0; i < fire_source.n_embers; ++i)
     {
-        destruct_Ember(&(fire_source.embers[i]));
+        Ember_destruct(&(fire_source.embers[i]));
     }
     free(fire_source.embers);
 }
 
-void update_embers(FireSource* fs, int frame)
+void FireSource_update_embers(FireSource* fs, int frame)
 {
     int spark_offset = 0;
     int spark_count = 0;
@@ -132,13 +179,13 @@ void update_embers(FireSource* fs, int frame)
         {
             //printf("replacing ember")
             int ei = e->i;
-            destruct_Ember(e);
-            init_Ember(e, ei, &(fs->ember_data[SPARK]), frame, SPARK);
+            Ember_destruct(e);
+            Ember_init(e, ei, &(fs->ember_data[SPARK]), frame, SPARK);
         }
     }
 }
 
-int get_gradient_index_FireSource(FireSource* fs, int led, int frame)
+int FireSource_get_gradient_index(FireSource* fs, int led, int frame)
 {
     float y = 0.0f;
     for(int ember = 0; ember < fs->n_embers; ember++)
@@ -146,7 +193,7 @@ int get_gradient_index_FireSource(FireSource* fs, int led, int frame)
         Ember* e = &(fs->embers[ember]);
         if(fabs(led - e->x) < 6.0f * e->sigma)
         {
-	    float contrib = get_Ember_contrib(e, led, fs->basic.time_speed * frame);
+	    float contrib = Ember_get_contrib(e, led, fs->basic.time_speed * frame);
             y += contrib; 
         }
     }
@@ -155,61 +202,16 @@ int get_gradient_index_FireSource(FireSource* fs, int led, int frame)
     return (int)(100 * y);
 }
 
-void update_leds_FireSource(int frame, ws2811_t* ledstrip)
+void FireSource_update_leds(int frame, ws2811_t* ledstrip)
 {
     if(frame % 4 == 0)
     {
-        update_embers(&fire_source, fire_source.basic.time_speed * frame);
+        FireSource_update_embers(&fire_source, fire_source.basic.time_speed * frame);
     }
     //TODO: move into common_source and/or main loop
     for(int led = 0; led < fire_source.basic.n_leds; ++led)
     {
-        int y = get_gradient_index_FireSource(&fire_source, led, frame);
-        ledstrip->channel[0].leds[led] = fire_source.gradient.colors[y];
+        int y = FireSource_get_gradient_index(&fire_source, led, frame);
+        ledstrip->channel[0].leds[led] = fire_source.basic.gradient.colors[y];
     }
 }
-
-FireSource fire_source =
-{
-    .ember_data = {
-        [0] = 
-        {
-            .amp = 0.4f,
-            .amp_rand = 0.1f,
-            .x_space = 100,
-            .sigma = 30,
-            .sigma_rand = 2,
-            .osc_amp = 0.2f,
-            .osc_freq = 0.005f,
-            .osc_freq_rand = 0.01,
-            .decay = 0.0,
-            .decay_rand = 0
-        },
-        [1] =
-        {
-            .amp = 0.2f,
-            .amp_rand = 0.05f,
-            .x_space = 60.0f,
-            .sigma = 9.0f,
-            .sigma_rand = 2.0f,
-            .osc_amp = 0.2f,
-            .osc_freq = 0.01f,
-            .osc_freq_rand = 0.005f,
-            .decay = 0.0f,
-            .decay_rand = 0.0f
-        },
-        [2] = 
-        {
-            .amp = 0.1f,
-            .amp_rand = 0.2f,
-            .x_space = 25.0f,
-            .sigma = 3.0f,
-            .sigma_rand = 1.0f,
-            .osc_amp = 0.2f,
-            .osc_freq = 0.01f,
-            .osc_freq_rand = 0.01f,
-            .decay = 0.001f,
-            .decay_rand = 0.001f
-        }
-    }
-};

@@ -23,19 +23,21 @@ enum SourceType {
     N_SOURCE_TYPES
 };
 
-typedef struct BasicSource
-{
-    int n_leds;
-    int time_speed;
-} BasicSource;
-
 typedef struct SourceGradient
 {
     ws2811_led_t colors[GRADIENT_N];
 } SourceGradient;
 
-void init_BasicSource(BasicSource* basic_source, int n_leds, int time_speed);
-void build_gradient(SourceGradient* sg, ws2811_led_t* colors, int* steps, int n_steps);
+typedef struct BasicSource
+{
+    int n_leds;
+    int time_speed;
+    SourceGradient gradient;
+} BasicSource;
+
+
+void BasicSource_init(BasicSource* basic_source, int n_leds, int time_speed, ws2811_led_t* colors, int* steps, int n_steps);
+//void BasicSource_build_gradient(BasicSource *bs, ws2811_led_t* colors, int* steps, int n_steps);
 float random_01();
 
 #ifdef __cplusplus

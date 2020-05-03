@@ -188,28 +188,28 @@ int main(int argc, char *argv[])
     parseargs(argc, argv);
 
     //this could be set up by command line parameters or by communication with some controller
-    init_source = init_FireSource;
-    update_leds = update_leds_FireSource;
-    destruct_source = destruct_FireSource;
+    init_source = FireSource_init;
+    update_leds = FireSource_update_leds;
+    destruct_source = FireSource_destruct;
     switch(arg_options.source_type)
     {
     case EMBERS:
-        /*init_source = init_FireSource;
-        update_leds = update_leds_FireSource;
-        destruct_source = destruct_FireSource;*/
+        /*init_source = FireSource_init;
+        update_leds = FireSource_update_leds;
+        destruct_source = FireSource_destruct;*/
         break;
     case PERLIN:
-        init_source = init_PerlinSource;
-        update_leds = update_leds_PerlinSource;
-        destruct_source = destruct_PerlinSource;
+        init_source = PerlinSource_init;
+        update_leds = PerlinSource_update_leds;
+        destruct_source = PerlinSource_destruct;
         break;
     case COLOR:
         printf("Not implemented yet");
         exit(-2);
         break;
     case N_SOURCE_TYPES:
-	printf("This can never happen");
-	exit(-3);
+        printf("This can never happen");
+        exit(-3);
 	break;
     }
     init_source(led_count, 1);
