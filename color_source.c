@@ -26,6 +26,7 @@ void ColorSource_destruct()
 
 void ColorSource_update_leds(int frame, ws2811_t* ledstrip)
 {
+    (void)frame;
     if (color_source.first_update > 0)
     {
         return;

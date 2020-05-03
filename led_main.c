@@ -264,7 +264,7 @@ int main(int argc, char *argv[])
             {
                 if (!strncasecmp(command, "SOURCE", 6))
                 {
-                    char source_name[16];
+                    char source_name[32];
                     int color = -1;
                     char* sep = strchr(param, '?');
                     if (sep != NULL)
@@ -281,7 +281,7 @@ int main(int argc, char *argv[])
                     }
                     else
                     {
-                        strncpy(source_name, param, 16);
+                        strncpy(source_name, param, 32);
                     }
                     if (color != -1) // this is only possible for color source now
                     {

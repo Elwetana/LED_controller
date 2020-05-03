@@ -12,7 +12,7 @@ typedef struct ColorSource
 	int first_update;
 } ColorSource;
 
-void ColorSource_init(int n_leds, int time_speed, int color);
+void ColorSource_init(int n_leds, int time_speed);
 void ColorSource_destruct();
 void ColorSource_update_leds(int frame, ws2811_t* ledstrip);
 
