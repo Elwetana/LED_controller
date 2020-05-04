@@ -52,7 +52,8 @@ typedef struct FireSource
 
 void FireSource_init(int n_leds, int time_speed);
 void FireSource_destruct();
-void FireSource_update_leds(int frame, ws2811_t* ledstrip);
+//returns 1 if leds were updated, 0 if update is not necessary
+int FireSource_update_leds(int frame, ws2811_t* ledstrip);
 
 #ifdef __cplusplus
 }

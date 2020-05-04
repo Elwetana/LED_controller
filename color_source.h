@@ -14,7 +14,8 @@ typedef struct ColorSource
 
 void ColorSource_init(int n_leds, int time_speed);
 void ColorSource_destruct();
-void ColorSource_update_leds(int frame, ws2811_t* ledstrip);
+//returns 1 if leds were updated, 0 if update is not necessary
+int ColorSource_update_leds(int frame, ws2811_t* ledstrip);
 
 #ifdef __cplusplus
 }

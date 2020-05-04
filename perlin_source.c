@@ -82,11 +82,12 @@ static int PerlinSource_get_gradient_index(int led, int frame)
     return (int)(GRADIENT_N * GAIN(y, 0.1));
 }
 
-void PerlinSource_update_leds(int frame, ws2811_t* ledstrip)
+int PerlinSource_update_leds(int frame, ws2811_t* ledstrip)
 {
     for (int led = 0; led < perlin_source.basic_source.n_leds; ++led)
     {
         int y = PerlinSource_get_gradient_index(led, frame);
         ledstrip->channel[0].leds[led] = perlin_source.basic_source.gradient.colors[y];
     }
+    return 1;
 }

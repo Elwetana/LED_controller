@@ -199,7 +199,7 @@ static int FireSource_get_gradient_index(FireSource* fs, int led, int frame)
     return (int)(100 * y);
 }
 
-void FireSource_update_leds(int frame, ws2811_t* ledstrip)
+int FireSource_update_leds(int frame, ws2811_t* ledstrip)
 {
     if(frame % 4 == 0)
     {
@@ -211,4 +211,5 @@ void FireSource_update_leds(int frame, ws2811_t* ledstrip)
         int y = FireSource_get_gradient_index(&fire_source, led, frame);
         ledstrip->channel[0].leds[led] = fire_source.basic.gradient.colors[y];
     }
+    return 1;
 }

@@ -162,7 +162,7 @@ void parseargs(int argc, char **argv)
     }
 }
 
-static void set_source(void(**init)(int, int), void(**update)(int, ws2811_t*), void(**destruct)(), enum SourceType source_type)
+static void set_source(void(**init)(int, int), int(**update)(int, ws2811_t*), void(**destruct)(), enum SourceType source_type)
 {
     switch (source_type)
     {
@@ -194,7 +194,7 @@ int main(int argc, char *argv[])
     read_config();
 
     void (*init_source)(int, int) = FireSource_init;
-    void (*update_leds)(int, ws2811_t*) = FireSource_update_leds;
+    int (*update_leds)(int, ws2811_t*) = FireSource_update_leds;
     void (*destruct_source)() = FireSource_destruct;
 
     printf("Starting\n");
@@ -246,13 +246,14 @@ int main(int argc, char *argv[])
         // Now we have to save the current time so that we know how much time we spent working
         clock_gettime(CLOCK_MONOTONIC_RAW, &now);
         last_update_ns = now.tv_sec * (long long)1e9 + now.tv_nsec;
-        update_leds(frame, &ledstring);
-        if ((ret = ws2811_render(&ledstring)) != WS2811_SUCCESS)
+        if (update_leds(frame, &ledstring))
         {
-            fprintf(stderr, "ws2811_render failed: %s\n", ws2811_get_return_t_str(ret));
-            break;
+            if ((ret = ws2811_render(&ledstring)) != WS2811_SUCCESS)
+            {
+                fprintf(stderr, "ws2811_render failed: %s\n", ws2811_get_return_t_str(ret));
+                break;
+            }
         }
-
         //poll server for remote command
         char* msg = Listener_poll_message();
         if (msg != NULL)
