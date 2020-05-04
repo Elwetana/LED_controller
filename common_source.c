@@ -123,18 +123,21 @@ void read_config()
         sc->steps = malloc(sizeof(int) * n_steps);
         sc->n_steps = n_steps;
         fgets(buf, 255, config);
-        int color, step;
+        int color, step, offset;
+        char* line = buf;
+        offset = 0;
         for (int i = 0; i < n_steps; i++)
         {
-            n = sscanf(buf, "%x %i", &color, &step);
+            n = sscanf(line, "%x %i%n", &color, &step, &offset);
             if (n != 2) {
                 printf("Error reading config -- colors\n");
                 exit(-6);
             }
             sc->colors[i] = color;
             sc->steps[i] = step;
+            line += offset;
         }
-        n = sscanf(buf, "%x", &color);
+        n = sscanf(line, "%x", &color);
         if (n != 1) {
             printf("Error reading config -- colors end\n");
             exit(-6);
