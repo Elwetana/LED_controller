@@ -40,7 +40,8 @@ int ChaserSource_update_leds(int frame, ws2811_t* ledstrip)
         for (int i = 0; i < N_HEADS; i++)
         {
             int head = chaser_source.cur_heads[i];
-            int dist = (head - led) % chaser_source.basic_source.n_leds;
+            int dist = (chaser_source.basic_source.n_leds + head - led) % chaser_source.basic_source.n_leds;
+	    if(dist < 0) printf("error %i %i", head, led);
             if (dist < min_dist)
             {
                 min_dist = dist;
