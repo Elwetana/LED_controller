@@ -17,7 +17,7 @@ static ColorSource color_source = { .first_update = 0 };
 
 void ColorSource_init(int n_leds, int time_speed)
 {
-    BasicSource_init(&color_source.basic_source, n_leds, time_speed, source_config.color_colors);
+    BasicSource_init(&color_source.basic_source, n_leds, time_speed, source_config.colors[COLOR_SOURCE]);
     color_source.first_update = 0;
 }
 

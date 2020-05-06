@@ -20,6 +20,7 @@
 #include "fire_source.h"
 #include "perlin_source.h"
 #include "color_source.h"
+#include "chaser_source.h"
 #include "colours.h"
 #include "listener.h"
 
@@ -140,7 +141,7 @@ void parseargs(int argc, char **argv)
 				"-c (--clear)      - clear matrix on exit.\n"
 				"-v (--version)    - version information\n"
                 "-t (--time_speed) - simulation speed\n"
-                "-s (--source)     - source. Can be EMBERS, PERLIN or COLOR\n"
+                "-s (--source)     - source. Can be EMBERS, PERLIN, COLOR or CHASER\n"
 				, argv[0]);
 			exit(-1);
 		case 'c':
@@ -166,20 +167,25 @@ static void set_source(void(**init)(int, int), int(**update)(int, ws2811_t*), vo
 {
     switch (source_type)
     {
-    case EMBERS:
+    case EMBERS_SOURCE:
         *init = FireSource_init;
         *update = FireSource_update_leds;
         *destruct = FireSource_destruct;
         break;
-    case PERLIN:
+    case PERLIN_SOURCE:
         *init = PerlinSource_init;
         *update = PerlinSource_update_leds;
         *destruct = PerlinSource_destruct;
         break;
-    case COLOR:
+    case COLOR_SOURCE:
         *init = ColorSource_init;
         *update = ColorSource_update_leds;
         *destruct = ColorSource_destruct;
+        break;
+    case CHASER_SOURCE:
+        *init = ChaserSource_init;
+        *update = ChaserSource_update_leds;
+        *destruct = ChaserSource_destruct;
         break;
     case N_SOURCE_TYPES:
         printf("This can never happen");
@@ -286,7 +292,7 @@ int main(int argc, char *argv[])
                     }
                     if (color != -1) // this is only possible for color source now
                     {
-                        SourceColors_destruct(source_config.color_colors);
+                        SourceColors_destruct(source_config.colors[COLOR_SOURCE]);
                         SourceColors* sc = malloc(sizeof(SourceColors));
                         sc->colors = malloc(sizeof(ws2811_led_t) * 2);
                         sc->steps = malloc(sizeof(int) * 1);
@@ -294,7 +300,7 @@ int main(int argc, char *argv[])
                         sc->colors[0] = color;
                         sc->colors[1] = color;
                         sc->steps[0] = 1;
-                        SourceConfig_init(source_name, sc);
+                        SourceConfig_add_color(source_name, sc);
                     }
                     destruct_source();
                     set_source(&init_source, &update_leds, &destruct_source, string_to_SourceType(source_name));

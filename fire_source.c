@@ -147,7 +147,7 @@ static void FireSource_build_embers(FireSource* fs)
 
 void FireSource_init(int n_leds, int time_speed)
 {
-    BasicSource_init(&fire_source.basic, n_leds, time_speed, source_config.embers_colors);
+    BasicSource_init(&fire_source.basic, n_leds, time_speed, source_config.colors[EMBERS_SOURCE]);
     FireSource_build_embers(&fire_source);
 }
 

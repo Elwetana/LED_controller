@@ -41,13 +41,16 @@ void BasicSource_init(BasicSource* basic_source, int n_leds, int time_speed, Sou
 enum SourceType string_to_SourceType(char* source)
 {
     if (!strncasecmp("EMBERS", source, 6)) {
-        return EMBERS;
+        return EMBERS_SOURCE;
     }
     else if (!strncasecmp("PERLIN", source, 6)) {
-        return PERLIN;
+        return PERLIN_SOURCE;
     }
     else if (!strncasecmp("COLOR", source, 5)) {
-        return COLOR;
+        return COLOR_SOURCE;
+    }
+    else if (!strncasecmp("CHASER", source, 6)) {
+        return CHASER_SOURCE;
     }
     else {
         printf("Unknown source");
@@ -55,31 +58,17 @@ enum SourceType string_to_SourceType(char* source)
     }
 }
 
-SourceConfig source_config = {
-    .embers_colors = NULL,
-    .perlin_colors = NULL,
-    .color_colors = NULL
-};
+SourceConfig source_config;
 
-void SourceConfig_init(char* source_name, SourceColors* source_colors)
+static void SourceConfig_init()
+{
+    source_config.colors = malloc(sizeof(SourceColors*) * N_SOURCE_TYPES);
+}
+
+void SourceConfig_add_color(char* source_name, SourceColors* source_colors)
 {
     enum SourceType source_type = string_to_SourceType(source_name);
-    switch (source_type)
-    {
-    case EMBERS:
-        source_config.embers_colors = source_colors;
-        break;
-    case PERLIN:
-        source_config.perlin_colors = source_colors;
-        break;
-    case COLOR:
-        source_config.color_colors = source_colors;
-        break;
-    case N_SOURCE_TYPES:
-        printf("Unknown type");
-        exit(-1);
-        break;
-    }
+    source_config.colors[source_type] = source_colors;
 }
 
 void SourceColors_destruct(SourceColors* source_colors)
@@ -94,13 +83,16 @@ void SourceColors_destruct(SourceColors* source_colors)
 
 void SourceConfig_destruct()
 {
-    SourceColors_destruct(source_config.embers_colors);
-    SourceColors_destruct(source_config.perlin_colors);
-    SourceColors_destruct(source_config.color_colors);
+    for (int i = 0; i < N_SOURCE_TYPES; ++i)
+    {
+        SourceColors_destruct(source_config.colors[i]);
+    }
+    free(source_config.colors);
 }
 
 void read_config()
 {
+    SourceConfig_init();
     FILE* config = fopen("config", "r");
     if (config == NULL) {
         printf("Config not found\n");
@@ -143,6 +135,6 @@ void read_config()
             exit(-6);
         }
         sc->colors[n_steps] = color;
-        SourceConfig_init(name, sc);
+        SourceConfig_add_color(name, sc);
     }
 }

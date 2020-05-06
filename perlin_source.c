@@ -36,7 +36,7 @@ static void PerlinSource_build_noise()
 
 void PerlinSource_init(int n_leds, int time_speed)
 {
-    BasicSource_init(&perlin_source.basic_source, n_leds, time_speed, source_config.perlin_colors);
+    BasicSource_init(&perlin_source.basic_source, n_leds, time_speed, source_config.colors[PERLIN_SOURCE]);
     PerlinSource_build_noise();
 }
 

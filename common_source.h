@@ -22,9 +22,10 @@ extern "C" {
 #endif
 
 enum SourceType {
-    EMBERS,
-    PERLIN,
-    COLOR,
+    EMBERS_SOURCE,
+    PERLIN_SOURCE,
+    COLOR_SOURCE,
+    CHASER_SOURCE,
     N_SOURCE_TYPES
 };
 
@@ -48,9 +49,7 @@ typedef struct BasicSource
 } BasicSource;
 
 typedef struct SourceConfig {
-    SourceColors* perlin_colors;
-    SourceColors* embers_colors;
-    SourceColors* color_colors;
+    SourceColors** colors;
 } SourceConfig;
 
 extern SourceConfig source_config;
@@ -61,7 +60,7 @@ void BasicSource_init(BasicSource* basic_source, int n_leds, int time_speed, Sou
 float random_01();
 enum SourceType string_to_SourceType(char*);
 void read_config();
-void SourceConfig_init(char* source_name, SourceColors* source_colors);
+void SourceConfig_add_color(char* source_name, SourceColors* source_colors);
 void SourceConfig_destruct();
 void SourceColors_destruct(SourceColors* source_colors);
 
