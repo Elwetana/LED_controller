@@ -11,9 +11,16 @@
 #endif // __linux__
 
 #include "common_source.h"
+#include "color_source_priv.h"
 #include "color_source.h"
 
 static ColorSource color_source = { .first_update = 0 };
+
+SourceFunctions color_functions = {
+    .init = ColorSource_init,
+    .update = ColorSource_update_leds,
+    .destruct = ColorSource_destruct
+};
 
 void ColorSource_init(int n_leds, int time_speed)
 {

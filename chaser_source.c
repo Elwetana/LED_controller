@@ -11,9 +11,16 @@
 #endif // __linux__
 
 #include "common_source.h"
+#include "chaser_source_priv.h"
 #include "chaser_source.h"
 
 static ChaserSource chaser_source = { .heads = { 19, 246, 0, 38, 76, 114, 152, 190, 227, 265, 303, 341, 379, 417 } };
+
+SourceFunctions chaser_functions = {
+    .init = ChaserSource_init,
+    .update = ChaserSource_update_leds,
+    .destruct = ChaserSource_destruct
+};
 
 void ChaserSource_init(int n_leds, int time_speed)
 {
