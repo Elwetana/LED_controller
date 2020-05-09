@@ -14,6 +14,7 @@ typedef struct MorseSource {
     struct MorseChar morse[26];
     char* text;
     int text_length;
+    int mode;
 } MorseSource;
 
 void MorseSource_init(int n_leds, int time_speed);

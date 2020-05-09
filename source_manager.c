@@ -77,6 +77,31 @@ void set_source(enum SourceType source_type)
     SourceManager_init_source(led_param.led_count, led_param.time_speed);
 }
 
+inline int ishex(int x)
+{
+    return (x >= '0' && x <= '9') ||
+           (x >= 'a' && x <= 'f') ||
+           (x >= 'A' && x <= 'F');
+}
+
+int decode(const char* s, char* dec)
+{
+    char* o;
+    const char* end = s + strlen(s);
+    int c;
+
+    for (o = dec; s <= end; o++) 
+    {
+        c = *s++;
+        if (c == '+') c = ' ';
+        else if (c == '%' && (!ishex(*s++) || !ishex(*s++) || !sscanf(s - 2, "%2x", &c)))
+            return -1;
+        if (dec) *o = (char)c;
+    }
+    return o - dec;
+}
+
+
 void check_message()
 {
     char* msg = Listener_poll_message();
@@ -123,6 +148,37 @@ void check_message()
                 SourceManager_destruct_source();
                 set_source(string_to_SourceType(source_name));
                 printf("Changing source to %s\n", param);
+            }
+            else if (!strncasecmp(command, "MSG", 3))
+            {
+                char* sep = strchr(param, '?');
+                if (sep != NULL)
+                {
+                    char target[32];
+                    char message[64];
+                    strncpy(target, param, sep - param);
+                    target[sep - param] = 0x0;
+                    if ((strlen(sep + 1) < 64) && (decode(sep + 1, message) > 0))
+                    {
+                        if (!strncasecmp(target, "MORSETEXT", 9))
+                        {
+                            MorseSource_assign_text(message);
+                            printf("Setting new MorseSource text: %s\n", message);
+                        }
+                        else if (!strncasecmp(target, "MORSEMODE", 9))
+                        {
+                            int mode = atoi(message);
+                            MorseSource_change_mode(mode);
+                            printf("Setting new MorseSource mode: %i\n", mode);
+                        }
+                        else
+                            printf("Unknown target: %s, msg was: %s\n", target, message);
+                    }
+                    else
+                        printf("Message too long or poorly formatted: %s\n", param);
+                }
+                else
+                    printf("Message does not contain target %s\n", param);
             }
             else
                 printf("Unknown command received, command: %s, param %s\n", command, param);
