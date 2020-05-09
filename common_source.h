@@ -15,6 +15,7 @@ enum SourceType {
     PERLIN_SOURCE,
     COLOR_SOURCE,
     CHASER_SOURCE,
+    MORSE_SOURCE,
     N_SOURCE_TYPES
 };
 
