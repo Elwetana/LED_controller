@@ -26,6 +26,8 @@ MorseSource morse_source = {
     .cmorse = { ".-", "-...", "-.-.", "-..", ".", "..-.", "--.", "....", "..", ".---","-.-", ".-..", "--",
               "-.", "---", ".--.", "--.-", ".-.", "...", "-", "..-", "...-", ".--", "-..-", "-.--", "--.." },
     .morse = { {0, {0}} },
+    .text = NULL,
+    .text_length = 0,
     .mode = MM_NO_MODE
 };
 
@@ -126,12 +128,14 @@ void MorseSource_init(int n_leds, int time_speed)
     MorseSource_read_font();
     MorseSource_convert_morse();
     MorseSource_assign_text("AHOJ URSULO");
+    MorseSource_change_mode(MM_NO_MODE);
     //MorseSource_debug_init();
 }
 
 void MorseSource_destruct()
 {
     if (morse_source.text != NULL) free(morse_source.text);
+    morse_source.text = NULL;
 }
 
 void MorseSource_update_leds_morse(int frame, ws2811_t* ledstrip)
