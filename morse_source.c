@@ -25,7 +25,7 @@ SourceFunctions morse_functions = {
 MorseSource morse_source = {
     .cmorse = { ".-", "-...", "-.-.", "-..", ".", "..-.", "--.", "....", "..", ".---","-.-", ".-..", "--",
               "-.", "---", ".--.", "--.-", ".-.", "...", "-", "..-", "...-", ".--", "-..-", "-.--", "--.." },
-    .morse = { 0 }
+    .morse = { }
 };
 
 
@@ -172,9 +172,8 @@ void MorseSource_update_leds_morse(int frame, ws2811_t* ledstrip)
 
 int MorseSource_get_gradient_index_blink(int led, int frame)
 {
-    int frame_per_dot = 4;
     int msg_padding = 3;
-    int shift = frame / (frame_per_dot * 16);
+    int shift = frame / 16;
     led = (led + shift) % morse_source.basic_source.n_leds;
 
     int i = led % (morse_source.text_length + msg_padding);
@@ -186,10 +185,10 @@ int MorseSource_get_gradient_index_blink(int led, int frame)
         return 0;
     i = (char)c - 65;
     struct MorseChar* mc = &morse_source.morse[i];
-    int ft = frame % (frame_per_dot * 16);
-    if (ft >= (frame_per_dot * mc->len))
+    int ft = frame % 16;
+    if (ft >= mc->len)
         return 0;
-    int y = mc->data[ft / frame_per_dot];
+    int y = mc->data[ft];
     if (y > 0)
         return letter_color;
     return 0;
@@ -217,22 +216,26 @@ int MorseSource_get_gradient_index_scroll(int led, int frame)
 int MorseSource_update_leds(int frame, ws2811_t* ledstrip)
 {
     int mode = (frame / MORSE_FRAMES_PER_MODE) % 3; //<- 3 = number of modes
+    int frames_per_dot = 10;
+    int frames_per_row = 10;
     switch (mode)
     {
     case 0:
         MorseSource_update_leds_morse(frame, ledstrip);
         break;
     case 1:
+	if(frame % frames_per_dot != 0) return 0;
         for (int led = 0; led < morse_source.basic_source.n_leds; ++led)
         {
-            int y = MorseSource_get_gradient_index_scroll(led, frame);
+            int y = MorseSource_get_gradient_index_scroll(led, frame / frames_per_dot);
             ledstrip->channel[0].leds[led] = morse_source.basic_source.gradient.colors[y];
         }
         break;
     case 2:
+	if(frame % frames_per_row != 0) return 0;
         for (int led = 0; led < morse_source.basic_source.n_leds; ++led)
         {
-            int y = MorseSource_get_gradient_index_blink(led, frame);
+            int y = MorseSource_get_gradient_index_blink(led, frame / frames_per_row);
             ledstrip->channel[0].leds[led] = morse_source.basic_source.gradient.colors[y];
         }
         break;
