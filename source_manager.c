@@ -107,8 +107,13 @@ void check_message()
     char* msg = Listener_poll_message();
     if (msg != NULL)
     {
-        char command[32];
-        char param[32];
+        if (strlen(msg) > 64) {
+            printf("Message too long: %s, %i", msg, strlen(msg));
+            free(msg);
+            return;
+        }
+        char command[64];
+        char param[64];
         int n = sscanf(msg, "LED %s %s", command, param);
         if (n == 2)
         {
@@ -156,26 +161,30 @@ void check_message()
                 {
                     char target[32];
                     char message[64];
-                    strncpy(target, param, sep - param);
-                    target[sep - param] = 0x0;
-                    if ((strlen(sep + 1) < 64) && (decode(sep + 1, message) > 0))
-                    {
-                        if (!strncasecmp(target, "MORSETEXT", 9))
+                    if ((sep - param) < 32) {
+                        strncpy(target, param, sep - param);
+                        target[sep - param] = 0x0;
+                        if ((strlen(sep + 1) < 64) && (decode(sep + 1, message) > 0))
                         {
-                            MorseSource_assign_text(message);
-                            printf("Setting new MorseSource text: %s\n", message);
-                        }
-                        else if (!strncasecmp(target, "MORSEMODE", 9))
-                        {
-                            int mode = atoi(message);
-                            MorseSource_change_mode(mode);
-                            printf("Setting new MorseSource mode: %i\n", mode);
+                            if (!strncasecmp(target, "MORSETEXT", 9))
+                            {
+                                MorseSource_assign_text(message);
+                                printf("Setting new MorseSource text: %s\n", message);
+                            }
+                            else if (!strncasecmp(target, "MORSEMODE", 9))
+                            {
+                                int mode = atoi(message);
+                                MorseSource_change_mode(mode);
+                                printf("Setting new MorseSource mode: %i\n", mode);
+                            }
+                            else
+                                printf("Unknown target: %s, msg was: %s\n", target, message);
                         }
                         else
-                            printf("Unknown target: %s, msg was: %s\n", target, message);
+                            printf("Message too long or poorly formatted: %s\n", param);
                     }
                     else
-                        printf("Message too long or poorly formatted: %s\n", param);
+                        printf("Target is too long or poorly formatted: %s\n", param);
                 }
                 else
                     printf("Message does not contain target %s\n", param);
