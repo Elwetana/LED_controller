@@ -18,6 +18,7 @@ ws2811_return_t ws2811_init(ws2811_t *ws2811)
 
 void ws2811_fini(ws2811_t *ws2811) 
 {
+    (void)ws2811;
     fclose(_fake_led_output);
 }
 
@@ -38,5 +39,6 @@ ws2811_return_t ws2811_render(ws2811_t *ws2811)
 
 const char * ws2811_get_return_t_str(const ws2811_return_t state)
 {
+    (void)state;
     return "x";
 }

@@ -11,6 +11,7 @@
 #endif // __linux__
 
 #include "common_source.h"
+#include "fire_source_priv.h"
 #include "fire_source.h"
 #include "colours.h"
 
@@ -22,14 +23,14 @@ static FireSource fire_source =
         {
             .amp = 0.4f,
             .amp_rand = 0.1f,
-            .x_space = 100,
-            .sigma = 30,
-            .sigma_rand = 2,
+            .x_space = 100.0f,
+            .sigma = 30.0f,
+            .sigma_rand = 2.0f,
             .osc_amp = 0.2f,
             .osc_freq = 0.005f,
-            .osc_freq_rand = 0.01,
-            .decay = 0.0,
-            .decay_rand = 0
+            .osc_freq_rand = 0.01f,
+            .decay = 0.0f,
+            .decay_rand = 0.0f
         },
         [1] =
         {
@@ -60,15 +61,21 @@ static FireSource fire_source =
     }
 };
 
+SourceFunctions fire_functions = {
+    .init = FireSource_init,
+    .update = FireSource_update_leds,
+    .destruct = FireSource_destruct
+};
+
 static void Ember_init(Ember* e, int i, EmberData* ember_data, int age, enum EmberType ember_type) 
 {
     float amp = ember_data->amp + random_01() * ember_data->amp_rand;
     e->i = i;
-    e->x = (i - 1.0 + random_01()/3.0) * ember_data->x_space;
+    e->x = (i - 1.0f + random_01()/3.0f) * ember_data->x_space;
     e->amp = amp;
     e->osc_amp = amp * ember_data->osc_amp;
     e->osc_freq = ember_data->osc_freq + random_01() * ember_data->osc_freq_rand;
-    e->osc_shift = random_01() * 2 * M_PI;
+    e->osc_shift = random_01() * 2 * (float)M_PI;
     e->sigma = ember_data->sigma + random_01() * ember_data->sigma_rand;
     e->decay = ember_data->decay + random_01() * ember_data->decay_rand;
     e->age = age;
@@ -78,7 +85,7 @@ static void Ember_init(Ember* e, int i, EmberData* ember_data, int age, enum Emb
         e->age += peak_age;
     }
     e->type = ember_type;
-    e->cos_table_length = (2 * M_PI) / e->osc_freq;
+    e->cos_table_length = (int)((2 * M_PI) / e->osc_freq);
     //printf(.cos %i\n., cos_table_length);
     e->cos_table = (float*) malloc(sizeof(float) * e->cos_table_length);
     e->contrib_table = (float**) malloc(sizeof(float*) * e->cos_table_length);
@@ -93,7 +100,7 @@ static void Ember_init(Ember* e, int i, EmberData* ember_data, int age, enum Emb
             float osc = e->osc_amp * tcos;
             int x_index = x + six_sigma;
             float f = ((float)x / e->sigma * e->amp / (e->amp + osc)); 
-            e->contrib_table[t][x_index] = (e->amp + osc) * expf(-0.5 * f * f);
+            e->contrib_table[t][x_index] = (e->amp + osc) * expf(-0.5f * f * f);
         }
     }
 }
@@ -116,7 +123,7 @@ static float Ember_get_contrib(Ember* e, int x, int t)
     if(e->decay == 0)
         return e->contrib_table[cos_t][dx];
     else
-        return e->contrib_table[cos_t][dx] * exp(-0.5 * e->decay * (e->age - t) * (e->age - t));
+        return e->contrib_table[cos_t][dx] * expf(-0.5f * e->decay * (e->age - t) * (e->age - t));
 }
 
 static void FireSource_build_embers(FireSource* fs)
@@ -124,7 +131,7 @@ static void FireSource_build_embers(FireSource* fs)
     int n_embers = 0;
     for(int ember_type = 0; ember_type < N_EMBER_TYPES; ++ember_type)
     {
-        fs->n_embers_per_type[ember_type] = 1 + (fs->basic.n_leds + 1) / fs->ember_data[ember_type].x_space;
+        fs->n_embers_per_type[ember_type] = 1 + (int)((fs->basic.n_leds + 1) / fs->ember_data[ember_type].x_space);
         n_embers += fs->n_embers_per_type[ember_type];
     }
     fs->embers = (Ember*) malloc(sizeof(Ember) * n_embers);
@@ -147,7 +154,7 @@ static void FireSource_build_embers(FireSource* fs)
 
 void FireSource_init(int n_leds, int time_speed)
 {
-    BasicSource_init(&fire_source.basic, n_leds, time_speed, source_config.embers_colors);
+    BasicSource_init(&fire_source.basic, n_leds, time_speed, source_config.colors[EMBERS_SOURCE]);
     FireSource_build_embers(&fire_source);
 }
 
@@ -188,14 +195,14 @@ static int FireSource_get_gradient_index(FireSource* fs, int led, int frame)
     for(int ember = 0; ember < fs->n_embers; ember++)
     {
         Ember* e = &(fs->embers[ember]);
-        if(fabs(led - e->x) < 6.0f * e->sigma)
+        if(fabsf(led - e->x) < 6.0f * e->sigma)
         {
 	    float contrib = Ember_get_contrib(e, led, fs->basic.time_speed * frame);
             y += contrib; 
         }
     }
     if (y > 1) y = 1.0f;
-    y = GAIN(y, 0.25);
+    y = GAIN(y, 0.25f);
     return (int)(100 * y);
 }
 

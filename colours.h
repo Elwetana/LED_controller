@@ -14,8 +14,8 @@ extern "C" {
 
 #define float2int(c)   ((int)(c * 255 + 0.5 - FLOAT_ERROR))
 #define FLOAT_ERROR    0.0000005
-#define BIAS(x, w)     (x / ((((1.0 / w) - 2.0) * (1.0 - x)) + 1.0))
-#define GAIN(x, w)     ((x < 0.5) ? BIAS((x * 2.0), w) / 2.0 : 1.0 - BIAS((2.0 - x * 2.0), w) / 2.0)
+#define BIAS(x, w)     (x / ((((1.0f / w) - 2.0f) * (1.0f - x)) + 1.0f))
+#define GAIN(x, w)     ((x < 0.5f) ? BIAS((x * 2.0f), w) / 2.0f : 1.0f - BIAS((2.0f - x * 2.0f), w) / 2.0f)
 
 void rgb2hsl(ws2811_led_t rgb, float* hsl);
 ws2811_led_t hsl2rgb(float* hsl);

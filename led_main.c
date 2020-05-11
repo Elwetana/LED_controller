@@ -16,12 +16,7 @@
 #include <signal.h>
 #include <czmq.h>
 
-#include "common_source.h"
-#include "fire_source.h"
-#include "perlin_source.h"
-#include "color_source.h"
-#include "colours.h"
-#include "listener.h"
+#include "source_manager.h"
 
 //#define PRINT_FPS
 // defaults for cmdline options
@@ -34,8 +29,6 @@
 
 #define FPS_SAMPLES             50
 #define FRAME_TIME              40000
-
-int led_count = LED_COUNT;
 
 static uint8_t running = 1;
 
@@ -140,7 +133,7 @@ void parseargs(int argc, char **argv)
 				"-c (--clear)      - clear matrix on exit.\n"
 				"-v (--version)    - version information\n"
                 "-t (--time_speed) - simulation speed\n"
-                "-s (--source)     - source. Can be EMBERS, PERLIN or COLOR\n"
+                "-s (--source)     - source. Can be EMBERS, PERLIN, COLOR or CHASER\n"
 				, argv[0]);
 			exit(-1);
 		case 'c':
@@ -162,50 +155,18 @@ void parseargs(int argc, char **argv)
     }
 }
 
-static void set_source(void(**init)(int, int), int(**update)(int, ws2811_t*), void(**destruct)(), enum SourceType source_type)
-{
-    switch (source_type)
-    {
-    case EMBERS:
-        *init = FireSource_init;
-        *update = FireSource_update_leds;
-        *destruct = FireSource_destruct;
-        break;
-    case PERLIN:
-        *init = PerlinSource_init;
-        *update = PerlinSource_update_leds;
-        *destruct = PerlinSource_destruct;
-        break;
-    case COLOR:
-        *init = ColorSource_init;
-        *update = ColorSource_update_leds;
-        *destruct = ColorSource_destruct;
-        break;
-    case N_SOURCE_TYPES:
-        printf("This can never happen");
-        exit(-3);
-        break;
-    }
-    (*init)(led_count, 1);
-}
 
 int main(int argc, char *argv[])
 {
-    read_config();
-
-    void (*init_source)(int, int) = FireSource_init;
-    int (*update_leds)(int, ws2811_t*) = FireSource_update_leds;
-    void (*destruct_source)() = FireSource_destruct;
-
+    int led_count = LED_COUNT;
     printf("Starting\n");
     ws2811_return_t ret;
     parseargs(argc, argv);
 
-    set_source(&init_source, &update_leds, &destruct_source, arg_options.source_type);
+    SourceManager_init(arg_options.source_type, led_count, arg_options.time_speed);
     printf("Init source\n");
 
     setup_handlers();
-    Listener_init();
 
     if ((ret = ws2811_init(&ledstring)) != WS2811_SUCCESS)
     {
@@ -238,7 +199,7 @@ int main(int argc, char *argv[])
         long sleep_time = 1000;
         if(delta_us < FRAME_TIME)
         {
-            sleep_time = FRAME_TIME - delta_us;
+            sleep_time = (long)(FRAME_TIME - delta_us);
         }
         //printf("D %lli, S %li\n", delta_us, sleep_time);
         usleep(sleep_time);
@@ -246,7 +207,7 @@ int main(int argc, char *argv[])
         // Now we have to save the current time so that we know how much time we spent working
         clock_gettime(CLOCK_MONOTONIC_RAW, &now);
         last_update_ns = now.tv_sec * (long long)1e9 + now.tv_nsec;
-        if (update_leds(frame, &ledstring))
+        if (SourceManager_update_leds(frame, &ledstring))
         {
             if ((ret = ws2811_render(&ledstring)) != WS2811_SUCCESS)
             {
@@ -255,59 +216,7 @@ int main(int argc, char *argv[])
             }
         }
         //poll server for remote command
-        char* msg = Listener_poll_message();
-        if (msg != NULL)
-        {
-            char command[32];
-            char param[32];
-            int n = sscanf(msg, "LED %s %s", command, param);
-            if (n == 2)
-            {
-                if (!strncasecmp(command, "SOURCE", 6))
-                {
-                    char source_name[32];
-                    int color = -1;
-                    char* sep = strchr(param, '?');
-                    if (sep != NULL)
-                    {
-                        int n = sep - param;
-                        strncpy(source_name, param, n);
-                        source_name[n] = 0x0;
-                        color = strtol(sep + 1, NULL, 16);
-                    }
-                    else if (!strncasecmp("OFF", param, 3))
-                    {
-                        strcpy(source_name, "COLOR");
-                        color = 0x0;
-                    }
-                    else
-                    {
-                        strncpy(source_name, param, 32);
-                    }
-                    if (color != -1) // this is only possible for color source now
-                    {
-                        SourceColors_destruct(source_config.color_colors);
-                        SourceColors* sc = malloc(sizeof(SourceColors));
-                        sc->colors = malloc(sizeof(ws2811_led_t) * 2);
-                        sc->steps = malloc(sizeof(int) * 1);
-                        sc->n_steps = 1;
-                        sc->colors[0] = color;
-                        sc->colors[1] = color;
-                        sc->steps[0] = 1;
-                        SourceConfig_init(source_name, sc);
-                    }
-                    destruct_source();
-                    set_source(&init_source, &update_leds, &destruct_source, string_to_SourceType(source_name));
-                    printf("Changing source to %s\n", param);
-                }
-                else
-                    printf("Unknown command received, command: %s, param %s\n", command, param);
-            }
-            else {
-                printf("Unknown message received %s\n", msg);
-            }
-            free(msg);
-        }
+        check_message();
     }
 
     if (arg_options.clear_on_exit) 
@@ -320,7 +229,7 @@ int main(int argc, char *argv[])
     }
 
     SourceConfig_destruct();
-    destruct_source();
+    SourceManager_destruct_source();
     ws2811_fini(&ledstring);
 
     printf ("Finished\n");

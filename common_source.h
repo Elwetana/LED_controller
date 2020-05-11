@@ -1,17 +1,6 @@
 #ifndef __COMMON_SOURCE_H__
 #define __COMMON_SOURCE_H__
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
-/*
-#ifdef __linux__
-  #include "ws2811.h"
-#else
-  #include "fakeled.h"
-#endif // __linux__
-*/
 
 #define M_PI           3.14159265358979323846
 #define GRADIENT_N     100
@@ -22,9 +11,11 @@ extern "C" {
 #endif
 
 enum SourceType {
-    EMBERS,
-    PERLIN,
-    COLOR,
+    EMBERS_SOURCE,
+    PERLIN_SOURCE,
+    COLOR_SOURCE,
+    CHASER_SOURCE,
+    MORSE_SOURCE,
     N_SOURCE_TYPES
 };
 
@@ -48,10 +39,14 @@ typedef struct BasicSource
 } BasicSource;
 
 typedef struct SourceConfig {
-    SourceColors* perlin_colors;
-    SourceColors* embers_colors;
-    SourceColors* color_colors;
+    SourceColors** colors;
 } SourceConfig;
+
+typedef struct SourceFunctions {
+    void(*init)(int, int);
+    int(*update)(int, ws2811_t*);
+    void(*destruct)();
+} SourceFunctions;
 
 extern SourceConfig source_config;
 
@@ -59,14 +54,6 @@ void BasicSource_init(BasicSource* basic_source, int n_leds, int time_speed, Sou
 //void BasicSource_destruct();
 //void BasicSource_build_gradient(BasicSource *bs, ws2811_led_t* colors, int* steps, int n_steps);
 float random_01();
-enum SourceType string_to_SourceType(char*);
-void read_config();
-void SourceConfig_init(char* source_name, SourceColors* source_colors);
-void SourceConfig_destruct();
-void SourceColors_destruct(SourceColors* source_colors);
 
-#ifdef __cplusplus
-}
-#endif
 
 #endif /* __COMMON_SOURCE_H__ */
