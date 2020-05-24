@@ -1,0 +1,6 @@
+#gcc -lasound -laubio -Wall -Wl,-rpath,"/usr/local/lib" -I /usr/local/include -L /usr/local/lib  test.c
+
+env = Environment()
+env.Append(LINKFLAGS=['-Wl,-rpath,"/usr/local/lib"', '-Wall'])
+env.Program('test.c', LIBS=['asound', 'aubio'], LIBPATH=['/usr/local/lib'])
+
