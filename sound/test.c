@@ -2,6 +2,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <time.h>
 
 #include <alsa/asoundlib.h>
 #include <aubio/aubio.h>
@@ -22,7 +23,7 @@ int main(int argc, char* argv[])
 	snd_pcm_format_t format = SND_PCM_FORMAT_S16_LE;
 
     int16_t *buffer;
-	int buffer_frames = 512;
+	int buffer_frames = 1024;
 
 
     /* Name of the PCM device, like plughw:0,0          */
@@ -117,6 +118,8 @@ int main(int argc, char* argv[])
     fvec_t * in = new_fvec (buffer_frames); // input audio buffer
     aubio_tempo_t * o = new_aubio_tempo("default", 4 * buffer_frames, buffer_frames, rate);
     printf("Starting capture\n");
+    uint64_t last_update_ns = 0;
+    uint64_t fps_time_ns = 0;
     for (i = 0; i < 10000; ++i) {
         if ((err = snd_pcm_readi (capture_handle, buffer, buffer_frames)) != buffer_frames) {
             fprintf (stderr, "read from audio interface failed (%s)\n",
@@ -126,8 +129,8 @@ int main(int argc, char* argv[])
         //printf("Reading %i\n", i);
         float sum = 0;
         for(int frame=0; frame < buffer_frames; ++frame) {
-            int16_t left_sample = buffer[2*i];
-            int16_t right_sample = buffer[2*i + 1];
+            int16_t left_sample = buffer[2*frame];
+            int16_t right_sample = buffer[2*frame + 1];
             float sample = ((float)(left_sample + right_sample)) * INT_TO_FLOAT / 2.0f;
             if(sample * sample > 1.0f) {
                 fprintf(stderr, "Wrong sample: %f\n", sample);
@@ -136,8 +139,20 @@ int main(int argc, char* argv[])
             sum += sample;
         }
         aubio_tempo_do(o, in, tempo_out);
-        if(tempo_out->data[0] != 0)
-            printf("sum %f, Tempo 0: %f, Tempo 1: %f\n", sum, tempo_out->data[0], tempo_out->data[1]);
+        if(tempo_out->data[0] != 0) {
+            float bpm = aubio_tempo_get_bpm(o);
+            unsigned int lastbeat = aubio_tempo_get_last(o);
+            printf("sum %f, Tempo 0: %f, bpm %f, ms %i\n", sum, tempo_out->data[0], bpm, lastbeat);
+        }
+        if(i % 50 == 0)
+        {
+	        struct timespec now;
+    	    clock_gettime(CLOCK_MONOTONIC_RAW, &now);			
+			uint64_t current_ns = now.tv_sec * (long long)1e9 + now.tv_nsec;
+            double fps = (double)50 / (double)(current_ns - fps_time_ns) * 1e9;
+            printf("FPS: %f\n", fps);
+            fps_time_ns = current_ns;
+        }
     }
     del_aubio_tempo(o);
     del_fvec(in);
