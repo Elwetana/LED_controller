@@ -13,10 +13,10 @@
 #include "sound/fakealsa.h"
 #endif // __linux__
 
-#include "led_main.h"
 #include "common_source.h"
 #include "disco_source_priv.h"
 #include "disco_source.h"
+#include "led_main.h"
 
 SourceFunctions disco_functions = {
     .init = DiscoSource_init,
@@ -118,14 +118,17 @@ void aubio_init()
     disco_source.tempo_out = new_fvec(1);
     disco_source.tempo_in = new_fvec(disco_source.samples_per_frame);
     disco_source.aubio_tempo = new_aubio_tempo("default", 4 * disco_source.samples_per_frame, disco_source.samples_per_frame, disco_source.samplerate);
+    aubio_tempo_set_threshold(disco_source.aubio_tempo, ONSET_THRESHOLD);
     fprintf(stderr, "Aubio objects initiated\n");
 }
 
 void DiscoSource_init(int n_leds, int time_speed)
 {
     BasicSource_init(&disco_source.basic_source, n_leds, time_speed, source_config.colors[DISCO_SOURCE]);
+    disco_source.basic_source.gradient.colors[99] = 0xFF0000;
     unsigned int framerate = 1e6 / arg_options.frame_time;
     sound_hw_init(framerate);
+    aubio_init();
 }
 
 
@@ -142,25 +145,27 @@ void DiscoSource_destruct()
 int DiscoSource_update_leds(int frame, ws2811_t* ledstrip)
 {
     int err;
-    if ((err = snd_pcm_readi(disco_source.capture_handle, disco_source.hw_read_buffer, disco_source.samples_per_frame)) != disco_source.samples_per_frame) {
+    if ((err = snd_pcm_readi(disco_source.capture_handle, disco_source.hw_read_buffer, disco_source.samples_per_frame)) != (int)disco_source.samples_per_frame) {
         fprintf(stderr, "Read from audio interface failed (%s)\n", snd_strerror(err));
         exit(1);
     }
 
-    for (int sample = 0; sample < disco_source.samples_per_frame; ++sample) 
+    for (unsigned int sample = 0; sample < disco_source.samples_per_frame; ++sample) 
     {
-        int16_t left_val =  disco_source.hw_read_buffer[2 * sample];
+        int16_t left_val  = disco_source.hw_read_buffer[2 * sample];
         int16_t right_val = disco_source.hw_read_buffer[2 * sample + 1];
-        float avg_val = ((float)(left_val + right_val)) * INT_TO_FLOAT / 2.0f;
+        float avg_val = ((left_val + right_val) / 2) * INT_TO_FLOAT;
+        //float avg_val = left_val * INT_TO_FLOAT;
         if (avg_val * avg_val > 1.0f) {
-            fprintf(stderr, "Wrong sample: %f\n", sample);
+            fprintf(stderr, "Wrong sample: %f\n", avg_val);
         }
         fvec_set_sample(disco_source.tempo_in, avg_val, sample);
     }
     aubio_tempo_do(disco_source.aubio_tempo, disco_source.tempo_in, disco_source.tempo_out);
+    //TODO detect silence, return immediately
 
     unsigned int current_sample = frame * disco_source.samples_per_frame;
-    unsigned int beat_length = aubio_tempo_get_peiro(disco_source.aubio_tempo);
+    unsigned int beat_length = aubio_tempo_get_period(disco_source.aubio_tempo);
     unsigned int last_beat = aubio_tempo_get_last(disco_source.aubio_tempo);
     if (last_beat > current_sample) {
         fprintf(stderr, "Last beat does not work as I thought it does\n");
@@ -170,14 +175,24 @@ int DiscoSource_update_leds(int frame, ws2811_t* ledstrip)
     last_beat + beat_length - current_sample = anticipated next beat
     */
     int samples_remaining = last_beat + beat_length - current_sample;
-    if (samples_remaining < 0 || samples_remaining > beat_length) {
-        fprintf(stderr, "Beat length does not work as I thougth it does.\n");
+    if(samples_remaining < 0) {
+        samples_remaining += beat_length;
+    }
+    if (samples_remaining < 0 || (unsigned int)samples_remaining > beat_length) {
+        fprintf(stderr, "Beat length does not work as I thougth it does. Samples remaining: %i, beat length: %i\n", samples_remaining, beat_length);
     }
     float phase = (float)samples_remaining / (float)beat_length;
     int color_index = (int)(50 * phase);
+    if(disco_source.tempo_out->data[0] != 0) {
+        //printf("Beat detected\n");
+        disco_source.beat_decay = 2;
+    }
+    if(disco_source.beat_decay-- > 0) {
+        color_index = 99;
+    }
     for (int led = 0; led < disco_source.basic_source.n_leds; ++led)
     {
         ledstrip->channel[0].leds[led] = disco_source.basic_source.gradient.colors[color_index];
     }
-
+    return 1;
 }

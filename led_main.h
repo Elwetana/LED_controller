@@ -1,7 +1,7 @@
 #ifndef __LED_MAIN_SOURCE_H__
 #define __LED_MAIN_SOURCE_H__ 
 
-#define PRINT_FPS
+//#define PRINT_FPS
 // defaults for cmdline options
 #define TARGET_FREQ             WS2811_TARGET_FREQ
 #define GPIO_PIN                12

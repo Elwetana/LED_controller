@@ -1,8 +1,10 @@
 #define INT_TO_FLOAT 3.0517578125e-05 // = 1. / 32768.
+#define ONSET_THRESHOLD     0.1       //a value between 0.1 (more detections) and 1 (less); default=0.3
 
 typedef struct DiscoSource
 {
 	BasicSource basic_source;
+    int beat_decay;
 	snd_pcm_t* capture_handle;
 	snd_pcm_format_t format;
 	unsigned int samplerate;			//!< Sample rate

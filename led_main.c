@@ -16,8 +16,8 @@
 #include <signal.h>
 #include <czmq.h>
 
-#include "led_main.h"
 #include "source_manager.h"
+#include "led_main.h"
 
 static uint8_t running = 1;
 
