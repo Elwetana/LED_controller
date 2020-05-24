@@ -7,6 +7,7 @@ extern "C" {
 
 #define WS2811_TARGET_FREQ                       800000   // Can go as low as 400000
 #define WS2811_STRIP_GRB                         0x00081000
+#define WS2811_STRIP_RGB                         0x0
 
 
 typedef uint32_t ws2811_led_t;                   //< 0xWWRRGGBB

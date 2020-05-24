@@ -16,19 +16,8 @@
 #include <signal.h>
 #include <czmq.h>
 
+#include "led_main.h"
 #include "source_manager.h"
-
-#define PRINT_FPS
-// defaults for cmdline options
-#define TARGET_FREQ             WS2811_TARGET_FREQ
-#define GPIO_PIN                12
-#define DMA                     10
-#define STRIP_TYPE              WS2811_STRIP_RGB
-
-#define LED_COUNT               100
-
-#define FPS_SAMPLES             50
-#define FRAME_TIME              20000
 
 static uint8_t running = 1;
 
@@ -82,15 +71,7 @@ static void setup_handlers(void)
 }
 #endif
 
-struct ArgOptions
-{
-    int clear_on_exit;
-    int time_speed;
-    uint64_t frame_time;
-    enum SourceType source_type;
-};
-
-static struct ArgOptions arg_options = 
+struct ArgOptions arg_options = 
 { 
     .clear_on_exit = 0,
     .frame_time = FRAME_TIME,

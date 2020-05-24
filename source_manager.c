@@ -16,6 +16,7 @@
 #include "color_source.h"
 #include "chaser_source.h"
 #include "morse_source.h"
+#include "disco_source.h"
 #include "source_manager.h"
 #include "listener.h"
 
@@ -35,6 +36,9 @@ enum SourceType string_to_SourceType(char* source)
     }
     else if (!strncasecmp("MORSE", source, 5)) {
         return MORSE_SOURCE;
+    }
+    else if (!strncasecmp("DISCO", source, 5)) {
+        return DISCO_SOURCE;
     }
     else {
         printf("Unknown source");
@@ -66,6 +70,7 @@ void SourceManager_init(enum SourceType source_type, int led_count, int time_spe
     source_functions[COLOR_SOURCE] = color_functions;
     source_functions[CHASER_SOURCE] = chaser_functions;
     source_functions[MORSE_SOURCE] = morse_functions;
+    source_functions[DISCO_SOURCE] = disco_functions;
     set_source(source_type);
 }
 
