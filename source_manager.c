@@ -119,7 +119,7 @@ void check_message()
         {
             if (!strncasecmp(command, "SOURCE", 6))
             {
-                char source_name[32];
+                char source_name[64];
                 int color = -1;
                 char* sep = strchr(param, '?');
                 if (sep != NULL)
@@ -136,7 +136,7 @@ void check_message()
                 }
                 else
                 {
-                    strncpy(source_name, param, 32);
+                    strncpy(source_name, param, 64);
                 }
                 if (color != -1) // this is only possible for color source now
                 {

@@ -18,17 +18,17 @@
 
 #include "source_manager.h"
 
-//#define PRINT_FPS
+#define PRINT_FPS
 // defaults for cmdline options
 #define TARGET_FREQ             WS2811_TARGET_FREQ
-#define GPIO_PIN                18
+#define GPIO_PIN                12
 #define DMA                     10
-#define STRIP_TYPE              WS2811_STRIP_GRB
+#define STRIP_TYPE              WS2811_STRIP_RGB
 
-#define LED_COUNT               454
+#define LED_COUNT               100
 
 #define FPS_SAMPLES             50
-#define FRAME_TIME              40000
+#define FRAME_TIME              20000
 
 static uint8_t running = 1;
 
@@ -86,12 +86,14 @@ struct ArgOptions
 {
     int clear_on_exit;
     int time_speed;
+    uint64_t frame_time;
     enum SourceType source_type;
 };
 
 static struct ArgOptions arg_options = 
 { 
     .clear_on_exit = 0,
+    .frame_time = FRAME_TIME,
     .time_speed = 1
 };
 
@@ -107,10 +109,11 @@ void parseargs(int argc, char **argv)
 		{"version", no_argument, 0, 'v'},
         {"time_speed", required_argument, 0, 't'},
         {"source", required_argument, 0, 's'},
+        {"frame_time", required_argument, 0, 'f'},
 		{0, 0, 0, 0}
 	};
 
-    static const char shortopts[] = "hcvt:s:";
+    static const char shortopts[] = "hcvt:s:f:";
 
 	while (1)
 	{
@@ -134,6 +137,7 @@ void parseargs(int argc, char **argv)
 				"-v (--version)    - version information\n"
                 "-t (--time_speed) - simulation speed\n"
                 "-s (--source)     - source. Can be EMBERS, PERLIN, COLOR or CHASER\n"
+                "-f (--frame_time) - length of one frame in us. FPS = 1 000 000 / frame_time\n"
 				, argv[0]);
 			exit(-1);
 		case 'c':
@@ -149,6 +153,13 @@ void parseargs(int argc, char **argv)
             if (optarg)
             {
                 arg_options.source_type = string_to_SourceType(optarg);
+            }
+            break;
+        case 'f':
+            if(optarg)
+            {
+                arg_options.frame_time = atoi(optarg);
+                printf("Frame time set to: %lli \n", arg_options.frame_time);
             }
             break;
         }
@@ -197,9 +208,9 @@ int main(int argc, char *argv[])
         }
 #endif	
         long sleep_time = 1000;
-        if(delta_us < FRAME_TIME)
+        if(delta_us < arg_options.frame_time)
         {
-            sleep_time = (long)(FRAME_TIME - delta_us);
+            sleep_time = (long)(arg_options.frame_time - delta_us);
         }
         //printf("D %lli, S %li\n", delta_us, sleep_time);
         usleep(sleep_time);
