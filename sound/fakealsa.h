@@ -33,15 +33,3 @@ typedef enum _snd_pcm_access {
 	SND_PCM_ACCESS_RW_NONINTERLEAVED,
 	SND_PCM_ACCESS_LAST = SND_PCM_ACCESS_RW_NONINTERLEAVED
 } snd_pcm_access_t;
-
-
-
-/* FAKE AUBIO */
-typedef struct aubio_tempo {
-	int* data;
-} aubio_tempo_t;
-
-typedef struct {
-	int length;  /**< length of buffer */
-	float* data;   /**< data vector of length ::fvec_t.length */
-} fvec_t; type

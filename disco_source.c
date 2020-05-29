@@ -11,6 +11,7 @@
 #else
 #include "fakeled.h"
 #include "sound/fakealsa.h"
+#include "aubio.h"
 #endif // __linux__
 
 #include "common_source.h"
@@ -25,6 +26,14 @@ SourceFunctions disco_functions = {
 };
 
 static DiscoSource disco_source;
+struct fq_sum {
+    float sum;
+    int count;
+};
+static struct fq_sum* fq_sums = NULL;
+static struct fq_sum** bin_to_sum = NULL;
+static int* fq_colors = NULL;
+static int n_bands;
 
 void sound_hw_init(unsigned int framerate)
 {
@@ -125,12 +134,10 @@ void aubio_init()
 void DiscoSource_init(int n_leds, int time_speed)
 {
     BasicSource_init(&disco_source.basic_source, n_leds, time_speed, source_config.colors[DISCO_SOURCE]);
-    disco_source.basic_source.gradient.colors[99] = 0xFF0000;
     unsigned int framerate = 1e6 / arg_options.frame_time;
     sound_hw_init(framerate);
     aubio_init();
 }
-
 
 void DiscoSource_destruct()
 {
@@ -139,11 +146,40 @@ void DiscoSource_destruct()
     del_fvec(disco_source.tempo_out);
     snd_pcm_close(disco_source.capture_handle);
     free(disco_source.hw_read_buffer);
+    if (fq_sums != NULL) {
+        free(fq_sums);
+        free(bin_to_sum);
+        free(fq_colors);
+    }
 }
 
+void DiscoSource_freq_map_init(cvec_t* fftgrain)
+{
+    int freq_bands[] = { 0, FQ_BASS, FQ_TREBLE };
+    n_bands = sizeof(freq_bands) / sizeof(int);
+    fq_sums = malloc(sizeof(struct fq_sum) * n_bands);
+    bin_to_sum = malloc(sizeof(struct fq_sum*) * fftgrain->length);
+    for (int iGrain = 0; iGrain < fftgrain->length; iGrain++) {
+        smpl_t freq = aubio_bintofreq(iGrain, disco_source.samplerate, 2 * fftgrain->length + 1);
+        int i_band = n_bands - 1;
+        while (freq < freq_bands[i_band])
+            i_band--;
+        bin_to_sum[iGrain] = fq_sums + i_band;
+    }
+    fq_colors = malloc(sizeof(int) * n_bands);
+}
 
+/** 
+ +-+-+- Tempo LEDs, set to gradient[0:10] depending on phase
+ | | | +-+-+- Bass LEDs, set to gradient[10:20] depending on intensity
+ | | | | | | +-+-+- Mid LEDs, set to gradient[20:30]
+ | | | | | | | | | +-+-+- Treble LEDs, set to gradient [30:40]
+ . . . . . . . . . . . .
+ 0 1 2 3 4 5 6 7 8 9 0 1
+*/
 int DiscoSource_update_leds(int frame, ws2811_t* ledstrip)
 {
+    static float last_phase;
     int err;
     if ((err = snd_pcm_readi(disco_source.capture_handle, disco_source.hw_read_buffer, disco_source.samples_per_frame)) != (int)disco_source.samples_per_frame) {
         fprintf(stderr, "Read from audio interface failed (%s)\n", snd_strerror(err));
@@ -161,38 +197,56 @@ int DiscoSource_update_leds(int frame, ws2811_t* ledstrip)
         }
         fvec_set_sample(disco_source.tempo_in, avg_val, sample);
     }
+    int is_silence = aubio_silence_detection(disco_source.tempo_in, aubio_tempo_get_silence(disco_source.aubio_tempo));
+    if (is_silence) {
+        return 0;
+    }
     aubio_tempo_do(disco_source.aubio_tempo, disco_source.tempo_in, disco_source.tempo_out);
-    //TODO detect silence, return immediately
 
-    unsigned int current_sample = frame * disco_source.samples_per_frame;
-    unsigned int beat_length = aubio_tempo_get_period(disco_source.aubio_tempo);
-    unsigned int last_beat = aubio_tempo_get_last(disco_source.aubio_tempo);
-    if (last_beat > current_sample) {
-        fprintf(stderr, "Last beat does not work as I thought it does\n");
+    /* Frequency calculations */
+    cvec_t* fftgrain = aubio_tempo_get_fftgrain(disco_source.aubio_tempo);
+    if (fq_sums == NULL) {
+        DiscoSource_freq_map_init(fftgrain);
     }
-    /* we must get our current position in beat 
-    current_sample - last_beat = how many samples we are in the new beat
-    last_beat + beat_length - current_sample = anticipated next beat
-    */
-    int samples_remaining = last_beat + beat_length - current_sample;
-    if(samples_remaining < 0) {
-        samples_remaining += beat_length;
+    memset(fq_sums, 0, sizeof(struct fq_sum) * n_bands);
+    for (int iGrain = 0; iGrain < fftgrain->length; iGrain++) {
+        bin_to_sum[iGrain]->sum += fftgrain->norm[iGrain];
+        bin_to_sum[iGrain]->count++;
     }
-    if (samples_remaining < 0 || (unsigned int)samples_remaining > beat_length) {
-        fprintf(stderr, "Beat length does not work as I thougth it does. Samples remaining: %i, beat length: %i\n", samples_remaining, beat_length);
+
+    for (int iBand = 0; iBand < n_bands; ++iBand) {
+        int c = (int)(fq_sums[iBand].sum / FQ_NORM * GRAD_STEPS);
+        c = c >= GRAD_STEPS ? GRAD_STEPS - 1 : c;
+        fq_colors[iBand] = c + iBand * GRAD_STEPS;
     }
-    float phase = (float)samples_remaining / (float)beat_length;
-    int color_index = (int)(50 * phase);
-    if(disco_source.tempo_out->data[0] != 0) {
-        //printf("Beat detected\n");
-        disco_source.beat_decay = 2;
+
+    /* Tempo calculations */
+    uint_t current_sample = frame * disco_source.samples_per_frame;
+    uint_t last_beat = aubio_tempo_get_last(disco_source.aubio_tempo);
+    smpl_t beat_length = aubio_tempo_get_period(disco_source.aubio_tempo);
+
+    /* we must get our current position in beat
+     * current_sample - last_beat = how many samples we are in the new beat
+     * last_beat + beat_length - current_sample = anticipated next beat  */
+    float samples_remaining = last_beat + beat_length - current_sample;
+
+    if (samples_remaining <= 0) {
+        return 0;
     }
-    if(disco_source.beat_decay-- > 0) {
-        color_index = 99;
+    float phase = samples_remaining / (float)beat_length; //this is 1 at the start of the beat and 0 at the end of the beat
+    if (phase > (last_phase)) { //do something at the end of beat
     }
+    last_phase = phase;
+    int phase_index = (int)(phase * GRAD_STEPS);
     for (int led = 0; led < disco_source.basic_source.n_leds; ++led)
     {
-        ledstrip->channel[0].leds[led] = disco_source.basic_source.gradient.colors[color_index];
+        int pos = led % (3 * (n_bands + 1));  // we need 3 leds per fq. band and one for beats
+        if(pos < 3) 
+            ledstrip->channel[0].leds[led] = disco_source.basic_source.gradient.colors[phase_index];
+        else {
+            int iBand = (pos - 3) / 3;
+            ledstrip->channel[0].leds[led] = disco_source.basic_source.gradient.colors[fq_colors[iBand]];
+        }
     }
     return 1;
 }
