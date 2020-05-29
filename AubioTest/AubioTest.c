@@ -1,3 +1,6 @@
+#define _CRT_SECURE_NO_WARNINGS
+
+
 /*#include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -77,7 +80,7 @@ void init(INT16** sbuffer, HANDLE* hFile)
 
     char* fname;
     //fname = _strdup("d:/code/C++/rpi_ws281x/AubioTest/StairwayToHeaven.raw");
-    fname = _strdup("d:/code/C++/rpi_ws281x/AubioTest/saw1000.raw");
+    fname = _strdup("d:/code/C++/rpi_ws281x/AubioTest/ureky.raw");
 
     /* try and open the file */
     if ((*hFile = CreateFile(fname, GENERIC_READ, FILE_SHARE_READ, NULL, OPEN_EXISTING, 0, NULL)) == INVALID_HANDLE_VALUE)
@@ -172,8 +175,17 @@ static void CALLBACK waveOutProc(HWAVEOUT hWaveOut, UINT uMsg, DWORD_PTR dwInsta
     LeaveCriticalSection(&waveCriticalSection);
 }
 
+
 void process_audio(INT16 *sbuffer, int sample_rate)
 {
+    int freq_bands[] = { 0, 300, 2000 };
+    struct s {
+        float sum;
+        int count;
+    };
+    static struct s* sums = NULL; 
+    static struct s** bin_to_sum = NULL;
+    static int n_bands;
     currentFrame++;
     currentSample += hop_s;
     for (uint_t iSample = 0; iSample < hop_s; iSample++) {
@@ -185,28 +197,66 @@ void process_audio(INT16 *sbuffer, int sample_rate)
         aubio_tempo_do(atTempo, tempo_in, tempo_out);
         cvec_t* fftgrain = aubio_tempo_get_fftgrain(atTempo);
 
-        for (int iGrain = 0; iGrain < fftgrain->length; iGrain++) {
-            printf("mag: %f, phase: %f, freq: %f\n", fftgrain->norm[iGrain], fftgrain->phas[iGrain], aubio_bintofreq(iGrain, sample_rate, 2 * fftgrain->length + 1));
-
-            uint_t last_beat = aubio_tempo_get_last(atTempo);
-            smpl_t beat_length = aubio_tempo_get_period(atTempo);
-            float samples_remaining = last_beat + beat_length - currentSample;
-            if (samples_remaining > 0) {
-                float phase = samples_remaining / (float)beat_length;
-                if (phase > (lastPhase)) { //we have to clear the output
-                    csbiInfo.dwCursorPosition.X = 0;
-                    SetConsoleCursorPosition(hStdout, csbiInfo.dwCursorPosition);
-                    WriteFile(hStdout, "                                                         ", 50, NULL, NULL);
-                    csbiInfo.dwCursorPosition.X = 0;
-                    SetConsoleCursorPosition(hStdout, csbiInfo.dwCursorPosition);
-                }
-                if (phase < 0.2) WriteFile(hStdout, "!", 1, NULL, NULL);
-                else if (phase < 0.5) WriteFile(hStdout, "=", 1, NULL, NULL);
-                else if (phase < 0.75) WriteFile(hStdout, "-", 1, NULL, NULL);
-                else WriteFile(hStdout, ".", 1, NULL, NULL);
-                //printf("%f %f\n", phase, lastPhase);
-                lastPhase = phase;
+        if (sums == NULL) {
+            n_bands = sizeof(freq_bands) / sizeof(int);
+            sums = malloc(sizeof(struct s) * n_bands);                  //this leaks memory, there is no free
+            bin_to_sum = malloc(sizeof(struct s*) * fftgrain->length);  //this leaks memory, there is no free
+            for (int iGrain = 0; iGrain < fftgrain->length; iGrain++) {
+                smpl_t freq = aubio_bintofreq(iGrain, sample_rate, 2 * fftgrain->length + 1);
+                int i_band = n_bands - 1;
+                while (freq < freq_bands[i_band]) 
+                    i_band--;
+                bin_to_sum[iGrain] = sums + i_band;
             }
+        }
+        memset(sums, 0, sizeof(struct s)* n_bands);
+        for (int iGrain = 0; iGrain < fftgrain->length; iGrain++) {
+            bin_to_sum[iGrain]->sum += fftgrain->norm[iGrain];
+            bin_to_sum[iGrain]->count++;
+        }
+
+        /*  TEMPO OUTPUT */
+        static int tempo_x;
+        uint_t last_beat = aubio_tempo_get_last(atTempo);
+        smpl_t beat_length = aubio_tempo_get_period(atTempo);
+        float samples_remaining = last_beat + beat_length - currentSample;
+        if (samples_remaining > 0) {
+            float phase = samples_remaining / (float)beat_length;
+            if (phase > (lastPhase)) { //we have to clear the output
+                csbiInfo.dwCursorPosition.X = 0;
+                csbiInfo.dwCursorPosition.Y = 0;
+                SetConsoleCursorPosition(hStdout, csbiInfo.dwCursorPosition);
+                WriteFile(hStdout, "                                                         ", 50, NULL, NULL);
+                tempo_x = 0;
+            }
+            csbiInfo.dwCursorPosition.Y = 0;
+            csbiInfo.dwCursorPosition.X = tempo_x++;
+            SetConsoleCursorPosition(hStdout, csbiInfo.dwCursorPosition);
+            if (phase < 0.2) WriteFile(hStdout, "!", 1, NULL, NULL);
+            else if (phase < 0.5) WriteFile(hStdout, "=", 1, NULL, NULL);
+            else if (phase < 0.75) WriteFile(hStdout, "-", 1, NULL, NULL);
+            else WriteFile(hStdout, ".", 1, NULL, NULL);
+            //printf("%f %f\n", phase, lastPhase);
+            lastPhase = phase;
+        }
+
+        /* SPECTRUM OUTPUT */
+        for (int iBand = 0; iBand < n_bands; ++iBand) {
+            csbiInfo.dwCursorPosition.X = 0;
+            csbiInfo.dwCursorPosition.Y = 1 + iBand;
+            SetConsoleCursorPosition(hStdout, csbiInfo.dwCursorPosition);
+            WriteFile(hStdout, "                                                                                                                                      ", 120, NULL, NULL);
+            csbiInfo.dwCursorPosition.X = 0;
+            SetConsoleCursorPosition(hStdout, csbiInfo.dwCursorPosition);
+            WriteFile(hStdout, "+", 1, NULL, NULL);
+            char b[32];
+            int nChar = sprintf(b, "%f", sums[iBand].sum); // sums[iBand].count);
+            //WriteFile(hStdout, b, nChar, NULL, NULL);
+            
+            for (int i = 0; i < sums[iBand].sum / 200.0f && i < 119; i++) {
+                WriteFile(hStdout, "=", 1, NULL, NULL);
+            }
+            if(sums[iBand].sum / 200.0f > 120 ) WriteFile(hStdout, "!", 1, NULL, NULL);
         }
     }
 }
