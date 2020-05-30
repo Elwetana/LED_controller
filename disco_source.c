@@ -34,6 +34,11 @@ static struct fq_sum* fq_sums = NULL;
 static struct fq_sum** bin_to_sum = NULL;
 static int* fq_colors = NULL;
 static int n_bands;
+static uint_t current_sample;
+static float fq_norm = FQ_NORM;
+#ifdef AUBIODBG
+static aubio_sink_t *snk = NULL;
+#endif
 
 void sound_hw_init(unsigned int framerate)
 {
@@ -129,6 +134,11 @@ void aubio_init()
     disco_source.aubio_tempo = new_aubio_tempo("default", 4 * disco_source.samples_per_frame, disco_source.samples_per_frame, disco_source.samplerate);
     aubio_tempo_set_threshold(disco_source.aubio_tempo, ONSET_THRESHOLD);
     fprintf(stderr, "Aubio objects initiated\n");
+#ifdef AUBIODBG
+    char* sink_path;
+    sink_path = strdup("/home/pi/test.wav");
+    snk = new_aubio_sink(sink_path, disco_source.samplerate);
+#endif
 }
 
 void DiscoSource_init(int n_leds, int time_speed)
@@ -159,7 +169,7 @@ void DiscoSource_freq_map_init(cvec_t* fftgrain)
     n_bands = sizeof(freq_bands) / sizeof(int);
     fq_sums = malloc(sizeof(struct fq_sum) * n_bands);
     bin_to_sum = malloc(sizeof(struct fq_sum*) * fftgrain->length);
-    for (int iGrain = 0; iGrain < fftgrain->length; iGrain++) {
+    for (uint_t iGrain = 0; iGrain < fftgrain->length; iGrain++) {
         smpl_t freq = aubio_bintofreq(iGrain, disco_source.samplerate, 2 * fftgrain->length + 1);
         int i_band = n_bands - 1;
         while (freq < freq_bands[i_band])
@@ -179,6 +189,7 @@ void DiscoSource_freq_map_init(cvec_t* fftgrain)
 */
 int DiscoSource_update_leds(int frame, ws2811_t* ledstrip)
 {
+    (void)frame;
     static float last_phase;
     int err;
     if ((err = snd_pcm_readi(disco_source.capture_handle, disco_source.hw_read_buffer, disco_source.samples_per_frame)) != (int)disco_source.samples_per_frame) {
@@ -197,11 +208,20 @@ int DiscoSource_update_leds(int frame, ws2811_t* ledstrip)
         }
         fvec_set_sample(disco_source.tempo_in, avg_val, sample);
     }
+#ifdef AUBIODBG    
+    aubio_sink_do(snk, disco_source.tempo_in, disco_source.samples_per_frame);
+    if(frame == 1000) {
+        aubio_sink_close(snk);
+        exit(0);
+    }
+    return 0;
+#endif    
     int is_silence = aubio_silence_detection(disco_source.tempo_in, aubio_tempo_get_silence(disco_source.aubio_tempo));
     if (is_silence) {
         return 0;
     }
     aubio_tempo_do(disco_source.aubio_tempo, disco_source.tempo_in, disco_source.tempo_out);
+    current_sample += disco_source.samples_per_frame;
 
     /* Frequency calculations */
     cvec_t* fftgrain = aubio_tempo_get_fftgrain(disco_source.aubio_tempo);
@@ -209,19 +229,23 @@ int DiscoSource_update_leds(int frame, ws2811_t* ledstrip)
         DiscoSource_freq_map_init(fftgrain);
     }
     memset(fq_sums, 0, sizeof(struct fq_sum) * n_bands);
-    for (int iGrain = 0; iGrain < fftgrain->length; iGrain++) {
+    for (uint_t iGrain = 0; iGrain < fftgrain->length; iGrain++) {
         bin_to_sum[iGrain]->sum += fftgrain->norm[iGrain];
         bin_to_sum[iGrain]->count++;
     }
 
+    float fq_max = 0;
     for (int iBand = 0; iBand < n_bands; ++iBand) {
-        int c = (int)(fq_sums[iBand].sum / FQ_NORM * GRAD_STEPS);
+        if(fq_sums[iBand].sum > fq_max) fq_max = fq_sums[iBand].sum;
+        int c = (int)(fq_sums[iBand].sum / fq_norm * GRAD_STEPS);
         c = c >= GRAD_STEPS ? GRAD_STEPS - 1 : c;
-        fq_colors[iBand] = c + iBand * GRAD_STEPS;
+        fq_colors[iBand] = c + (iBand + 1) * GRAD_STEPS; //first GRAD_STEPS steps are for tempo
     }
+    if(fq_max > (fq_norm * 1.5f)) fq_norm = fq_max / 1.5f;
+    printf("Bass: %f, Mid: %f, High: %f\n", fq_sums[0].sum, fq_sums[1].sum, fq_sums[2].sum);
+    printf("Bass: %i, Mid: %i, High: %i\n", fq_colors[0], fq_colors[1], fq_colors[2]);
 
     /* Tempo calculations */
-    uint_t current_sample = frame * disco_source.samples_per_frame;
     uint_t last_beat = aubio_tempo_get_last(disco_source.aubio_tempo);
     smpl_t beat_length = aubio_tempo_get_period(disco_source.aubio_tempo);
 
@@ -231,13 +255,18 @@ int DiscoSource_update_leds(int frame, ws2811_t* ledstrip)
     float samples_remaining = last_beat + beat_length - current_sample;
 
     if (samples_remaining <= 0) {
-        return 0;
+        //samples_remaining += beat_length;
+        if(samples_remaining < 0) {
+            //printf("beat %f, last %i, current %i neg samples %f c-l %i\n", beat_length, last_beat, current_sample, samples_remaining, (current_sample - last_beat));
+            return 0;
+        }
     }
     float phase = samples_remaining / (float)beat_length; //this is 1 at the start of the beat and 0 at the end of the beat
     if (phase > (last_phase)) { //do something at the end of beat
     }
     last_phase = phase;
     int phase_index = (int)(phase * GRAD_STEPS);
+    //printf(".%i\n", phase_index);
     for (int led = 0; led < disco_source.basic_source.n_leds; ++led)
     {
         int pos = led % (3 * (n_bands + 1));  // we need 3 leds per fq. band and one for beats

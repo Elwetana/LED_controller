@@ -2,7 +2,7 @@
 #define ONSET_THRESHOLD     0.1       //a value between 0.1 (more detections) and 1 (less); default=0.3
 #define FQ_BASS             300		  //< upper bound for basses
 #define FQ_TREBLE          2000		  //< lower bound for trebles
-#define FQ_NORM            2500.0f    //< this will normalize sum of magnitudes
+#define FQ_NORM               2.5f    //< this will normalize sum of magnitudes
 #define GRAD_STEPS           10		  //< how many steps there are for each frequence and tempo
 
 typedef struct DiscoSource
