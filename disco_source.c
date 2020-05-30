@@ -19,6 +19,8 @@
 #include "disco_source.h"
 #include "led_main.h"
 
+#define AUBIODBG
+
 SourceFunctions disco_functions = {
     .init = DiscoSource_init,
     .update = DiscoSource_update_leds,
@@ -38,6 +40,7 @@ static uint_t current_sample;
 static float fq_norm = FQ_NORM;
 #ifdef AUBIODBG
 static aubio_sink_t *snk = NULL;
+FILE* fsnk = NULL; 
 #endif
 
 void sound_hw_init(unsigned int framerate)
@@ -138,6 +141,8 @@ void aubio_init()
     char* sink_path;
     sink_path = strdup("/home/pi/test.wav");
     snk = new_aubio_sink(sink_path, disco_source.samplerate);
+    char *fsink_path = strdup("/home/pi/test.raw");
+    fsnk = fopen(fsink_path, "wb");
 #endif
 }
 
@@ -209,9 +214,11 @@ int DiscoSource_update_leds(int frame, ws2811_t* ledstrip)
         fvec_set_sample(disco_source.tempo_in, avg_val, sample);
     }
 #ifdef AUBIODBG    
+    fwrite(disco_source.hw_read_buffer, sizeof(int16_t), 2 * disco_source.samples_per_frame, fsnk);
     aubio_sink_do(snk, disco_source.tempo_in, disco_source.samples_per_frame);
     if(frame == 1000) {
         aubio_sink_close(snk);
+        fclose(fsnk);
         exit(0);
     }
     return 0;
