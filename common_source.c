@@ -26,6 +26,7 @@ void BasicSource_build_gradient(BasicSource* basic_source, ws2811_led_t* colors,
         fill_gradient(basic_source->gradient.colors, offset, colors[i], colors[i + 1], steps[i], GRADIENT_N - 1);
         offset += steps[i];
     }
+    printf("Gradient initialized with %i colours\n", offset);
 }
 
 void BasicSource_init(BasicSource* basic_source, int n_leds, int time_speed, SourceColors* source_colors)

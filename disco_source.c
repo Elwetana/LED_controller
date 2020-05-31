@@ -14,12 +14,14 @@
 #include "aubio.h"
 #endif // __linux__
 
+#include "colours.h"
 #include "common_source.h"
 #include "disco_source_priv.h"
 #include "disco_source.h"
 #include "led_main.h"
 
-#define AUBIODBG
+//#define AUBIODBG
+#define DISCODBG
 
 SourceFunctions disco_functions = {
     .init = DiscoSource_init,
@@ -34,9 +36,7 @@ struct fq_sum {
 };
 static struct fq_sum* fq_sums = NULL;
 static struct fq_sum** bin_to_sum = NULL;
-static int* fq_colors = NULL;
 static int n_bands;
-static uint_t current_sample;
 static float fq_norm = FQ_NORM;
 #ifdef AUBIODBG
 static aubio_sink_t *snk = NULL;
@@ -164,13 +164,12 @@ void DiscoSource_destruct()
     if (fq_sums != NULL) {
         free(fq_sums);
         free(bin_to_sum);
-        free(fq_colors);
     }
 }
 
 void DiscoSource_freq_map_init(cvec_t* fftgrain)
 {
-    int freq_bands[] = { 0, FQ_BASS, FQ_TREBLE };
+    int freq_bands[] = { 0, FQ_BASS, FQ_MID_BASS, FQ_MID_TREBLE, FQ_TREBLE };
     n_bands = sizeof(freq_bands) / sizeof(int);
     fq_sums = malloc(sizeof(struct fq_sum) * n_bands);
     bin_to_sum = malloc(sizeof(struct fq_sum*) * fftgrain->length);
@@ -181,7 +180,6 @@ void DiscoSource_freq_map_init(cvec_t* fftgrain)
             i_band--;
         bin_to_sum[iGrain] = fq_sums + i_band;
     }
-    fq_colors = malloc(sizeof(int) * n_bands);
 }
 
 /** 
@@ -199,7 +197,8 @@ int DiscoSource_update_leds(int frame, ws2811_t* ledstrip)
     int err;
     if ((err = snd_pcm_readi(disco_source.capture_handle, disco_source.hw_read_buffer, disco_source.samples_per_frame)) != (int)disco_source.samples_per_frame) {
         fprintf(stderr, "Read from audio interface failed (%s)\n", snd_strerror(err));
-        exit(1);
+        //exit(1);
+        return 0;
     }
 
     for (unsigned int sample = 0; sample < disco_source.samples_per_frame; ++sample) 
@@ -228,7 +227,7 @@ int DiscoSource_update_leds(int frame, ws2811_t* ledstrip)
         return 0;
     }
     aubio_tempo_do(disco_source.aubio_tempo, disco_source.tempo_in, disco_source.tempo_out);
-    current_sample += disco_source.samples_per_frame;
+    uint_t current_sample = aubio_tempo_get_total_frames(disco_source.aubio_tempo);
 
     /* Frequency calculations */
     cvec_t* fftgrain = aubio_tempo_get_fftgrain(disco_source.aubio_tempo);
@@ -241,16 +240,18 @@ int DiscoSource_update_leds(int frame, ws2811_t* ledstrip)
         bin_to_sum[iGrain]->count++;
     }
 
-    float fq_max = 0;
+    float fq_max_sum = 0;
+    int fq_max_band = -1;
     for (int iBand = 0; iBand < n_bands; ++iBand) {
-        if(fq_sums[iBand].sum > fq_max) fq_max = fq_sums[iBand].sum;
-        int c = (int)(fq_sums[iBand].sum / fq_norm * GRAD_STEPS);
-        c = c >= GRAD_STEPS ? GRAD_STEPS - 1 : c;
-        fq_colors[iBand] = c + (iBand + 1) * GRAD_STEPS; //first GRAD_STEPS steps are for tempo
+        if(fq_sums[iBand].sum > fq_max_sum) {
+            fq_max_sum = fq_sums[iBand].sum;
+            fq_max_band = iBand;
+        }
     }
-    if(fq_max > (fq_norm * 1.5f)) fq_norm = fq_max / 1.5f;
-    printf("Bass: %f, Mid: %f, High: %f\n", fq_sums[0].sum, fq_sums[1].sum, fq_sums[2].sum);
-    printf("Bass: %i, Mid: %i, High: %i\n", fq_colors[0], fq_colors[1], fq_colors[2]);
+    if(fq_max_sum > (fq_norm * 1.5f)) {
+        fq_norm = fq_max_sum / 1.5f;
+    }
+    //printf("Bass: %f, Mid: %f, High: %f\n", fq_sums[0].sum, fq_sums[1].sum, fq_sums[2].sum);
 
     /* Tempo calculations */
     uint_t last_beat = aubio_tempo_get_last(disco_source.aubio_tempo);
@@ -261,28 +262,63 @@ int DiscoSource_update_leds(int frame, ws2811_t* ledstrip)
      * last_beat + beat_length - current_sample = anticipated next beat  */
     float samples_remaining = last_beat + beat_length - current_sample;
 
+    float phase;
     if (samples_remaining <= 0) {
         //samples_remaining += beat_length;
-        if(samples_remaining < 0) {
-            //printf("beat %f, last %i, current %i neg samples %f c-l %i\n", beat_length, last_beat, current_sample, samples_remaining, (current_sample - last_beat));
-            return 0;
-        }
+        phase = last_phase;
     }
-    float phase = samples_remaining / (float)beat_length; //this is 1 at the start of the beat and 0 at the end of the beat
+    else {
+        phase = samples_remaining / (float)beat_length; //this is 1 at the start of the beat and 0 at the end of the beat
+    }
+    if (phase > 1.0f) {
+        phase = 1.0f;
+    }
     if (phase > (last_phase)) { //do something at the end of beat
     }
     last_phase = phase;
-    int phase_index = (int)(phase * GRAD_STEPS);
-    //printf(".%i\n", phase_index);
+
+    /* Calculate color. In color gradient we have only n_bands colors for different frequencies
+     * Now we shall calculate the real color to use -- it will be used for all LEDs.
+     * The hue is taken from our current band. The lightness is taken from phase, i.e. at the end
+     * of beat (phase == 0), all LEDs are white. The saturation is taken from current intensity
+     * (fq_sum_max), so when intensity is 0, all LEDs will be black. However, we additionally 
+     * stipulate that saturation is always >= phase, so mid-beat, all LEDs will be murky hue based
+     * on dominant band. To recap: end of phase => all white, start of phase & max intensity =>
+     * pure hue, start of phase & no intensity => black, mid-beat & max intensity => lighter color,
+     * mid-beat & no intensity => dark color.                                                       */
+#ifdef DISCODBG
+    static int hsldist[3][10];
+#endif
+    ws2811_led_t color = disco_source.basic_source.gradient.colors[fq_max_band];
+    float hsl[3];
+    rgb2hsl(color, hsl);
+    hsl[2] = (1.0f - phase) * 0.5;
+    float intensity = fq_max_sum / fq_norm;
+    hsl[1] = (intensity > 1) ? 1 : (intensity > (1.0f - phase) ? intensity : 1.0f - phase);
+    //printf("band: %i color %x, s %f, l %f\n", fq_max_band, color, hsl[1], hsl[2]);
+    color = hsl2rgb(hsl);
+#ifdef DISCODBG
+    hsldist[0][fq_max_band]++;
+    for(int i = 1; i < 3; ++i) {
+        int j = (int)(hsl[i] * 10);
+        hsldist[i][j]++;
+    }
+    if(frame % 1000 == 0) {
+        printf("%i\n", current_sample);
+        for(int i = 0; i < 3; ++i) {
+            printf("%c", "hsl"[i]);
+            for(int j = 0; j < 10; ++j) {
+                printf("  %i", hsldist[i][j]);
+                hsldist[i][j] = 0;
+            }
+            printf("\n");
+        }
+    }
+#endif    
+
     for (int led = 0; led < disco_source.basic_source.n_leds; ++led)
     {
-        int pos = led % (3 * (n_bands + 1));  // we need 3 leds per fq. band and one for beats
-        if(pos < 3) 
-            ledstrip->channel[0].leds[led] = disco_source.basic_source.gradient.colors[phase_index];
-        else {
-            int iBand = (pos - 3) / 3;
-            ledstrip->channel[0].leds[led] = disco_source.basic_source.gradient.colors[fq_colors[iBand]];
-        }
+        ledstrip->channel[0].leds[led] = color;
     }
     return 1;
 }
