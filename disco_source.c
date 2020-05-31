@@ -43,8 +43,9 @@ static aubio_sink_t *snk = NULL;
 FILE* fsnk = NULL; 
 #endif
 
-void sound_hw_init(unsigned int framerate)
+void sound_hw_init()
 {
+    unsigned int framerate = 1e6 / arg_options.frame_time;
     int err;
     snd_pcm_hw_params_t* hw_params;
 
@@ -149,8 +150,7 @@ void aubio_init()
 void DiscoSource_init(int n_leds, int time_speed)
 {
     BasicSource_init(&disco_source.basic_source, n_leds, time_speed, source_config.colors[DISCO_SOURCE]);
-    unsigned int framerate = 1e6 / arg_options.frame_time;
-    sound_hw_init(framerate);
+    sound_hw_init();
     aubio_init();
 }
 
@@ -182,14 +182,6 @@ void DiscoSource_freq_map_init(cvec_t* fftgrain)
     }
 }
 
-/** 
- +-+-+- Tempo LEDs, set to gradient[0:10] depending on phase
- | | | +-+-+- Bass LEDs, set to gradient[10:20] depending on intensity
- | | | | | | +-+-+- Mid LEDs, set to gradient[20:30]
- | | | | | | | | | +-+-+- Treble LEDs, set to gradient [30:40]
- . . . . . . . . . . . .
- 0 1 2 3 4 5 6 7 8 9 0 1
-*/
 int DiscoSource_update_leds(int frame, ws2811_t* ledstrip)
 {
     (void)frame;
@@ -198,6 +190,8 @@ int DiscoSource_update_leds(int frame, ws2811_t* ledstrip)
     if ((err = snd_pcm_readi(disco_source.capture_handle, disco_source.hw_read_buffer, disco_source.samples_per_frame)) != (int)disco_source.samples_per_frame) {
         fprintf(stderr, "Read from audio interface failed (%s)\n", snd_strerror(err));
         //exit(1);
+        snd_pcm_close(disco_source.capture_handle);
+        sound_hw_init();
         return 0;
     }
 
@@ -287,12 +281,17 @@ int DiscoSource_update_leds(int frame, ws2811_t* ledstrip)
      * pure hue, start of phase & no intensity => black, mid-beat & max intensity => lighter color,
      * mid-beat & no intensity => dark color.                                                       */
 #ifdef DISCODBG
-    static int hsldist[3][10];
+    static int hsldist[4][10];
 #endif
-    ws2811_led_t color = disco_source.basic_source.gradient.colors[fq_max_band];
+    float bpm = aubio_tempo_get_bpm(disco_source.aubio_tempo);
+    int bpmrange = 0;
+    if(bpm > 80) bpmrange++;
+    if(bpm > 90) bpmrange++;
+    ws2811_led_t color = disco_source.basic_source.gradient.colors[bpmrange * 5 + fq_max_band];
     float hsl[3];
     rgb2hsl(color, hsl);
     hsl[2] = (1.0f - phase) * 0.5;
+    hsl[2] *= hsl[2];
     float intensity = fq_max_sum / fq_norm;
     hsl[1] = (intensity > 1) ? 1 : (intensity > (1.0f - phase) ? intensity : 1.0f - phase);
     //printf("band: %i color %x, s %f, l %f\n", fq_max_band, color, hsl[1], hsl[2]);
@@ -303,10 +302,11 @@ int DiscoSource_update_leds(int frame, ws2811_t* ledstrip)
         int j = (int)(hsl[i] * 10);
         hsldist[i][j]++;
     }
+    hsldist[3][bpmrange]++;
     if(frame % 1000 == 0) {
-        printf("%i\n", current_sample);
-        for(int i = 0; i < 3; ++i) {
-            printf("%c", "hsl"[i]);
+        printf("%i, bpm:%f\n", current_sample, aubio_tempo_get_bpm(disco_source.aubio_tempo));
+        for(int i = 0; i < 4; ++i) {
+            printf("%c", "hslb"[i]);
             for(int j = 0; j < 10; ++j) {
                 printf("  %i", hsldist[i][j]);
                 hsldist[i][j] = 0;
