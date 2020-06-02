@@ -100,9 +100,14 @@ void fill_gradient(ws2811_led_t* gradient, int offset, ws2811_led_t from_color, 
     rgb2hsl(from_color, hsl_from);
     rgb2hsl(to_color, hsl_to);
     float step_delta[3];
+    int delta_steps = (steps > 1) ? steps - 1 : steps;
     for(int i = 0; i < 3; i++)
     {
-        step_delta[i] = (hsl_to[i] - hsl_from[i]) / (float)steps;
+        step_delta[i] = (hsl_to[i] - hsl_from[i]) / (float)delta_steps;
+    }
+    if((hsl_to[0] - hsl_from[0]) * (hsl_to[0] - hsl_from[0]) > 0.25)
+    {
+        step_delta[0] += 1.0f / (float)delta_steps;
     }
     for(int step = 0; step < steps; ++step)
     {

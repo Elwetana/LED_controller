@@ -184,6 +184,9 @@ void DiscoSource_freq_map_init(cvec_t* fftgrain)
 
 int DiscoSource_update_leds(int frame, ws2811_t* ledstrip)
 {
+#ifdef DISCODBG
+    static int hsldist[8][11]; //0:3 -- last 1000 frames, 3 -- bpm, crashes, 4:8 -- total; column 11 is for totals
+#endif
     (void)frame;
     static float last_phase;
     int err;
@@ -192,6 +195,9 @@ int DiscoSource_update_leds(int frame, ws2811_t* ledstrip)
         //exit(1);
         snd_pcm_close(disco_source.capture_handle);
         sound_hw_init();
+#ifdef DISCODBG
+        hsldist[7][9]++;
+#endif        
         return 0;
     }
 
@@ -280,13 +286,10 @@ int DiscoSource_update_leds(int frame, ws2811_t* ledstrip)
      * on dominant band. To recap: end of phase => all white, start of phase & max intensity =>
      * pure hue, start of phase & no intensity => black, mid-beat & max intensity => lighter color,
      * mid-beat & no intensity => dark color.                                                       */
-#ifdef DISCODBG
-    static int hsldist[4][10];
-#endif
     float bpm = aubio_tempo_get_bpm(disco_source.aubio_tempo);
     int bpmrange = 0;
-    if(bpm > 80) bpmrange++;
-    if(bpm > 90) bpmrange++;
+    if(bpm > BPM_SLOW) bpmrange++;
+    if(bpm > BPM_FAST) bpmrange++;
     ws2811_led_t color = disco_source.basic_source.gradient.colors[bpmrange * 5 + fq_max_band];
     float hsl[3];
     rgb2hsl(color, hsl);
@@ -304,11 +307,13 @@ int DiscoSource_update_leds(int frame, ws2811_t* ledstrip)
     }
     hsldist[3][bpmrange]++;
     if(frame % 1000 == 0) {
-        printf("%i, bpm:%f\n", current_sample, aubio_tempo_get_bpm(disco_source.aubio_tempo));
+        printf("%i, bpm:%f, crashes: %i\n", current_sample, aubio_tempo_get_bpm(disco_source.aubio_tempo), hsldist[7][9]);
         for(int i = 0; i < 4; ++i) {
-            printf("%c", "hslb"[i]);
+            hsldist[i+4][10] += 1000;
+            printf("%c", "hslB"[i]);
             for(int j = 0; j < 10; ++j) {
-                printf("  %i", hsldist[i][j]);
+                hsldist[i+4][j] += hsldist[i][j];
+                printf(" %5.1f/%-4.0f%%", hsldist[i][j] / 10.0f, 100.0f * hsldist[i+4][j]/(float)hsldist[i+4][10]);
                 hsldist[i][j] = 0;
             }
             printf("\n");
