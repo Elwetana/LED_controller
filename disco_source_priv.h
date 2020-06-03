@@ -9,6 +9,7 @@
 #define BPM_FAST            95        //< faster than this is fast bpm
 #define FFT_WINDOW           4        //< how many times is the whole FFT window wider than one frame
 #define FQ_STAT_LEN        100        //< how many bins we have to gather statistics
+#define BPM_MAX            200
 
 typedef struct DiscoSource
 {

@@ -39,6 +39,8 @@ static struct fq_sum** bin_to_sum = NULL;
 static int n_bands;
 static float fq_norm = FQ_NORM;
 static uint_t* band_boundaries;
+static uint_t bpm_slow = BPM_SLOW;
+static uint_t bpm_fast = BPM_FAST;
 #ifdef AUBIODBG
 static aubio_sink_t *snk = NULL;
 FILE* fsnk = NULL; 
@@ -265,6 +267,27 @@ void recalibrate_fq_boundaries(double* fq_statistics, int fqs_per_stat_bin)
     }
 }
 
+void recalibrate_bpm_boundaries(uint_t* bpm_statistics)
+{
+    uint_t third = bpm_statistics[BPM_MAX - 1] / 3;
+    uint_t sum = 0;
+    int bin = 0;
+    uint_t* bounds[2];
+    bounds[0] = &bpm_slow;
+    bounds[1] = &bpm_fast;
+    int i = 0;
+    while (1) {
+        sum += bpm_statistics[bin];
+        if (sum > third) {
+            *bounds[i++] = bin;
+            sum -= third;
+        }
+        bin++;
+        if (i > 2)
+            break;
+    }
+}
+
 
 int DiscoSource_update_leds(int frame, ws2811_t* ledstrip)
 {
@@ -319,12 +342,10 @@ int DiscoSource_update_leds(int frame, ws2811_t* ledstrip)
 #endif
     }
 
-
-    //printf("Bass: %f, Mid: %f, High: %f\n", fq_sums[0].sum, fq_sums[1].sum, fq_sums[2].sum);
-
     /* Tempo calculations */
     uint_t last_beat = aubio_tempo_get_last(disco_source.aubio_tempo);
     smpl_t beat_length = aubio_tempo_get_period(disco_source.aubio_tempo);
+    static uint_t bpm_statistics[BPM_MAX];
 
     /* we must get our current position in beat
      * current_sample - last_beat = how many samples we are in the new beat
@@ -356,9 +377,16 @@ int DiscoSource_update_leds(int frame, ws2811_t* ledstrip)
      * pure hue, start of phase & no intensity => black, mid-beat & max intensity => lighter color,
      * mid-beat & no intensity => dark color.                                                       */
     float bpm = aubio_tempo_get_bpm(disco_source.aubio_tempo);
+    if (bpm < BPM_MAX - 2) {
+        bpm_statistics[(int)bpm]++;
+    }
+    else {
+        bpm_statistics[BPM_MAX - 2]++;
+    }
+    bpm_statistics[BPM_MAX - 1]++;
     int bpmrange = 0;
-    if(bpm > BPM_SLOW) bpmrange++;
-    if(bpm > BPM_FAST) bpmrange++;
+    if(bpm > bpm_slow) bpmrange++;
+    if(bpm > bpm_fast) bpmrange++;
     ws2811_led_t color = disco_source.basic_source.gradient.colors[bpmrange * 5 + fq_max_band];
     float hsl[3];
     rgb2hsl(color, hsl);
@@ -368,6 +396,9 @@ int DiscoSource_update_leds(int frame, ws2811_t* ledstrip)
     hsl[1] = (intensity > 1) ? 1 : (intensity > (1.0f - phase) ? intensity : 1.0f - phase);
     //printf("band: %i color %x, s %f, l %f\n", fq_max_band, color, hsl[1], hsl[2]);
     color = hsl2rgb(hsl);
+    if (frame % 10000 == 0) {
+        recalibrate_bpm_boundaries(bpm_statistics);
+    }
 #ifdef DISCODBG
     hsldist[0][fq_max_band]++;
     for(int i = 1; i < 3; ++i) {
