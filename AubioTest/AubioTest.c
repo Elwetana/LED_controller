@@ -12,6 +12,7 @@
 #include <windows.h>
 #include <mmsystem.h>
 #include <stdio.h>
+#include <math.h>
 #include "aubio.h"
 
 #define BLOCK_SIZE 4096     /* 1024 samples * 2 channels * 16 bits */
@@ -80,7 +81,8 @@ void init(INT16** sbuffer, HANDLE* hFile)
 
     char* fname;
     //fname = _strdup("d:/code/C++/rpi_ws281x/AubioTest/StairwayToHeaven.raw");
-    fname = _strdup("d:/code/C++/rpi_ws281x/AubioTest/ureky.raw");
+    fname = _strdup("d:/code/C++/rpi_ws281x/AubioTest/vestinulamp.raw");
+    //fname = _strdup("d:/code/C++/rpi_ws281x/AubioTest/dg3_10.raw");
 
     /* try and open the file */
     if ((*hFile = CreateFile(fname, GENERIC_READ, FILE_SHARE_READ, NULL, OPEN_EXISTING, 0, NULL)) == INVALID_HANDLE_VALUE)
@@ -178,7 +180,7 @@ static void CALLBACK waveOutProc(HWAVEOUT hWaveOut, UINT uMsg, DWORD_PTR dwInsta
 
 void process_audio(INT16 *sbuffer, int sample_rate)
 {
-    int freq_bands[] = { 0, 300, 2000 };
+    int freq_bands[] = { 0, 300, 750, 1800, 5000 };
     struct s {
         float sum;
         int count;
@@ -189,7 +191,7 @@ void process_audio(INT16 *sbuffer, int sample_rate)
     currentFrame++;
     currentSample += hop_s;
     for (uint_t iSample = 0; iSample < hop_s; iSample++) {
-        float value = ((sbuffer[lastBlockPlayed * 2048 + 2 * iSample] + sbuffer[lastBlockPlayed * 2048 + 2 * iSample + 1]) / 2) * (float)INT_TO_FLOAT;
+        float value = ((sbuffer[lastBlockPlayed * 2048 + 2 * iSample] + sbuffer[lastBlockPlayed * 2048 + 2 * iSample + 1]) / 2) * INT_TO_FLOAT;
         fvec_set_sample(tempo_in, value, iSample);
     }
     int is_silence = aubio_silence_detection(tempo_in, aubio_tempo_get_silence(atTempo));
@@ -249,11 +251,12 @@ void process_audio(INT16 *sbuffer, int sample_rate)
             csbiInfo.dwCursorPosition.X = 0;
             SetConsoleCursorPosition(hStdout, csbiInfo.dwCursorPosition);
             WriteFile(hStdout, "+", 1, NULL, NULL);
-            char b[32];
+            /*char b[32];
             int nChar = sprintf(b, "%f", sums[iBand].sum); // sums[iBand].count);
-            //WriteFile(hStdout, b, nChar, NULL, NULL);
-            
+            WriteFile(hStdout, b, nChar, NULL, NULL);
+            */
             for (int i = 0; i < sums[iBand].sum / 200.0f && i < 119; i++) {
+            //for (int i = 0; i < logf(sums[iBand].sum + 1) && i < 119; i++) {
                 WriteFile(hStdout, "=", 1, NULL, NULL);
             }
             if(sums[iBand].sum / 200.0f > 120 ) WriteFile(hStdout, "!", 1, NULL, NULL);

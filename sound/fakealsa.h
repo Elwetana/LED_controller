@@ -2,6 +2,8 @@ typedef struct _snd_pcm snd_pcm_t;
 typedef struct _snd_pcm_hw_params snd_pcm_hw_params_t;
 
 int snd_pcm_hw_params(snd_pcm_t* pcm, snd_pcm_hw_params_t* params) {
+	(void)pcm;
+	(void)params;
 	return 0;
 }
 
@@ -33,3 +35,8 @@ typedef enum _snd_pcm_access {
 	SND_PCM_ACCESS_RW_NONINTERLEAVED,
 	SND_PCM_ACCESS_LAST = SND_PCM_ACCESS_RW_NONINTERLEAVED
 } snd_pcm_access_t;
+
+snd_pcm_format_width(snd_pcm_format_t format) {
+	(void)format;
+	return 16;
+}

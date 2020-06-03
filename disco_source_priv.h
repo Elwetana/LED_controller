@@ -1,5 +1,5 @@
-#define INT_TO_FLOAT 3.0517578125e-05 // = 1. / 32768.
-#define ONSET_THRESHOLD     0.1       //a value between 0.1 (more detections) and 1 (less); default=0.3
+#define INT_TO_FLOAT         3.0517578125e-05f // = 1. / 32768.
+#define ONSET_THRESHOLD      0.1f     //a value between 0.1 (more detections) and 1 (less); default=0.3
 #define FQ_BASS             250		  //< upper bound for basses
 #define FQ_MID_BASS        1000       //< upper bound for bass to mid
 #define FQ_MID_TREBLE      3000       //< lower boudn for mid to treble
@@ -7,6 +7,8 @@
 #define FQ_NORM               2.5f    //< this will normalize sum of magnitudes
 #define BPM_SLOW            75        //< lower than this is slow bpm
 #define BPM_FAST            95        //< faster than this is fast bpm
+#define FFT_WINDOW           4        //< how many times is the whole FFT window wider than one frame
+#define FQ_STAT_LEN        100        //< how many bins we have to gather statistics
 
 typedef struct DiscoSource
 {

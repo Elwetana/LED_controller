@@ -3,6 +3,8 @@
 #include <stdlib.h>
 #include <string.h>
 #include <time.h>
+#ifdef __linux__
+
 
 #include <alsa/asoundlib.h>
 #include <aubio/aubio.h>
@@ -162,3 +164,5 @@ int main(int argc, char* argv[])
     snd_pcm_close (capture_handle);
     return 0; 
  }
+
+#endif // __linux__
