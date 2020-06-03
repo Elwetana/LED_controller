@@ -156,15 +156,12 @@ void set_bin_to_sum()
 {
     uint_t length = FFT_WINDOW * disco_source.samples_per_frame;
     int iBand = n_bands - 1;
-    printf("Setting fq bands:");
     for (int iGrain = length - 1; iGrain >= 0; --iGrain) {
-        if (iGrain < band_boundaries[iBand]) {
+        if (iGrain < (int)band_boundaries[iBand]) {
             iBand--;
-            printf(" %i", iGrain);
         }
         bin_to_sum[iGrain] = fq_sums + iBand;
     }
-    printf("\n");
 }
 
 void freq_map_init()
@@ -249,17 +246,17 @@ int read_sound_data()
     return 1;
 }
 
-void recalibrate_fq_boundaries(smpl_t* fq_statistics)
+void recalibrate_fq_boundaries(double* fq_statistics, int fqs_per_stat_bin)
 {
-    float magn_per_band = fq_statistics[99] / n_bands;
-    float sum = 0;
+    double magn_per_band = fq_statistics[FQ_STAT_LEN - 1] / n_bands;
+    double sum = 0;
     int bin = 0;
     int iBand = 1;
     while (1) {
         sum += fq_statistics[bin];
         while (sum > magn_per_band) {
-            float overfill = sum - magn_per_band;
-            band_boundaries[iBand++] = 100 * bin - (int)(100 * overfill/fq_statistics[bin]);
+            double overfill = sum - magn_per_band;
+            band_boundaries[iBand++] = fqs_per_stat_bin * (bin + 1) - (int)(fqs_per_stat_bin * overfill/fq_statistics[bin]);
             sum = overfill;
         }
         bin++;
@@ -287,15 +284,16 @@ int DiscoSource_update_leds(int frame, ws2811_t* ledstrip)
     aubio_tempo_do(disco_source.aubio_tempo, disco_source.tempo_in, disco_source.tempo_out);
     uint_t current_sample = aubio_tempo_get_total_frames(disco_source.aubio_tempo);
     static float last_phase;
-    static smpl_t fq_statistics[FQ_STAT_LEN];
+    static double fq_statistics[FQ_STAT_LEN];
 
     /* Frequency calculations */
     cvec_t* fftgrain = aubio_tempo_get_fftgrain(disco_source.aubio_tempo);
+    int fqs_per_stat_bin = (int)((fftgrain->length - 1) / FQ_STAT_LEN) + 1;
     memset(fq_sums, 0, sizeof(struct fq_sum) * n_bands);
-    for (int iGrain = 0; iGrain < fftgrain->length; iGrain++) {
+    for (int iGrain = 0; iGrain < (int)fftgrain->length; iGrain++) {
         bin_to_sum[iGrain]->sum += fftgrain->norm[iGrain];
         bin_to_sum[iGrain]->count++;
-        fq_statistics[iGrain / 100] += fftgrain->norm[iGrain];
+        fq_statistics[iGrain / fqs_per_stat_bin] += fftgrain->norm[iGrain];
         fq_statistics[FQ_STAT_LEN - 1] += fftgrain->norm[iGrain];
     }
 
@@ -311,9 +309,14 @@ int DiscoSource_update_leds(int frame, ws2811_t* ledstrip)
         fq_norm = fq_max_sum / 1.5f;
     }
 
-    if (frame % 10000) {
-        recalibrate_fq_boundaries(fq_statistics);
+    if (frame % 10000 == 0) {
+        recalibrate_fq_boundaries(fq_statistics, fqs_per_stat_bin);
         set_bin_to_sum();
+#ifdef DISCODBG
+        printf("Bands recalibrated: ");
+        for(int iBand = 0; iBand < n_bands; iBand++) printf(" %i", band_boundaries[iBand]);
+        printf("\n");
+#endif
     }
 
 
