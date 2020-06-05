@@ -91,10 +91,13 @@ void parseargs(int argc, char **argv)
         {"time_speed", required_argument, 0, 't'},
         {"source", required_argument, 0, 's'},
         {"frame_time", required_argument, 0, 'f'},
+        {"nleds", required_argument, 0, 'n'},
+        {"gpio", required_argument, 0, 'g'},
+        {"strip", required_argument, 0, 'p'},
 		{0, 0, 0, 0}
 	};
 
-    static const char shortopts[] = "hcvt:s:f:";
+    static const char shortopts[] = "hcvt:s:f:n:g:p:";
 
 	while (1)
 	{
@@ -119,6 +122,9 @@ void parseargs(int argc, char **argv)
                 "-t (--time_speed) - simulation speed\n"
                 "-s (--source)     - source. Can be EMBERS, PERLIN, COLOR or CHASER\n"
                 "-f (--frame_time) - length of one frame in us. FPS = 1 000 000 / frame_time\n"
+                "-n (--nleds)      - number of leds on string (100 on disco LEDs, 454 in gazebo)\n"
+                "-g (--gpio)       - GPIO to use (12 on disco light Raspberry, 18 on the Raspberry in gazebo)\n"
+                "-p (--strip)      - strip type - rgb (disco LEDs) or grb (Gazebo)\n"
 				, argv[0]);
 			exit(-1);
 		case 'c':
@@ -143,6 +149,37 @@ void parseargs(int argc, char **argv)
                 printf("Frame time set to: %lli \n", arg_options.frame_time);
             }
             break;
+        case 'n':
+            if (optarg)
+            {
+                int n = atoi(optarg);
+                ledstring.channel[0].count = n;
+            }
+            break;
+        case 'g':
+            if (optarg) {
+                /*  PWM0, which can be set to use GPIOs 12, 18, 40, and 52. Only 12 (pin 32) and 18 (pin 12) are available on the B+/2B/3B
+                    PWM1 which can be set to use GPIOs 13, 19, 41, 45 and 53. Only 13 is available on the B+/2B/PiZero/3B, on pin 33
+                    PCM_DOUT, which can be set to use GPIOs 21 and 31. Only 21 is available on the B+/2B/PiZero/3B, on pin 40.
+                    SPI0-MOSI is available on GPIOs 10 and 38. Only GPIO 10 is available on all models.                                      */
+                int gpio = atoi(optarg);
+                ledstring.channel[0].gpionum = gpio;
+            }
+            break;
+        case 'p':
+            if (optarg) {
+                if (!strncasecmp("rgb", optarg, 4)) {
+                    ledstring.channel[0].strip_type = WS2811_STRIP_RGB;
+                }
+                else if (!strncasecmp("grb", optarg, 4)) {
+                    ledstring.channel[0].strip_type = WS2811_STRIP_GRB;
+                }
+                else {
+                    printf("invalid strip %s. You will have to modify source code and recompile.\n", optarg);
+                    exit(-1);
+                }
+            }
+            break;
         }
     }
 }
@@ -150,7 +187,7 @@ void parseargs(int argc, char **argv)
 
 int main(int argc, char *argv[])
 {
-    int led_count = LED_COUNT;
+    int led_count = ledstring.channel[0].count;
     printf("Starting\n");
     ws2811_return_t ret;
     parseargs(argc, argv);
