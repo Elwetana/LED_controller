@@ -1,0 +1,19 @@
+# sudo cp led_lights.service /etc/systemd/system/
+# sudo systemctl start led_lights.service
+# sudo systemctl stop led_lights.service
+# sudo systemctl enable led_lights.service
+# 
+
+[Unit]
+Description=Led lights
+After=network.target
+
+[Service]
+ExecStart=/home/pi/rpi_ws281x/controller/led_main -c -s DISCO -n 100 -g 12 -p rgb
+WorkingDirectory=/home/pi/rpi_ws281x/controller
+StandardOutput=file:/home/pi/rpi_ws281x/controller/main.log
+StandardError=file:/home/pi/rpi_ws281x/controller/error.log
+Restart=always
+
+[Install]
+WantedBy=multi-user.target
