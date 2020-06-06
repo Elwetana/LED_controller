@@ -1,0 +1,33 @@
+{
+   libarm
+   Memcheck:Cond
+   obj:/usr/lib/arm-linux-gnueabihf/libarmmem-v7l.so
+}
+{
+   libarm2
+   Memcheck:Value4
+   obj:/usr/lib/arm-linux-gnueabihf/libarmmem-v7l.so
+}
+{
+   libarm3
+   Memcheck:Addr8
+   obj:/usr/lib/arm-linux-gnueabihf/libarmmem-v7l.so
+}
+{
+   ZMQ_parse_line
+   Memcheck:Cond
+   ...
+   obj:/usr/lib/arm-linux-gnueabihf/libzmq.so.5.2.1
+}
+{
+   ZMQ_parse_list_val
+   Memcheck:Value4
+   ...
+   obj:/usr/lib/arm-linux-gnueabihf/libzmq.so.5.2.1
+}
+{
+   ALSA
+   Memcheck:Value4
+   ...
+   obj:/usr/lib/arm-linux-gnueabihf/libasound.so.2.0.0
+}

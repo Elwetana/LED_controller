@@ -187,13 +187,13 @@ void parseargs(int argc, char **argv)
 
 int main(int argc, char *argv[])
 {
-    int led_count = ledstring.channel[0].count;
     printf("Starting\n");
     ws2811_return_t ret;
     parseargs(argc, argv);
+    int led_count = ledstring.channel[0].count;
 
     SourceManager_init(arg_options.source_type, led_count, arg_options.time_speed);
-    printf("Init source\n");
+    printf("Init source with %i leds\n", led_count);
 
     setup_handlers();
 
