@@ -1,0 +1,6 @@
+*.pdb
+LEDs/x64/
+LEDs/packages/
+LEDs/Release/
+LEDs/Debug/
+LEDs/.vs/
