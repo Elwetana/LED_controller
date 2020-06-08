@@ -4,3 +4,7 @@ LEDs/packages/
 LEDs/Release/
 LEDs/Debug/
 LEDs/.vs/
+.sconsign.dblite
+*.o
+*.log
+led_main

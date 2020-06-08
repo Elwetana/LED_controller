@@ -9,10 +9,10 @@ Description=Led lights
 After=network.target
 
 [Service]
-ExecStart=/home/pi/rpi_ws281x/controller/led_main -c -s DISCO -n 100 -g 12 -p rgb
-WorkingDirectory=/home/pi/rpi_ws281x/controller
-StandardOutput=file:/home/pi/rpi_ws281x/controller/main.log
-StandardError=file:/home/pi/rpi_ws281x/controller/error.log
+ExecStart=/home/pi/LED_controller/led_main -c -s DISCO -n 100 -g 12 -p rgb
+WorkingDirectory=/home/pi/LED_controller
+StandardOutput=file:/home/pi/LED_controller/main.log
+StandardError=file:/home/pi/LED_controller/error.log
 Restart=always
 
 [Install]
