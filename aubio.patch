@@ -1,0 +1,37 @@
+diff --git a/src/tempo/tempo.c b/src/tempo/tempo.c
+index 5698b2bb..8b11c412 100644
+--- a/src/tempo/tempo.c
++++ b/src/tempo/tempo.c
+@@ -280,6 +280,16 @@ uint_t aubio_tempo_set_tatum_signature (aubio_tempo_t *o, uint_t signature) {
+   }
+ }
+ 
++cvec_t* aubio_tempo_get_fftgrain(aubio_tempo_t* o)
++{
++  return o->fftgrain;
++}
++
++uint_t aubio_tempo_get_total_frames(aubio_tempo_t* o)
++{
++  return o->total_frames;
++}
++
+ void del_aubio_tempo (aubio_tempo_t *o)
+ {
+   if (o->od)
+diff --git a/src/tempo/tempo.h b/src/tempo/tempo.h
+index e2afe99c..2dc0763a 100644
+--- a/src/tempo/tempo.h
++++ b/src/tempo/tempo.h
+@@ -246,6 +246,11 @@ uint_t aubio_tempo_set_delay_ms(aubio_tempo_t * o, smpl_t delay);
+   \param o beat tracking object
+ 
+ */
++
++cvec_t* aubio_tempo_get_fftgrain(aubio_tempo_t* o);
++
++uint_t aubio_tempo_get_total_frames(aubio_tempo_t* o);
++
+ void del_aubio_tempo(aubio_tempo_t * o);
+ 
+ #ifdef __cplusplus
