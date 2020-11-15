@@ -110,9 +110,14 @@ int decode(const char* s, char* dec)
 void check_message()
 {
     char* msg = Listener_poll_message();
+    //Message examples:
+    //  LED SOURCE EMBERS
+    //  LED SOURCE COLOR?BFFBFF
+    //  LED MSG MORSETEXT?HI%20URSULA
     if (msg != NULL)
     {
-        if (strlen(msg) > 64) {
+        if (strlen(msg) > 64) 
+        {
             printf("Message too long: %s, %i", msg, strlen(msg));
             free(msg);
             return;
@@ -166,7 +171,8 @@ void check_message()
                 {
                     char target[32];
                     char message[64];
-                    if ((sep - param) < 32) {
+                    if ((sep - param) < 32)
+                    {
                         strncpy(target, param, sep - param);
                         target[sep - param] = 0x0;
                         if ((strlen(sep + 1) < 64) && (decode(sep + 1, message) > 0))
