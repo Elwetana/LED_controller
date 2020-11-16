@@ -30,12 +30,17 @@ void BasicSource_build_gradient(BasicSource* basic_source, ws2811_led_t* colors,
 }
 
 //returns 1 if leds were updated, 0 if update is not necessary
-int BasicSource_update(int n_led, ws2811_t* strip) 
+int BasicSource_update(int n_leds, ws2811_t* strip) 
 {
+    (void)n_leds;
+    (void)strip;
     return 0;
 }
 
-void BasicSource_process_message(const char* msg) {}
+void BasicSource_process_message(const char* msg)
+{
+    (void)msg;
+}
 
 void BasicSource_destruct() {}
 
