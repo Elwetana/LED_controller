@@ -1,0 +1,42 @@
+#include <stdint.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <time.h>
+#include <math.h>
+#ifdef __linux__
+#include "ws2811.h"
+#else
+#include "fakeled.h"
+#endif // __linux__
+
+#include "common_source.h"
+#include "xmas_source.h"
+
+//returns 1 if leds were updated, 0 if update is not necessary
+int XmasSource_update_leds(int frame, ws2811_t* ledstrip)
+{
+    (void)frame;
+    if (xmas_source.first_update > 0)
+    {
+        return 0;
+    }
+    for (int led = 0; led < xmas_source.basic_source.n_leds; ++led)
+    {
+        ledstrip->channel[0].leds[led] = xmas_source.basic_source.gradient.colors[0];
+    }
+    xmas_source.first_update = 1;
+    return 1;
+}
+
+void XmasSource_init(int n_leds, int time_speed)
+{
+    BasicSource_init(&xmas_source.basic_source, n_leds, time_speed, source_config.colors[COLOR_SOURCE]);
+    xmas_source.first_update = 0;
+    xmas_source.basic_source.update = XmasSource_update_leds;
+}
+
+XmasSource xmas_source = {
+    .basic_source.init = XmasSource_init,
+    .first_update = 0 
+};
