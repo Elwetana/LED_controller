@@ -12,6 +12,7 @@ void SourceManager_init(enum SourceType source_type, int led_count, int time_spe
 void set_source(enum SourceType source_type);
 int (*SourceManager_update_leds)(int, ws2811_t*);
 void (*SourceManager_destruct_source)();
+void (*SourceManager_process_message)(char*);
 void check_message();
 
 

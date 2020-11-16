@@ -30,9 +30,4 @@ enum EMorseMode
 
 extern MorseSource morse_source;
 
-
-//TODO smazat
-void MorseSource_assign_text(const char* new_text);
-void MorseSource_change_mode(int new_mode);
-
 #endif /* __MORSE_SOURCE_H__ */

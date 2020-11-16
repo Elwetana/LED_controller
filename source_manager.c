@@ -77,6 +77,7 @@ void set_source(enum SourceType source_type)
     sources[source_type]->init(led_param.led_count, led_param.time_speed);
     SourceManager_update_leds = sources[source_type]->update;
     SourceManager_destruct_source = sources[source_type]->destruct;
+    SourceManager_process_message = sources[source_type]->process_message;
 }
 
 inline int ishex(int x)
@@ -86,6 +87,8 @@ inline int ishex(int x)
            (x >= 'A' && x <= 'F');
 }
 
+// Decode URL-encoded strings
+// https://rosettacode.org/wiki/URL_decoding#C
 int decode(const char* s, char* dec)
 {
     char* o;
@@ -104,108 +107,90 @@ int decode(const char* s, char* dec)
 }
 
 
+void process_source_message(const char* param)
+{
+    char source_name[64];
+    int color = -1;
+    char* sep = strchr(param, '?');
+    if (sep != NULL)
+    {
+        int name_length = sep - param;
+        strncpy(source_name, param, name_length);
+        source_name[name_length] = 0x0;
+        color = strtol(sep + 1, NULL, 16);
+    }
+    else if (!strncasecmp("OFF", param, 3))
+    {
+        strcpy(source_name, "COLOR");
+        color = 0x0;
+    }
+    else
+    {
+        strncpy(source_name, param, 64);
+    }
+    if (color != -1) // this is only possible for color source now
+    {
+        SourceColors_destruct(source_config.colors[COLOR_SOURCE]);
+        SourceColors* sc = malloc(sizeof(SourceColors));
+        sc->colors = malloc(sizeof(ws2811_led_t) * 2);
+        sc->steps = malloc(sizeof(int) * 1);
+        sc->n_steps = 1;
+        sc->colors[0] = color;
+        sc->colors[1] = color;
+        sc->steps[0] = 1;
+        SourceConfig_add_color(source_name, sc);
+    }
+    SourceManager_destruct_source();
+    set_source(string_to_SourceType(source_name));
+    printf("Changing source to %s\n", param);
+}
+
+
 void check_message()
 {
     char* msg = Listener_poll_message();
-    //sources[CHASER_SOURCE]->process_message(msg);
     //Message examples:
     //  LED SOURCE EMBERS
     //  LED SOURCE COLOR?BFFBFF
     //  LED MSG MORSETEXT?HI%20URSULA
-    if (msg != NULL)
+    if (msg == NULL)
     {
-        if (strlen(msg) > 64) 
-        {
-            printf("Message too long: %s, %i", msg, strlen(msg));
-            free(msg);
-            return;
-        }
-        char command[64];
-        char param[64];
-        int n = sscanf(msg, "LED %s %s", command, param);
-        if (n == 2)
-        {
-            if (!strncasecmp(command, "SOURCE", 6))
-            {
-                char source_name[64];
-                int color = -1;
-                char* sep = strchr(param, '?');
-                if (sep != NULL)
-                {
-                    int name_length = sep - param;
-                    strncpy(source_name, param, name_length);
-                    source_name[name_length] = 0x0;
-                    color = strtol(sep + 1, NULL, 16);
-                }
-                else if (!strncasecmp("OFF", param, 3))
-                {
-                    strcpy(source_name, "COLOR");
-                    color = 0x0;
-                }
-                else
-                {
-                    strncpy(source_name, param, 64);
-                }
-                if (color != -1) // this is only possible for color source now
-                {
-                    SourceColors_destruct(source_config.colors[COLOR_SOURCE]);
-                    SourceColors* sc = malloc(sizeof(SourceColors));
-                    sc->colors = malloc(sizeof(ws2811_led_t) * 2);
-                    sc->steps = malloc(sizeof(int) * 1);
-                    sc->n_steps = 1;
-                    sc->colors[0] = color;
-                    sc->colors[1] = color;
-                    sc->steps[0] = 1;
-                    SourceConfig_add_color(source_name, sc);
-                }
-                SourceManager_destruct_source();
-                set_source(string_to_SourceType(source_name));
-                printf("Changing source to %s\n", param);
-            }
-            else if (!strncasecmp(command, "MSG", 3))
-            {
-                char* sep = strchr(param, '?');
-                if (sep != NULL)
-                {
-                    char target[32];
-                    char message[64];
-                    if ((sep - param) < 32)
-                    {
-                        strncpy(target, param, sep - param);
-                        target[sep - param] = 0x0;
-                        if ((strlen(sep + 1) < 64) && (decode(sep + 1, message) > 0))
-                        {
-                            if (!strncasecmp(target, "MORSETEXT", 9))
-                            {
-                                MorseSource_assign_text(message);
-                                printf("Setting new MorseSource text: %s\n", message);
-                            }
-                            else if (!strncasecmp(target, "MORSEMODE", 9))
-                            {
-                                int mode = atoi(message);
-                                MorseSource_change_mode(mode);
-                                printf("Setting new MorseSource mode: %i\n", mode);
-                            }
-                            else
-                                printf("Unknown target: %s, msg was: %s\n", target, message);
-                        }
-                        else
-                            printf("Message too long or poorly formatted: %s\n", param);
-                    }
-                    else
-                        printf("Target is too long or poorly formatted: %s\n", param);
-                }
-                else
-                    printf("Message does not contain target %s\n", param);
-            }
-            else
-                printf("Unknown command received, command: %s, param %s\n", command, param);
-        }
-        else {
-            printf("Unknown message received %s\n", msg);
-        }
-        free(msg);
+        return;
     }
+    if (strlen(msg) > 64) 
+    {
+        printf("Message too long: %s, %i", msg, strlen(msg));
+        goto quit;
+    }
+    char command[64];
+    char param[64];
+    int n = sscanf(msg, "LED %s %s", command, param);
+    if (n != 2)
+    {
+        printf("Unknown message received %s\n", msg);
+        goto quit;
+    }
+    if (!strncasecmp(command, "SOURCE", 6))
+    {
+        process_source_message(param);
+    }
+    else if (!strncasecmp(command, "MSG", 3))
+    {
+        char message[64];
+        if (decode(param, message) < 0)
+        {
+            printf("Malformatted URL-encoded text: %s\n", param);
+            goto quit;
+        }
+        SourceManager_process_message(message);
+    }
+    else
+    {
+        printf("Unknown command received, command: %s, param %s\n", command, param);
+        goto quit;
+    }
+quit:    
+    free(msg);
 }
 
 SourceConfig source_config;
