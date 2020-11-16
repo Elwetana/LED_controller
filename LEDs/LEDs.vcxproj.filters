@@ -57,6 +57,9 @@
     <ClCompile Include="..\disco_source.c">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="..\xmas_source.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <None Include="packages.config" />
@@ -111,6 +114,9 @@
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="..\sound\fakealsa.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\include\xmas_source.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>

@@ -5,6 +5,7 @@ typedef struct XmasSource
 {
 	BasicSource basic_source;
 	int first_update;
+	int led_index;
 } XmasSource;
 
 extern XmasSource xmas_source;

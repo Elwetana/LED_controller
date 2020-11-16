@@ -160,6 +160,7 @@
     <ClCompile Include="..\perlin_source.c" />
     <ClCompile Include="..\sound\test.c" />
     <ClCompile Include="..\source_manager.c" />
+    <ClCompile Include="..\xmas_source.c" />
   </ItemGroup>
   <ItemGroup>
     <Text Include="..\config">
@@ -185,6 +186,7 @@
     <ClInclude Include="..\include\morse_source.h" />
     <ClInclude Include="..\include\perlin_source.h" />
     <ClInclude Include="..\include\source_manager.h" />
+    <ClInclude Include="..\include\xmas_source.h" />
     <ClInclude Include="..\sound\fakealsa.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
