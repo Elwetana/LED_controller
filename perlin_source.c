@@ -15,12 +15,6 @@
 #include "colours.h"
 
 
-PerlinSource perlin_source =
-{
-    .noise_freq = { 5, 11, 23, 47 },
-    .noise_weight = { 8.0 / 15.0, 4.0 / 15.0, 2.0 / 15.0, 1.0 / 15.0 }
-};
-
 static void PerlinSource_build_noise()
 {
     for (int f = 0; f < PERLIN_FREQ_N; ++f)
@@ -93,3 +87,10 @@ void PerlinSource_init(int n_leds, int time_speed)
     perlin_source.basic_source.destruct = PerlinSource_destruct;
     PerlinSource_build_noise();
 }
+
+PerlinSource perlin_source =
+{
+    .basic_source.init = PerlinSource_init,
+    .noise_freq = { 5, 11, 23, 47 },
+    .noise_weight = { 8.0 / 15.0, 4.0 / 15.0, 2.0 / 15.0, 1.0 / 15.0 }
+};

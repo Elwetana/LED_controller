@@ -16,16 +16,6 @@
 #include "morse_source.h"
 
 
-MorseSource morse_source = {
-    .cmorse = { ".-", "-...", "-.-.", "-..", ".", "..-.", "--.", "....", "..", ".---","-.-", ".-..", "--",
-              "-.", "---", ".--.", "--.-", ".-.", "...", "-", "..-", "...-", ".--", "-..-", "-.--", "--.." },
-    .morse = { {0, {0}} },
-    .text = NULL,
-    .text_length = 0,
-    .mode = MM_NO_MODE
-};
-
-
 static void MorseSource_read_font()
 {
     FILE* ffont = fopen("font_5x7.bmp", "r");
@@ -253,3 +243,13 @@ void MorseSource_init(int n_leds, int time_speed)
     MorseSource_change_mode(MM_NO_MODE);
     //MorseSource_debug_init();
 }
+
+MorseSource morse_source = {
+    .basic_source.init = MorseSource_init,
+    .cmorse = { ".-", "-...", "-.-.", "-..", ".", "..-.", "--.", "....", "..", ".---","-.-", ".-..", "--",
+              "-.", "---", ".--.", "--.-", ".-.", "...", "-", "..-", "...-", ".--", "-..-", "-.--", "--.." },
+    .morse = { {0, {0}} },
+    .text = NULL,
+    .text_length = 0,
+    .mode = MM_NO_MODE
+};

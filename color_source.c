@@ -13,8 +13,6 @@
 #include "common_source.h"
 #include "color_source.h"
 
-ColorSource color_source = { .first_update = 0 };
-
 //returns 1 if leds were updated, 0 if update is not necessary
 int ColorSource_update_leds(int frame, ws2811_t* ledstrip)
 {
@@ -37,3 +35,8 @@ void ColorSource_init(int n_leds, int time_speed)
     color_source.first_update = 0;
     color_source.basic_source.update = ColorSource_update_leds;
 }
+
+ColorSource color_source = {
+    .basic_source.init = ColorSource_init,
+    .first_update = 0 
+};

@@ -74,10 +74,9 @@ void SourceManager_init(enum SourceType source_type, int led_count, int time_spe
 
 void set_source(enum SourceType source_type)
 {
-    SourceManager_init_source = sources[source_type]->init;
+    sources[source_type]->init(led_param.led_count, led_param.time_speed);
     SourceManager_update_leds = sources[source_type]->update;
     SourceManager_destruct_source = sources[source_type]->destruct;
-    SourceManager_init_source(led_param.led_count, led_param.time_speed);
 }
 
 inline int ishex(int x)
@@ -108,7 +107,7 @@ int decode(const char* s, char* dec)
 void check_message()
 {
     char* msg = Listener_poll_message();
-    sources[CHASER_SOURCE]->process_message(msg);
+    //sources[CHASER_SOURCE]->process_message(msg);
     //Message examples:
     //  LED SOURCE EMBERS
     //  LED SOURCE COLOR?BFFBFF

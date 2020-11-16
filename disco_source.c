@@ -18,8 +18,6 @@
 //#define AUBIODBG
 #define DISCODBG
 
-DiscoSource disco_source;
-
 struct fq_sum {
     float sum;
     int count;
@@ -444,3 +442,7 @@ void DiscoSource_init(int n_leds, int time_speed)
     aubio_init();
     freq_map_init();
 }
+
+DiscoSource disco_source = { 
+    .basic_source.init = DiscoSource_init 
+};

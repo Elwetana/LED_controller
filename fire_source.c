@@ -15,52 +15,6 @@
 #include "colours.h"
 
 
-FireSource fire_source =
-{
-    .ember_data = {
-        [0] =
-        {
-            .amp = 0.4f,
-            .amp_rand = 0.1f,
-            .x_space = 100.0f,
-            .sigma = 30.0f,
-            .sigma_rand = 2.0f,
-            .osc_amp = 0.2f,
-            .osc_freq = 0.005f,
-            .osc_freq_rand = 0.01f,
-            .decay = 0.0f,
-            .decay_rand = 0.0f
-        },
-        [1] =
-        {
-            .amp = 0.2f,
-            .amp_rand = 0.05f,
-            .x_space = 60.0f,
-            .sigma = 9.0f,
-            .sigma_rand = 2.0f,
-            .osc_amp = 0.2f,
-            .osc_freq = 0.01f,
-            .osc_freq_rand = 0.005f,
-            .decay = 0.0f,
-            .decay_rand = 0.0f
-        },
-        [2] =
-        {
-            .amp = 0.1f,
-            .amp_rand = 0.2f,
-            .x_space = 25.0f,
-            .sigma = 3.0f,
-            .sigma_rand = 1.0f,
-            .osc_amp = 0.2f,
-            .osc_freq = 0.01f,
-            .osc_freq_rand = 0.01f,
-            .decay = 0.001f,
-            .decay_rand = 0.001f
-        }
-    }
-};
-
-
 static void Ember_init(Ember* e, int i, EmberData* ember_data, int age, enum EmberType ember_type) 
 {
     float amp = ember_data->amp + random_01() * ember_data->amp_rand;
@@ -216,3 +170,49 @@ void FireSource_init(int n_leds, int time_speed)
     fire_source.basic_source.destruct = FireSource_destruct;
     FireSource_build_embers(&fire_source);
 }
+
+FireSource fire_source =
+{
+    .basic_source.init = FireSource_init,
+    .ember_data = {
+        [0] =
+        {
+            .amp = 0.4f,
+            .amp_rand = 0.1f,
+            .x_space = 100.0f,
+            .sigma = 30.0f,
+            .sigma_rand = 2.0f,
+            .osc_amp = 0.2f,
+            .osc_freq = 0.005f,
+            .osc_freq_rand = 0.01f,
+            .decay = 0.0f,
+            .decay_rand = 0.0f
+        },
+        [1] =
+        {
+            .amp = 0.2f,
+            .amp_rand = 0.05f,
+            .x_space = 60.0f,
+            .sigma = 9.0f,
+            .sigma_rand = 2.0f,
+            .osc_amp = 0.2f,
+            .osc_freq = 0.01f,
+            .osc_freq_rand = 0.005f,
+            .decay = 0.0f,
+            .decay_rand = 0.0f
+        },
+        [2] =
+        {
+            .amp = 0.1f,
+            .amp_rand = 0.2f,
+            .x_space = 25.0f,
+            .sigma = 3.0f,
+            .sigma_rand = 1.0f,
+            .osc_amp = 0.2f,
+            .osc_freq = 0.01f,
+            .osc_freq_rand = 0.01f,
+            .decay = 0.001f,
+            .decay_rand = 0.001f
+        }
+    }
+};

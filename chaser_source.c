@@ -14,8 +14,6 @@
 #include "chaser_source.h"
 
 
-ChaserSource chaser_source = { .heads = { 19, 246, 0, 38, 76, 114, 152, 190, 227, 265, 303, 341, 379, 417 } };
-
 int ChaserSource_update_leds(int frame, ws2811_t* ledstrip)
 {
     int mframe = frame % chaser_source.basic_source.n_leds;
@@ -60,3 +58,8 @@ void ChaserSource_init(int n_leds, int time_speed)
     BasicSource_init(&chaser_source.basic_source, n_leds, time_speed, source_config.colors[CHASER_SOURCE]);
     chaser_source.basic_source.update = ChaserSource_update_leds;
 }
+
+ChaserSource chaser_source = { 
+    .basic_source.init = ChaserSource_init,
+    .heads = { 19, 246, 0, 38, 76, 114, 152, 190, 227, 265, 303, 341, 379, 417 } 
+};
