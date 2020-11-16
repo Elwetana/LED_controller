@@ -70,6 +70,7 @@ void MorseSource_assign_text(const char* new_text)
     morse_source.text_length = strlen(new_text);
     morse_source.text = malloc(sizeof(char) * (morse_source.text_length + 1));
     strcpy(morse_source.text, new_text);
+    printf("Set new Morse text: %s\n", new_text);
 }
 
 void MorseSource_change_mode(int new_mode)
@@ -228,7 +229,7 @@ int MorseSource_update_leds(int frame, ws2811_t* ledstrip)
 
 // The whole message is e.g. LED MSG MORSETEXT?HI%20URSULA
 // This function will only receive the part after LED MSG
-void MorseSource_process_message(char* msg)
+void MorseSource_process_message(const char* msg)
 {
     char* sep = strchr(msg, '?');
     if (sep == NULL)
@@ -277,6 +278,7 @@ void MorseSource_init(int n_leds, int time_speed)
     BasicSource_init(&morse_source.basic_source, n_leds, time_speed, source_config.colors[MORSE_SOURCE]);
     morse_source.basic_source.update = MorseSource_update_leds;
     morse_source.basic_source.destruct = MorseSource_destruct;
+    morse_source.basic_source.process_message = MorseSource_process_message;
     MorseSource_read_font();
     MorseSource_convert_morse();
     MorseSource_assign_text("AHOJ URSULO");
