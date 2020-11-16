@@ -37,23 +37,19 @@ typedef struct BasicSource
     int n_leds;
     int time_speed;
     SourceGradient gradient;
+    void(*init)(int, int);
+    int(*update)(int, ws2811_t*);
+    void(*destruct)();
+    void(*process_message)(const char*);
 } BasicSource;
 
 typedef struct SourceConfig {
     SourceColors** colors;
 } SourceConfig;
 
-typedef struct SourceFunctions {
-    void(*init)(int, int);
-    int(*update)(int, ws2811_t*);
-    void(*destruct)();
-} SourceFunctions;
-
 extern SourceConfig source_config;
 
 void BasicSource_init(BasicSource* basic_source, int n_leds, int time_speed, SourceColors* source_colors);
-//void BasicSource_destruct();
-//void BasicSource_build_gradient(BasicSource *bs, ws2811_led_t* colors, int* steps, int n_steps);
 float random_01();
 
 

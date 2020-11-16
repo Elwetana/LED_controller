@@ -11,23 +11,15 @@
 #endif // __linux__
 
 #include "common_source.h"
-#include "perlin_source_priv.h"
 #include "perlin_source.h"
 #include "colours.h"
 
 
-static PerlinSource perlin_source =
+PerlinSource perlin_source =
 {
     .noise_freq = { 5, 11, 23, 47 },
     .noise_weight = { 8.0 / 15.0, 4.0 / 15.0, 2.0 / 15.0, 1.0 / 15.0 }
 };
-
-SourceFunctions perlin_functions = {
-    .init = PerlinSource_init,
-    .update = PerlinSource_update_leds,
-    .destruct = PerlinSource_destruct
-};
-
 
 static void PerlinSource_build_noise()
 {
@@ -39,20 +31,6 @@ static void PerlinSource_build_noise()
             perlin_source.noise[f][i].amplitude = 2.0f * random_01() - 1.0f;
             perlin_source.noise[f][i].phase = 2.0f * random_01() * (float)M_PI;
         }
-    }
-}
-
-void PerlinSource_init(int n_leds, int time_speed)
-{
-    BasicSource_init(&perlin_source.basic_source, n_leds, time_speed, source_config.colors[PERLIN_SOURCE]);
-    PerlinSource_build_noise();
-}
-
-void PerlinSource_destruct()
-{
-    for (int f = 0; f < PERLIN_FREQ_N; ++f)
-    {
-        free(perlin_source.noise[f]);
     }
 }
 
@@ -98,4 +76,20 @@ int PerlinSource_update_leds(int frame, ws2811_t* ledstrip)
         ledstrip->channel[0].leds[led] = perlin_source.basic_source.gradient.colors[y];
     }
     return 1;
+}
+
+void PerlinSource_destruct()
+{
+    for (int f = 0; f < PERLIN_FREQ_N; ++f)
+    {
+        free(perlin_source.noise[f]);
+    }
+}
+
+void PerlinSource_init(int n_leds, int time_speed)
+{
+    BasicSource_init(&perlin_source.basic_source, n_leds, time_speed, source_config.colors[PERLIN_SOURCE]);
+    perlin_source.basic_source.update = PerlinSource_update_leds;
+    perlin_source.basic_source.destruct = PerlinSource_destruct;
+    PerlinSource_build_noise();
 }

@@ -46,7 +46,7 @@ enum SourceType string_to_SourceType(char* source)
     }
 }
 
-static SourceFunctions source_functions[N_SOURCE_TYPES];
+static BasicSource* sources[N_SOURCE_TYPES];
 
 struct LedParam {
     int led_count;
@@ -62,23 +62,21 @@ void SourceManager_init(enum SourceType source_type, int led_count, int time_spe
 
     led_param.led_count = led_count;
     led_param.time_speed = time_speed;
-    /*SourceManager_init_source = FireSource_init;
-    SourceManager_update_leds = FireSource_update_leds;
-    SourceManager_destruct_source = FireSource_destruct;*/
-    source_functions[EMBERS_SOURCE] = fire_functions;
-    source_functions[PERLIN_SOURCE] = perlin_functions;
-    source_functions[COLOR_SOURCE] = color_functions;
-    source_functions[CHASER_SOURCE] = chaser_functions;
-    source_functions[MORSE_SOURCE] = morse_functions;
-    source_functions[DISCO_SOURCE] = disco_functions;
+
+    sources[EMBERS_SOURCE] = &fire_source.basic_source;
+    sources[PERLIN_SOURCE] = &perlin_source.basic_source;
+    sources[COLOR_SOURCE]  = &color_source.basic_source;
+    sources[CHASER_SOURCE] = &chaser_source.basic_source;
+    sources[MORSE_SOURCE]  = &morse_source.basic_source;
+    sources[DISCO_SOURCE]  = &disco_source.basic_source;
     set_source(source_type);
 }
 
 void set_source(enum SourceType source_type)
 {
-    SourceManager_init_source = source_functions[source_type].init;
-    SourceManager_update_leds = source_functions[source_type].update;
-    SourceManager_destruct_source = source_functions[source_type].destruct;
+    SourceManager_init_source = sources[source_type]->init;
+    SourceManager_update_leds = sources[source_type]->update;
+    SourceManager_destruct_source = sources[source_type]->destruct;
     SourceManager_init_source(led_param.led_count, led_param.time_speed);
 }
 
@@ -110,6 +108,7 @@ int decode(const char* s, char* dec)
 void check_message()
 {
     char* msg = Listener_poll_message();
+    sources[CHASER_SOURCE]->process_message(msg);
     //Message examples:
     //  LED SOURCE EMBERS
     //  LED SOURCE COLOR?BFFBFF

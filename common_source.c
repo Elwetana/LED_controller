@@ -29,6 +29,16 @@ void BasicSource_build_gradient(BasicSource* basic_source, ws2811_led_t* colors,
     printf("Gradient initialized with %i colours\n", offset);
 }
 
+//returns 1 if leds were updated, 0 if update is not necessary
+int BasicSource_update(int n_led, ws2811_t* strip) 
+{
+    return 0;
+}
+
+void BasicSource_process_message(const char* msg) {}
+
+void BasicSource_destruct() {}
+
 void BasicSource_init(BasicSource* basic_source, int n_leds, int time_speed, SourceColors* source_colors)
 {
     ws2811_led_t* colors = source_colors->colors;
@@ -37,4 +47,7 @@ void BasicSource_init(BasicSource* basic_source, int n_leds, int time_speed, Sou
     basic_source->n_leds = n_leds;
     basic_source->time_speed = time_speed;
     BasicSource_build_gradient(basic_source, colors, steps, n_steps);
+    basic_source->update = BasicSource_update;
+    basic_source->destruct = BasicSource_destruct;
+    basic_source->process_message = BasicSource_process_message;
 }

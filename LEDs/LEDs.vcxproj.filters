@@ -59,77 +59,59 @@
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="..\colours.h">
+    <None Include="packages.config" />
+  </ItemGroup>
+  <ItemGroup>
+    <Text Include="..\config" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="..\include\color_source.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="..\fakesignal.h">
+    <ClInclude Include="..\include\colours.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="..\faketime.h">
+    <ClInclude Include="..\include\common_source.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="..\fire_source.h">
+    <ClInclude Include="..\include\disco_source.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="..\getopt.h">
+    <ClInclude Include="..\include\fakeled.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="..\common_source.h">
+    <ClInclude Include="..\include\fakesignal.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="..\fakeled.h">
+    <ClInclude Include="..\include\faketime.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="..\perlin_source.h">
+    <ClInclude Include="..\include\fire_source.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="..\listener.h">
+    <ClInclude Include="..\include\getopt.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="..\color_source.h">
+    <ClInclude Include="..\include\chaser_source.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="..\chaser_source.h">
+    <ClInclude Include="..\include\led_main.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="..\fire_source_priv.h">
+    <ClInclude Include="..\include\listener.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="..\perlin_source_priv.h">
+    <ClInclude Include="..\include\morse_source.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="..\chaser_source_priv.h">
+    <ClInclude Include="..\include\perlin_source.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="..\color_source_priv.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="..\source_manager.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="..\morse_source_priv.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="..\morse_source.h">
+    <ClInclude Include="..\include\source_manager.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="..\sound\fakealsa.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="..\disco_source.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="..\disco_source_priv.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="..\led_main.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-  </ItemGroup>
-  <ItemGroup>
-    <None Include="packages.config" />
-  </ItemGroup>
-  <ItemGroup>
-    <Text Include="..\config" />
   </ItemGroup>
 </Project>

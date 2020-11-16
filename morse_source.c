@@ -13,14 +13,8 @@
 #endif // __linux__
 
 #include "common_source.h"
-#include "morse_source_priv.h"
 #include "morse_source.h"
 
-SourceFunctions morse_functions = {
-    .init = MorseSource_init,
-    .update = MorseSource_update_leds,
-    .destruct = MorseSource_destruct
-};
 
 MorseSource morse_source = {
     .cmorse = { ".-", "-...", "-.-.", "-..", ".", "..-.", "--.", "....", "..", ".---","-.-", ".-..", "--",
@@ -120,22 +114,6 @@ void MorseSource_debug_init()
         printf("\n");
     }
     printf("TEXT: %s\n", morse_source.text);
-}
-
-void MorseSource_init(int n_leds, int time_speed)
-{
-    BasicSource_init(&morse_source.basic_source, n_leds, time_speed, source_config.colors[MORSE_SOURCE]);
-    MorseSource_read_font();
-    MorseSource_convert_morse();
-    MorseSource_assign_text("AHOJ URSULO");
-    MorseSource_change_mode(MM_NO_MODE);
-    //MorseSource_debug_init();
-}
-
-void MorseSource_destruct()
-{
-    if (morse_source.text != NULL) free(morse_source.text);
-    morse_source.text = NULL;
 }
 
 void MorseSource_update_leds_morse(int frame, ws2811_t* ledstrip)
@@ -256,4 +234,22 @@ int MorseSource_update_leds(int frame, ws2811_t* ledstrip)
         break;
     }
     return 1;
+}
+
+void MorseSource_destruct()
+{
+    if (morse_source.text != NULL) free(morse_source.text);
+    morse_source.text = NULL;
+}
+
+void MorseSource_init(int n_leds, int time_speed)
+{
+    BasicSource_init(&morse_source.basic_source, n_leds, time_speed, source_config.colors[MORSE_SOURCE]);
+    morse_source.basic_source.update = MorseSource_update_leds;
+    morse_source.basic_source.destruct = MorseSource_destruct;
+    MorseSource_read_font();
+    MorseSource_convert_morse();
+    MorseSource_assign_text("AHOJ URSULO");
+    MorseSource_change_mode(MM_NO_MODE);
+    //MorseSource_debug_init();
 }

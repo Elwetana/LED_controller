@@ -74,6 +74,7 @@
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <LinkIncremental>true</LinkIncremental>
+    <IncludePath>$(ProjectDir)..\sound;$(ProjectDir)..\include;$(IncludePath)</IncludePath>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
     <LinkIncremental>false</LinkIncremental>
@@ -161,36 +162,30 @@
     <ClCompile Include="..\source_manager.c" />
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="..\chaser_source.h" />
-    <ClInclude Include="..\chaser_source_priv.h" />
-    <ClInclude Include="..\color_source.h" />
-    <ClInclude Include="..\color_source_priv.h" />
-    <ClInclude Include="..\colours.h" />
-    <ClInclude Include="..\disco_source.h" />
-    <ClInclude Include="..\disco_source_priv.h" />
-    <ClInclude Include="..\led_main.h" />
-    <ClInclude Include="..\sound\fakealsa.h" />
-    <ClInclude Include="..\fakeled.h" />
-    <ClInclude Include="..\fakesignal.h" />
-    <ClInclude Include="..\faketime.h" />
-    <ClInclude Include="..\fire_source.h" />
-    <ClInclude Include="..\fire_source_priv.h" />
-    <ClInclude Include="..\getopt.h" />
-    <ClInclude Include="..\common_source.h" />
-    <ClInclude Include="..\listener.h" />
-    <ClInclude Include="..\morse_source.h" />
-    <ClInclude Include="..\morse_source_priv.h" />
-    <ClInclude Include="..\perlin_source.h" />
-    <ClInclude Include="..\perlin_source_priv.h" />
-    <ClInclude Include="..\source_manager.h" />
-  </ItemGroup>
-  <ItemGroup>
     <Text Include="..\config">
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">false</ExcludedFromBuild>
       <DeploymentContent Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">true</DeploymentContent>
       <FileType>Document</FileType>
     </Text>
     <None Include="packages.config" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="..\include\chaser_source.h" />
+    <ClInclude Include="..\include\color_source.h" />
+    <ClInclude Include="..\include\colours.h" />
+    <ClInclude Include="..\include\common_source.h" />
+    <ClInclude Include="..\include\disco_source.h" />
+    <ClInclude Include="..\include\fakeled.h" />
+    <ClInclude Include="..\include\fakesignal.h" />
+    <ClInclude Include="..\include\faketime.h" />
+    <ClInclude Include="..\include\fire_source.h" />
+    <ClInclude Include="..\include\getopt.h" />
+    <ClInclude Include="..\include\led_main.h" />
+    <ClInclude Include="..\include\listener.h" />
+    <ClInclude Include="..\include\morse_source.h" />
+    <ClInclude Include="..\include\perlin_source.h" />
+    <ClInclude Include="..\include\source_manager.h" />
+    <ClInclude Include="..\sound\fakealsa.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

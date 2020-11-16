@@ -6,30 +6,20 @@
 #include <math.h>
 #ifdef __linux__
 #include "ws2811.h"
-#include <alsa/asoundlib.h>
-#include <aubio/aubio.h>
 #else
 #include "fakeled.h"
-#include "sound/fakealsa.h"
-#include "aubio.h"
 #endif // __linux__
 
 #include "colours.h"
 #include "common_source.h"
-#include "disco_source_priv.h"
 #include "disco_source.h"
 #include "led_main.h"
 
 //#define AUBIODBG
 #define DISCODBG
 
-SourceFunctions disco_functions = {
-    .init = DiscoSource_init,
-    .update = DiscoSource_update_leds,
-    .destruct = DiscoSource_destruct
-};
+DiscoSource disco_source;
 
-static DiscoSource disco_source;
 struct fq_sum {
     float sum;
     int count;
@@ -45,6 +35,21 @@ static uint_t bpm_fast = BPM_FAST;
 static aubio_sink_t *snk = NULL;
 FILE* fsnk = NULL; 
 #endif
+
+#ifndef __linux__
+//fake alsa implementation
+int snd_pcm_hw_params(snd_pcm_t* pcm, snd_pcm_hw_params_t* params) {
+    (void)pcm;
+    (void)params;
+    return 0;
+}
+
+snd_pcm_format_width(snd_pcm_format_t format) {
+    (void)format;
+    return 16;
+}
+#endif // !__linux__
+
 
 void sound_hw_init()
 {
@@ -185,28 +190,6 @@ void freq_map_init()
     }
     band_boundaries[0] = 0;
     set_bin_to_sum();
-}
-
-void DiscoSource_init(int n_leds, int time_speed)
-{
-    BasicSource_init(&disco_source.basic_source, n_leds, time_speed, source_config.colors[DISCO_SOURCE]);
-    sound_hw_init();
-    aubio_init();
-    freq_map_init();
-}
-
-void DiscoSource_destruct()
-{
-    del_aubio_tempo(disco_source.aubio_tempo);
-    del_fvec(disco_source.tempo_in);
-    del_fvec(disco_source.tempo_out);
-#ifdef __linux__
-    snd_pcm_close(disco_source.capture_handle);
-#endif
-    free(disco_source.hw_read_buffer);
-    free(fq_sums);
-    free(bin_to_sum);
-    free(band_boundaries);
 }
 
 /**
@@ -436,4 +419,28 @@ int DiscoSource_update_leds(int frame, ws2811_t* ledstrip)
         ledstrip->channel[0].leds[led] = color;
     }
     return 1;
+}
+
+void DiscoSource_destruct()
+{
+    del_aubio_tempo(disco_source.aubio_tempo);
+    del_fvec(disco_source.tempo_in);
+    del_fvec(disco_source.tempo_out);
+#ifdef __linux__
+    snd_pcm_close(disco_source.capture_handle);
+#endif
+    free(disco_source.hw_read_buffer);
+    free(fq_sums);
+    free(bin_to_sum);
+    free(band_boundaries);
+}
+
+void DiscoSource_init(int n_leds, int time_speed)
+{
+    BasicSource_init(&disco_source.basic_source, n_leds, time_speed, source_config.colors[DISCO_SOURCE]);
+    disco_source.basic_source.update = DiscoSource_update_leds;
+    disco_source.basic_source.destruct = DiscoSource_destruct;
+    sound_hw_init();
+    aubio_init();
+    freq_map_init();
 }

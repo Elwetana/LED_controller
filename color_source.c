@@ -11,26 +11,9 @@
 #endif // __linux__
 
 #include "common_source.h"
-#include "color_source_priv.h"
 #include "color_source.h"
 
-static ColorSource color_source = { .first_update = 0 };
-
-SourceFunctions color_functions = {
-    .init = ColorSource_init,
-    .update = ColorSource_update_leds,
-    .destruct = ColorSource_destruct
-};
-
-void ColorSource_init(int n_leds, int time_speed)
-{
-    BasicSource_init(&color_source.basic_source, n_leds, time_speed, source_config.colors[COLOR_SOURCE]);
-    color_source.first_update = 0;
-}
-
-void ColorSource_destruct()
-{
-}
+ColorSource color_source = { .first_update = 0 };
 
 //returns 1 if leds were updated, 0 if update is not necessary
 int ColorSource_update_leds(int frame, ws2811_t* ledstrip)
@@ -46,4 +29,11 @@ int ColorSource_update_leds(int frame, ws2811_t* ledstrip)
     }
     color_source.first_update = 1;
     return 1;
+}
+
+void ColorSource_init(int n_leds, int time_speed)
+{
+    BasicSource_init(&color_source.basic_source, n_leds, time_speed, source_config.colors[COLOR_SOURCE]);
+    color_source.first_update = 0;
+    color_source.basic_source.update = ColorSource_update_leds;
 }

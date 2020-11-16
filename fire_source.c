@@ -11,12 +11,11 @@
 #endif // __linux__
 
 #include "common_source.h"
-#include "fire_source_priv.h"
 #include "fire_source.h"
 #include "colours.h"
 
 
-static FireSource fire_source =
+FireSource fire_source =
 {
     .ember_data = {
         [0] =
@@ -61,11 +60,6 @@ static FireSource fire_source =
     }
 };
 
-SourceFunctions fire_functions = {
-    .init = FireSource_init,
-    .update = FireSource_update_leds,
-    .destruct = FireSource_destruct
-};
 
 static void Ember_init(Ember* e, int i, EmberData* ember_data, int age, enum EmberType ember_type) 
 {
@@ -131,7 +125,7 @@ static void FireSource_build_embers(FireSource* fs)
     int n_embers = 0;
     for(int ember_type = 0; ember_type < N_EMBER_TYPES; ++ember_type)
     {
-        fs->n_embers_per_type[ember_type] = 1 + (int)((fs->basic.n_leds + 1) / fs->ember_data[ember_type].x_space);
+        fs->n_embers_per_type[ember_type] = 1 + (int)((fs->basic_source.n_leds + 1) / fs->ember_data[ember_type].x_space);
         n_embers += fs->n_embers_per_type[ember_type];
     }
     fs->embers = (Ember*) malloc(sizeof(Ember) * n_embers);
@@ -151,21 +145,6 @@ static void FireSource_build_embers(FireSource* fs)
 
 
 /* -- FIRE SOURCE -- */
-
-void FireSource_init(int n_leds, int time_speed)
-{
-    BasicSource_init(&fire_source.basic, n_leds, time_speed, source_config.colors[EMBERS_SOURCE]);
-    FireSource_build_embers(&fire_source);
-}
-
-void FireSource_destruct()
-{
-    for(int i = 0; i < fire_source.n_embers; ++i)
-    {
-        Ember_destruct(&(fire_source.embers[i]));
-    }
-    free(fire_source.embers);
-}
 
 static void FireSource_update_embers(FireSource* fs, int frame)
 {
@@ -197,7 +176,7 @@ static int FireSource_get_gradient_index(FireSource* fs, int led, int frame)
         Ember* e = &(fs->embers[ember]);
         if(fabsf(led - e->x) < 6.0f * e->sigma)
         {
-	    float contrib = Ember_get_contrib(e, led, fs->basic.time_speed * frame);
+	    float contrib = Ember_get_contrib(e, led, fs->basic_source.time_speed * frame);
             y += contrib; 
         }
     }
@@ -210,13 +189,30 @@ int FireSource_update_leds(int frame, ws2811_t* ledstrip)
 {
     if(frame % 4 == 0)
     {
-        FireSource_update_embers(&fire_source, fire_source.basic.time_speed * frame);
+        FireSource_update_embers(&fire_source, fire_source.basic_source.time_speed * frame);
     }
     //TODO: move into common_source and/or main loop
-    for(int led = 0; led < fire_source.basic.n_leds; ++led)
+    for(int led = 0; led < fire_source.basic_source.n_leds; ++led)
     {
         int y = FireSource_get_gradient_index(&fire_source, led, frame);
-        ledstrip->channel[0].leds[led] = fire_source.basic.gradient.colors[y];
+        ledstrip->channel[0].leds[led] = fire_source.basic_source.gradient.colors[y];
     }
     return 1;
+}
+
+void FireSource_destruct()
+{
+    for (int i = 0; i < fire_source.n_embers; ++i)
+    {
+        Ember_destruct(&(fire_source.embers[i]));
+    }
+    free(fire_source.embers);
+}
+
+void FireSource_init(int n_leds, int time_speed)
+{
+    BasicSource_init(&fire_source.basic_source, n_leds, time_speed, source_config.colors[EMBERS_SOURCE]);
+    fire_source.basic_source.update = FireSource_update_leds;
+    fire_source.basic_source.destruct = FireSource_destruct;
+    FireSource_build_embers(&fire_source);
 }
