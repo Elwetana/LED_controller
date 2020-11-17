@@ -60,12 +60,16 @@
     <ClCompile Include="..\xmas_source.c">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="..\faketime.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <None Include="packages.config" />
   </ItemGroup>
   <ItemGroup>
     <Text Include="..\config" />
+    <Text Include="..\geometry" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\include\color_source.h">

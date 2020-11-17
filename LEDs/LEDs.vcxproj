@@ -152,6 +152,7 @@
     <ClCompile Include="..\common_source.c" />
     <ClCompile Include="..\disco_source.c" />
     <ClCompile Include="..\fakeled.c" />
+    <ClCompile Include="..\faketime.c" />
     <ClCompile Include="..\fire_source.c" />
     <ClCompile Include="..\getopt.c" />
     <ClCompile Include="..\led_main.c" />
@@ -168,7 +169,14 @@
       <DeploymentContent Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">true</DeploymentContent>
       <FileType>Document</FileType>
     </Text>
-    <None Include="packages.config" />
+    <Text Include="..\geometry">
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">false</ExcludedFromBuild>
+      <DeploymentContent Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</DeploymentContent>
+      <FileType>Document</FileType>
+    </Text>
+    <None Include="packages.config">
+      <FileType>Document</FileType>
+    </None>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\include\chaser_source.h" />

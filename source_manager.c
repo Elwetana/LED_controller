@@ -226,7 +226,7 @@ void SourceConfig_destruct()
 {
     for (int i = 0; i < N_SOURCE_TYPES; ++i)
     {
-        SourceColors_destruct(source_config.colors[i]);
+        SourceColors_destruct(source_config.colors[i]); //TODO: this crashes if not all sources have their colours in config
     }
     free(source_config.colors);
 }
