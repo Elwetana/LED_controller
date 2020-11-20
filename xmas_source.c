@@ -10,11 +10,11 @@
 #include "ws2811.h"
 #else
 #include "fakeled.h"
+#include "faketime.h"
 #endif // __linux__
 
 #include "common_source.h"
 #include "colours.h"
-#include "faketime.h"
 #include "xmas_source.h"
 
 enum dir {
@@ -24,7 +24,7 @@ enum dir {
     LEFT = 6
 };
 
-#pragma region Snowflakes
+//#pragma region Snowflakes
 typedef struct PeriodData {
     long lastChange;
     long nextChange;
@@ -48,10 +48,10 @@ void Snowflakes_init()
 {
     for (int flake = 0; flake < C_N_SNOWFLAKES; ++flake)
     {
-        diff_data[flake].basePeriod = 1500;
-        diff_data[flake].periodRange = 500;
-        spec_data[flake].basePeriod = 2000;
-        spec_data[flake].periodRange = 500;
+        diff_data[flake].basePeriod  = 750;
+        diff_data[flake].periodRange = 250;
+        spec_data[flake].basePeriod = 1000;
+        spec_data[flake].periodRange = 300;
     }
 }
 
@@ -65,7 +65,7 @@ double get_angle(period_data_t* period_data, long frame)
     return 2 * M_PI * (double)(frame - period_data->lastChange) / (double)(period_data->nextChange - period_data->lastChange);
 }
 
-#pragma endregion Snowflakes
+//#pragma endregion Snowflakes
 
 //returns 1 if leds were updated, 0 if update is not necessary
 int XmasSource_update_leds(int frame, ws2811_t* ledstrip)
@@ -84,14 +84,15 @@ int XmasSource_update_leds(int frame, ws2811_t* ledstrip)
         hsl[0] = hue / 360.f;
         hsl[1] = (float)sat;
         double l = lgt + k_diff * cos(diff_alpha) + k_spec * pow(cos(spec_alpha + spec_phase), spec);
+        if(l > 1) l = 1;
         hsl[2] = (float)l;
 
         ledstrip->channel[0].leds[led] = hsl2rgb(hsl);
         for (int dir = 0; dir < 8; dir += 2)
         {
-            if ((xmas_source.geometry[flake][dir] != -1) && (xmas_source.geometry[flake][dir + 1] == 1))
+            if ((xmas_source.geometry[led][dir] != -1) && (xmas_source.geometry[led][dir + 1] == 1))
             {
-                int neighbor = xmas_source.geometry[flake][dir];
+                int neighbor = xmas_source.geometry[led][dir];
                 hsl[2] = 0.5 * (float)pow(l, 2);
                 ledstrip->channel[0].leds[neighbor] = hsl2rgb(hsl);
             }
@@ -170,6 +171,12 @@ void XmasSource_read_geometry()
             &xmas_source.geometry[row][LEFT], &xmas_source.geometry[row][LEFT+1]);
         row++;
     }
+    printf("Row 90: %d %d - %d %d - %d %d - %d %d\n", xmas_source.geometry[90][UP], xmas_source.geometry[90][UP+1],
+            xmas_source.geometry[90][RIGHT], xmas_source.geometry[90][RIGHT+1],
+            xmas_source.geometry[90][DOWN], xmas_source.geometry[90][DOWN+1],
+            xmas_source.geometry[90][LEFT], xmas_source.geometry[90][LEFT+1]);
+
+
 }
 
 void XmasSource_destruct()
@@ -185,6 +192,7 @@ void XmasSource_init(int n_leds, int time_speed)
     xmas_source.basic_source.process_message = XmasSource_process_message;
     xmas_source.first_update = 0;
     XmasSource_read_geometry();
+    Snowflakes_init();
 }
 
 XmasSource xmas_source = {

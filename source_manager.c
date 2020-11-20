@@ -133,6 +133,7 @@ void process_source_message(const char* param)
     {
         strncpy(source_name, param, 63);
     }
+    //TODO: change into message to colour source
     if (color != -1) // this is only possible for color source now
     {
         SourceColors_destruct(source_config.colors[COLOR_SOURCE]);
@@ -187,7 +188,7 @@ void check_message()
             printf("Malformatted URL-encoded text: %s\n", param);
             goto quit;
         }
-        printf("Sending message to source: %s\n", message);
+        //printf("Sending message to source: %s\n", message);
         SourceManager_process_message(message);
     }
     else
