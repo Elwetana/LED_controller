@@ -5,6 +5,7 @@ typedef enum XMAS_MODE
 {
 	XM_DEBUG,
 	XM_SNOWFLAKES,
+	XM_GLITTER,    //colours are here: https://coolors.co/1b4501-7b143b-dd992c-550d82-d1b6e2
 	N_XMAS_MODES
 } XMAS_MODE_t;
 

@@ -86,7 +86,7 @@ void Snowflakes_update()
     {
         if (random_01() < move_chance)
         {
-            printf("Moving snowflake number %d\n", flake);
+            //printf("Moving snowflake number %d\n", flake);
             //now we need to generate direction, let's say there is 50% chance of going down
             float r01 = random_01();
             int dir = (r01 < 0.5f) ? DOWN : (r01 < 0.75f) ? LEFT : RIGHT;
@@ -104,12 +104,11 @@ void Snowflakes_update()
                 //we cannot move this snowflake any further, so we shall spawn a new one
                 int new_flake = (int)(random_01() * xmas_source.n_heads);
                 snowflakes[flake] = xmas_source.heads[new_flake];
-                printf("Spawning new flake at %d\n", xmas_source.springs[new_flake]);
+                //printf("Spawning new flake at %d\n", xmas_source.springs[new_flake]);
             }
         }
     }
 }
-
 
 static int update_leds_snowflake(int frame, ws2811_t* ledstrip)
 {
@@ -148,6 +147,39 @@ static int update_leds_snowflake(int frame, ws2811_t* ledstrip)
 //Snowflakes }}}
 
 
+//Glitter {{{
+
+const float glitter_chance = 0.001;
+
+static int update_leds_glitter(ws2811_t* ledstrip)
+{
+    if (xmas_source.first_update == 0)
+    {
+        //for the first update, we set every led randomly to one of the five glitter colours -- these are gradient colours 1-5
+        for (int led = 0; led < xmas_source.basic_source.n_leds; ++led)
+        {
+            int col = (int)(random_01() * 5) + 1;
+            ledstrip->channel[0].leds[led] = xmas_source.basic_source.gradient.colors[col];
+        }
+        xmas_source.first_update = 1;
+        return 1;
+    }
+    else
+    {
+        //in all subsequent updates there is a chance that exactly one led will be set to new colour (or possibly the same colour)
+        if (random_01() < glitter_chance)
+        {
+            int led = (int)(random_01() * xmas_source.basic_source.n_leds);
+            int col = (int)(random_01() * 5) + 1;
+            ledstrip->channel[0].leds[led] = xmas_source.basic_source.gradient.colors[col];
+            return 1;
+        }
+    }
+    return 0;
+}
+
+//Glitter }}}
+
 static int update_leds_debug(ws2811_t* ledstrip)
 {
     if (xmas_source.first_update > 0)
@@ -160,22 +192,6 @@ static int update_leds_debug(ws2811_t* ledstrip)
     }
     xmas_source.first_update = 1;
     return 1;
-}
-
-//returns 1 if leds were updated, 0 if update is not necessary
-int XmasSource_update_leds(int frame, ws2811_t* ledstrip)
-{
-    switch (xmas_source.mode)
-    {
-    case XM_SNOWFLAKES:
-        return update_leds_snowflake(frame, ledstrip);
-    case XM_DEBUG:
-        return update_leds_debug(ledstrip);
-    case N_XMAS_MODES:
-        printf("Invalid Xmas Source Mode\n");
-        break;
-    }
-    return 0;
 }
 
 //Geometry calculations {{{
@@ -330,6 +346,24 @@ void XmasSource_process_message(const char* msg)
         printf("Unknown target: %s, payload was: %s\n", target, payload);
 }
 
+//returns 1 if leds were updated, 0 if update is not necessary
+int XmasSource_update_leds(int frame, ws2811_t* ledstrip)
+{
+    switch (xmas_source.mode)
+    {
+    case XM_SNOWFLAKES:
+        return update_leds_snowflake(frame, ledstrip);
+    case XM_GLITTER:
+        return update_leds_glitter(ledstrip);
+    case XM_DEBUG:
+        return update_leds_debug(ledstrip);
+    case N_XMAS_MODES:
+        printf("Invalid Xmas Source Mode\n");
+        break;
+    }
+    return 0;
+}
+
 void XmasSource_destruct()
 {
     free(xmas_source.geometry);
@@ -343,7 +377,7 @@ void XmasSource_init(int n_leds, int time_speed)
     xmas_source.basic_source.update = XmasSource_update_leds;
     xmas_source.basic_source.destruct = XmasSource_destruct;
     xmas_source.basic_source.process_message = XmasSource_process_message;
-    xmas_source.mode = XM_SNOWFLAKES;
+    xmas_source.mode = XM_GLITTER;
     xmas_source.first_update = 0;
     XmasSource_read_geometry();
     Snowflakes_init();
