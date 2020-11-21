@@ -149,7 +149,18 @@ static int update_leds_snowflake(int frame, ws2811_t* ledstrip)
 
 //Glitter {{{
 
-const float glitter_chance = 0.001;
+const float glitter_chance = 0.0055555;
+
+static int select_glitter_color()
+{
+    //1 - green 30% , 2 -- red 30%, 3 -- bright orange 10%, 4 -- purple 10%, 5 -- blue 20%
+    float r01 = random_01();
+    if(r01 < 0.30f) return 1;
+    if(r01 < 0.60f) return 2;
+    if(r01 < 0.70f) return 3;
+    if(r01 < 0.80f) return 4;
+    return 5;
+}
 
 static int update_leds_glitter(ws2811_t* ledstrip)
 {
@@ -158,8 +169,9 @@ static int update_leds_glitter(ws2811_t* ledstrip)
         //for the first update, we set every led randomly to one of the five glitter colours -- these are gradient colours 1-5
         for (int led = 0; led < xmas_source.basic_source.n_leds; ++led)
         {
-            int col = (int)(random_01() * 5) + 1;
+            int col = select_glitter_color();
             ledstrip->channel[0].leds[led] = xmas_source.basic_source.gradient.colors[col];
+            printf("Setting led %d to color %x\n", led, xmas_source.basic_source.gradient.colors[col]);
         }
         xmas_source.first_update = 1;
         return 1;
@@ -170,8 +182,9 @@ static int update_leds_glitter(ws2811_t* ledstrip)
         if (random_01() < glitter_chance)
         {
             int led = (int)(random_01() * xmas_source.basic_source.n_leds);
-            int col = (int)(random_01() * 5) + 1;
+            int col = select_glitter_color();
             ledstrip->channel[0].leds[led] = xmas_source.basic_source.gradient.colors[col];
+            printf("Resetting led %d to color %x\n", led, xmas_source.basic_source.gradient.colors[col]);
             return 1;
         }
     }
@@ -373,11 +386,11 @@ void XmasSource_destruct()
 
 void XmasSource_init(int n_leds, int time_speed)
 {
-    BasicSource_init(&xmas_source.basic_source, n_leds, time_speed, source_config.colors[COLOR_SOURCE]);
+    BasicSource_init(&xmas_source.basic_source, n_leds, time_speed, source_config.colors[XMAS_SOURCE]);
     xmas_source.basic_source.update = XmasSource_update_leds;
     xmas_source.basic_source.destruct = XmasSource_destruct;
     xmas_source.basic_source.process_message = XmasSource_process_message;
-    xmas_source.mode = XM_GLITTER;
+    xmas_source.mode = XM_SNOWFLAKES;
     xmas_source.first_update = 0;
     XmasSource_read_geometry();
     Snowflakes_init();
