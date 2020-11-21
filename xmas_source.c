@@ -87,8 +87,9 @@ void Snowflakes_update()
         if (random_01() < move_chance)
         {
             printf("Moving snowflake number %d\n", flake);
-            //now we need to randomly generate 2, 4 or 6
-            int dir = 2 * ((int)(random_01() * 3)) + 2;
+            //now we need to generate direction, let's say there is 50% chance of going down
+            float r01 = random_01();
+            int dir = (r01 < 0.5f) ? DOWN : (r01 < 0.75f) ? LEFT : RIGHT;
             //check if there is a led in this direction
             if ((xmas_source.geometry[snowflakes[flake]][dir] == -1) || (xmas_source.geometry[snowflakes[flake]][dir + 1] != 1))
             {
@@ -101,8 +102,9 @@ void Snowflakes_update()
             else
             {
                 //we cannot move this snowflake any further, so we shall spawn a new one
-                int new_flake = (int)(random_01() * xmas_source.n_springs);
-                snowflakes[flake] = xmas_source.springs[new_flake];
+                int new_flake = (int)(random_01() * xmas_source.n_heads);
+                snowflakes[flake] = xmas_source.heads[new_flake];
+                printf("Spawning new flake at %d\n", xmas_source.springs[new_flake]);
             }
         }
     }
@@ -140,6 +142,7 @@ static int update_leds_snowflake(int frame, ws2811_t* ledstrip)
         }
     }
     Snowflakes_update();
+    return 1;
 }
 
 //Snowflakes }}}
@@ -156,6 +159,7 @@ static int update_leds_debug(ws2811_t* ledstrip)
         ledstrip->channel[0].leds[led] = led == xmas_source.led_index ? xmas_source.basic_source.gradient.colors[0] : 0;
     }
     xmas_source.first_update = 1;
+    return 1;
 }
 
 //returns 1 if leds were updated, 0 if update is not necessary
@@ -167,8 +171,11 @@ int XmasSource_update_leds(int frame, ws2811_t* ledstrip)
         return update_leds_snowflake(frame, ledstrip);
     case XM_DEBUG:
         return update_leds_debug(ledstrip);
+    case N_XMAS_MODES:
+        printf("Invalid Xmas Source Mode\n");
+        break;
     }
-    return 1;
+    return 0;
 }
 
 //Geometry calculations {{{
