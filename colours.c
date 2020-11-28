@@ -93,6 +93,22 @@ ws2811_led_t hsl2rgb(float* hsl)
     return float2int(r) << 16 | float2int(g) << 8 | float2int(b);
 }
 
+void lerp_hsl(float* hsl1, float* hsl2, float t, float* hsl_out)
+{
+    for (int i = 0; i < 3; ++i)
+    {
+        hsl_out[i] = hsl1[i] + t * (hsl2[i] - hsl1[i]);
+    }
+    if (((hsl2[0] - hsl1[0])*(hsl2[0] - hsl1[0])) > 0.25f) //std::abs(hsl1a.x - hsl2.x) > 0.5f
+    {
+        hsl_out[0] += (hsl1[0] > hsl2[0]) ? -1 : 1;
+    }
+    if (hsl_out[0] < 0)
+    {
+        hsl_out[0] += 1;
+    }
+}
+
 void fill_gradient(ws2811_led_t* gradient, int offset, ws2811_led_t from_color, ws2811_led_t to_color, int steps, int max_index)
 {
     float hsl_from[3];
