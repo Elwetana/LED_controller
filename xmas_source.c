@@ -395,6 +395,10 @@ static void Icicles_init()
 
 static int update_leds_icicles(ws2811_t* ledstrip)
 {
+    for (int led = 0; led < xmas_source.basic_source.n_leds; ++led)
+    {
+        ledstrip->channel[0].leds[led] = 0;
+    }
     for (int i = 0; i < C_N_ICICLES; ++i)
     {
         MovingLed_move(&icicles[i].led);
@@ -403,9 +407,9 @@ static int update_leds_icicles(ws2811_t* ledstrip)
         float hsl[3];
         hsl[0] = icicles[i].hsl[0];
         hsl[1] = icicles[i].hsl[1];
-        hsl[0] = icicles[i].hsl[2] * origin_intensity;
+        hsl[2] = icicles[i].hsl[2] * origin_intensity;
         ledstrip->channel[0].leds[icicles[i].led.origin] = hsl2rgb(hsl);
-        hsl[0] = icicles[i].hsl[2] * destination_intensity;
+        hsl[2] = icicles[i].hsl[2] * destination_intensity;
         ledstrip->channel[0].leds[geometry.neighbors[icicles[i].led.origin][icicles[i].led.direction]] = hsl2rgb(hsl);
         //printf("Updated %d led with intensity %f\n", icicles[i].led.origin, origin_intensity);
     }
