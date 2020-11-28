@@ -200,6 +200,7 @@ void MovingLed_move(moving_led_t* moving_led)
         return;
     double time_seconds = (xmas_source.basic_source.time_delta / (long)1e3) / (double)1e6;
     moving_led->distance += moving_led->speed * time_seconds;
+    printf("distance: %f\n", moving_led->distance);
     if (moving_led->distance >= 1.0f)
     {
         moving_led->distance -= 1.0f;
@@ -403,6 +404,7 @@ static int update_leds_icicles(ws2811_t* ledstrip)
         ledstrip->channel[0].leds[icicles[i].led.origin] = hsl2rgb(hsl);
         hsl[0] = icicles[i].hsl[2] * destination_intensity;
         ledstrip->channel[0].leds[geometry.neighbors[icicles[i].led.origin][icicles[i].led.direction]] = hsl2rgb(hsl);
+        //printf("Updated %d led with intensity %f\n", icicles[i].led.origin, origin_intensity);
     }
 
     return 1;
@@ -469,13 +471,14 @@ void XmasSource_process_message(const char* msg)
 //returns 1 if leds were updated, 0 if update is not necessary
 int XmasSource_update_leds(int frame, ws2811_t* ledstrip)
 {
-    printf("%llu\n", xmas_source.basic_source.time_delta);
     switch (xmas_source.mode)
     {
     case XM_SNOWFLAKES:
         return update_leds_snowflake(frame, ledstrip);
     case XM_GLITTER:
         return update_leds_glitter(ledstrip);
+    case XM_ICICLES:
+        return update_leds_icicles(ledstrip);
     case XM_DEBUG:
         return update_leds_debug(ledstrip);
     case N_XMAS_MODES:
@@ -490,6 +493,7 @@ void XmasSource_destruct()
     free(geometry.neighbors);
     free(geometry.heads);
     free(geometry.springs);
+    printf("Geometry freed\n");
 }
 
 void XmasSource_init(int n_leds, int time_speed)
@@ -498,10 +502,11 @@ void XmasSource_init(int n_leds, int time_speed)
     xmas_source.basic_source.update = XmasSource_update_leds;
     xmas_source.basic_source.destruct = XmasSource_destruct;
     xmas_source.basic_source.process_message = XmasSource_process_message;
-    xmas_source.mode = XM_SNOWFLAKES;
+    xmas_source.mode = XM_ICICLES;
     xmas_source.first_update = 0;
     XmasSource_read_geometry();
     Snowflakes_init();
+    Icicles_init();
 }
 
 XmasSource xmas_source = {
