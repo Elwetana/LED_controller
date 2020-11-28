@@ -51,6 +51,9 @@ enum SourceType string_to_SourceType(char* source)
 }
 
 static BasicSource* sources[N_SOURCE_TYPES];
+static uint64_t* current_time;
+static uint64_t* time_delta;
+
 
 struct LedParam {
     int led_count;
@@ -83,6 +86,14 @@ void set_source(enum SourceType source_type)
     SourceManager_update_leds = sources[source_type]->update;
     SourceManager_destruct_source = sources[source_type]->destruct;
     SourceManager_process_message = sources[source_type]->process_message;
+    current_time = &sources[source_type]->current_time;
+    time_delta = &sources[source_type]->time_delta;
+}
+
+void SourceManager_set_time(uint64_t time_ns, uint64_t time_delta_ns)
+{
+    *current_time = time_ns;
+    *time_delta = time_delta_ns;
 }
 
 inline int ishex(int x)

@@ -235,7 +235,9 @@ int main(int argc, char *argv[])
 
         // Now we have to save the current time so that we know how much time we spent working
         clock_gettime(CLOCK_MONOTONIC_RAW, &now);
-        last_update_ns = now.tv_sec * (long long)1e9 + now.tv_nsec;
+        current_ns = now.tv_sec * (long long)1e9 + now.tv_nsec;
+        SourceManager_set_time(current_ns, current_ns - last_update_ns);
+        last_update_ns = current_ns;
         if (SourceManager_update_leds(frame, &ledstring))
         {
             if ((ret = ws2811_render(&ledstring)) != WS2811_SUCCESS)
