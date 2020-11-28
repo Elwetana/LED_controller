@@ -38,7 +38,7 @@ typedef enum dir {
 // order is up, right, down, left
 // the last column (12) is the height, i.e. how many leds there are below me
 struct SGeometry {
-    int (*neighbors)[HEIGHT];
+    int (*neighbors)[HEIGHT + 1];
     int* heads;
     int* springs;
     int n_heads;
@@ -200,10 +200,13 @@ void MovingLed_move(moving_led_t* moving_led)
         return;
     double time_seconds = (xmas_source.basic_source.time_delta / (long)1e3) / (double)1e6;
     moving_led->distance += moving_led->speed * time_seconds;
-    printf("distance: %f\n", moving_led->distance);
     if (moving_led->distance >= 1.0f)
     {
-        moving_led->distance -= 1.0f;
+        moving_led->distance -= 1;
+        if (moving_led->distance > 1.0f) //this should never happen, it means that we have travelled more than one led distance in one frame
+        {
+            moving_led->distance = 0.9f;
+        }
         moving_led->origin = geometry.neighbors[moving_led->origin][moving_led->direction];
         if ((geometry.neighbors[moving_led->origin][moving_led->direction] == -1) // we cannot keep moving in this direction
             || moving_led->stop_at_destination)                                   // or we are supposed to stop at destination

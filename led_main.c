@@ -205,14 +205,15 @@ int main(int argc, char *argv[])
     printf("Init successful\n");
     srand(0); //for testing we want random to be stable
 
-    uint64_t last_update_ns = 0;
+    struct timespec now;
+    clock_gettime(CLOCK_MONOTONIC_RAW, &now);
+    uint64_t last_update_ns = now.tv_sec * (long long)1e9 + now.tv_nsec;
     long frame = 0;
 #ifdef PRINT_FPS
     uint64_t fps_time_ns = 0;
 #endif
     while (running)
     {
-        struct timespec now;
         clock_gettime(CLOCK_MONOTONIC_RAW, &now);
         uint64_t current_ns = now.tv_sec * (long long)1e9 + now.tv_nsec;
         uint64_t delta_us = (current_ns - last_update_ns) / (long)1e3;
