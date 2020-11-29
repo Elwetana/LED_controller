@@ -93,7 +93,7 @@ ws2811_led_t hsl2rgb(float* hsl)
     return float2int(r) << 16 | float2int(g) << 8 | float2int(b);
 }
 
-void lerp_hsl(float* hsl1, float* hsl2, float t, float* hsl_out)
+void lerp_hsl(const float* hsl1, const float* hsl2, const float t, float* hsl_out)
 {
     for (int i = 0; i < 3; ++i)
     {

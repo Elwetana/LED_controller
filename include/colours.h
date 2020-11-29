@@ -21,7 +21,7 @@ void rgb2hsl(ws2811_led_t rgb, float* hsl);
 ws2811_led_t hsl2rgb(float* hsl);
 void test_rgb2hsl();
 void fill_gradient(ws2811_led_t* gradient, int offset, ws2811_led_t from_color, ws2811_led_t to_color, int steps, int max_index);
-void lerp_hsl(float* hsl1, float* hsl2, float t, float* hsl_out);
+void lerp_hsl(const float* hsl1, const float* hsl2, const float t, float* hsl_out);
 void test_rgb2hsl();
 
 #ifdef __cplusplus

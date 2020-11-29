@@ -226,6 +226,17 @@ int MovingLed_get_intensity(moving_led_t* moving_led, float* at_origin, float* a
 {
     *at_origin = (1 - moving_led->distance);
     *at_destination = moving_led->distance;
+    /*
+    if(moving_led->distance > 0.5f)
+    {
+        *at_origin = 0.f;
+        *at_destination = 1.f;
+    }
+    else
+    {
+        *at_origin = 1.f;
+        *at_destination = 0.f;
+    }// */
     return 1;
 }
 
@@ -245,7 +256,7 @@ const double k_spec = 0.5 / 1.5;
 const double spec_phase = M_PI / 2;
 const double spec = 20;
 
-const double move_chance = 0.001; //chance per frame
+const double move_chance = 0.01; //chance per frame
 
 void Snowflakes_init()
 {
@@ -258,7 +269,7 @@ void Snowflakes_init()
         spec_data[flake].periodRange =   2000;
 
         snowflakes[flake].origin = flake * d;
-        snowflakes[flake].speed = 1.0f;
+        snowflakes[flake].speed = 0.5f;
         snowflakes[flake].distance = 0;
         snowflakes[flake].is_moving = 0;
         snowflakes[flake].stop_at_destination = 1;
@@ -269,12 +280,17 @@ void Snowflakes_update()
 {
     for (int flake = 0; flake < C_N_SNOWFLAKES; flake++)
     {
-        if ((snowflakes[flake].is_moving == 0) && (random_01() < move_chance))
+        if(snowflakes[flake].is_moving)
+        {
+            MovingLed_move(&snowflakes[flake]);
+            continue;
+        }
+        if (random_01() < move_chance)
         {
             //printf("Moving snowflake number %d\n", flake);
             //now we need to generate direction, let's say there is 50% chance of going down
             float r01 = random_01();
-            int dir = (r01 < 0.5f) ? DOWN : (r01 < 0.75f) ? LEFT : RIGHT;
+            int dir = (r01 < 0.999f) ? DOWN : (r01 < 0.75f) ? LEFT : RIGHT;
             //check if there is a led in this direction
             if ((geometry.neighbors[snowflakes[flake].origin][dir] == -1) || (geometry.neighbors[snowflakes[flake].origin][dir + 1] != 1))
             {
@@ -290,14 +306,16 @@ void Snowflakes_update()
                 //we cannot move this snowflake any further, so we shall spawn a new one
                 int new_flake = (int)(random_01() * geometry.n_heads);
                 snowflakes[flake].origin = geometry.heads[new_flake];
-                //printf("Spawning new flake at %d\n", xmas_source.springs[new_flake]);
+                printf("Spawning new flake %i at %d\n", flake, new_flake);
             }
         }
     }
+    //printf("SF update finished\n");
 }
 
 static int update_leds_snowflake(ws2811_t* ledstrip)
 {
+    Snowflakes_update();
     for (int led = 0; led < xmas_source.basic_source.n_leds; ++led)
     {
         ledstrip->channel[0].leds[led] = 0;
@@ -307,20 +325,24 @@ static int update_leds_snowflake(ws2811_t* ledstrip)
     //      4 7
     //    3 0 1 5  -> for snowflake moving to right
     //      2 6
-    int flake_leds[8] = { -1, -1, -1, -1, -1, -1, -1, -1 };
+    int flake_leds[8];
     for (int flake = 0; flake < C_N_SNOWFLAKES; ++flake)
     {
         flake_leds[0] = snowflakes[flake].origin;
+        for(int i = 1; i < 8; ++i)
+        {
+            flake_leds[i] = -1;
+        }
         dir_t dir = UP;
         if (snowflakes[flake].is_moving)
         {
-            int dir = snowflakes[flake].direction;
+            dir = snowflakes[flake].direction;
         }
         for (int i = 0; i < 4; ++i)
         {
             flake_leds[1 + i] = geometry.neighbors[flake_leds[0]][(dir + 2 * i) % 8];
         }
-        if (snowflakes[flake].is_moving);
+        if (snowflakes[flake].is_moving)
         {
             flake_leds[5] = geometry.neighbors[flake_leds[1]][dir];
             flake_leds[6] = geometry.neighbors[flake_leds[1]][(dir + 2) % 8];
@@ -336,6 +358,7 @@ static int update_leds_snowflake(ws2811_t* ledstrip)
         hsl[0] = hue / 360.f;
         hsl[1] = (float)sat;
         double l = lgt + k_diff * cos(diff_alpha) + k_spec * pow(cos(spec_alpha + spec_phase), spec);
+        l = lgt;
         if (l > 1) l = 1;
         float l_origin = (float)l * origin_intensity + 0.5 * (float)l * dest_intensity;
         float l_destin = (float)l * dest_intensity + 0.5 * (float)l * origin_intensity;
@@ -345,18 +368,18 @@ static int update_leds_snowflake(ws2811_t* ledstrip)
         ledstrip->channel[0].leds[flake_leds[0]] = hsl2rgb(hsl);
         hsl[2] = l_destin;
         if(flake_leds[1] != -1) ledstrip->channel[0].leds[flake_leds[1]] = hsl2rgb(hsl);
-        hsl[2] = (float)pow(l_origin, 2) * 0.5;
+        /*hsl[2] = (float)pow(l_origin, 2) * 0.5;
         for (int i = 2; i < 5; ++i)
         {
             if (flake_leds[i] != -1) ledstrip->channel[0].leds[flake_leds[i]] = hsl2rgb(hsl);
-        }
+        }*/
         hsl[2] = (float)pow(l_destin, 2) * 0.5;
-        for (int i = 5; i < 8; ++i)
+        if (flake_leds[5] != -1) ledstrip->channel[0].leds[flake_leds[5]] = hsl2rgb(hsl);
+        /*for (int i = 5; i < 8; ++i)
         {
             if (flake_leds[i] != -1) ledstrip->channel[0].leds[flake_leds[i]] = hsl2rgb(hsl);
-        }
+        }*/
     }
-    Snowflakes_update();
     return 1;
 }
 
@@ -410,31 +433,33 @@ static int update_leds_glitter(ws2811_t* ledstrip)
 
 #pragma region Icicles
 
-typedef struct Icicle
-{
-    moving_led_t led;
-    float hsl[3];
-} icicle_t;
-
-static icicle_t* icicles;
+static moving_led_t* icicles;
 static const int n_icicle_leds = 4;
-static const float icicle_weights[] = { 1.f, 0.5f, 0.25f, 0.125f };
+static float icicle_colors[6][3]; // 0 and 5 are black before and after, the rest is { 6, 7, 8, 9 } in config
 
 static void Icicles_init()
 {
-    icicles = malloc(sizeof(icicle_t) * geometry.n_heads);
+    icicles = malloc(sizeof(moving_led_t) * geometry.n_heads);
     for (int i = 0; i < geometry.n_heads; ++i)
     {
-        icicles[i].led.origin = geometry.heads[i];
-        icicles[i].led.direction = DOWN;
-        icicles[i].led.distance = 0;
-        icicles[i].led.speed = 3.0f;
-        icicles[i].led.stop_at_destination = 0;
-        icicles[i].led.is_moving = 1;
-        icicles[i].hsl[0] = 210.f / 360.f;
-        icicles[i].hsl[1] = 0.8f;
-        icicles[i].hsl[2] = 0.5f;
+        icicles[i].origin = geometry.heads[i];
+        icicles[i].direction = DOWN;
+        icicles[i].distance = 0;
+        icicles[i].speed = 5.f;
+        icicles[i].stop_at_destination = 0;
+        icicles[i].is_moving = 1;
     }
+    for(int i = 0; i < n_icicle_leds; ++i)
+    {
+        rgb2hsl(xmas_source.basic_source.gradient.colors[6+i], icicle_colors[i+1]);
+    }
+    for(int i = 0; i < 3; ++i)
+    {
+        icicle_colors[0][i] = icicle_colors[1][i];
+        icicle_colors[n_icicle_leds + 1][i] = icicle_colors[n_icicle_leds][i];
+    }
+    icicle_colors[0][2] = 0.f;
+    icicle_colors[n_icicle_leds + 1][2] = 0.f;
 }
 
 //  Let's assume that origin/destination split in 0th led is 0.3/0.7
@@ -451,27 +476,26 @@ static int update_leds_icicles(ws2811_t* ledstrip)
     }
     for (int i = 0; i < geometry.n_heads; ++i)
     {
-        MovingLed_move(&icicles[i].led);
-        if (icicles[i].led.is_moving == 0)
+        MovingLed_move(&icicles[i]);
+        if (icicles[i].is_moving == 0)
         {
-            icicles[i].led.origin = geometry.heads[i];
-            icicles[i].led.is_moving = 1;
+            icicles[i].origin = geometry.heads[i];
+            icicles[i].is_moving = 1;
         }
         float origin_intensity, destination_intensity;
-        MovingLed_get_intensity(&icicles[i].led, &origin_intensity, &destination_intensity);
-        float hsl[3];
-        hsl[0] = icicles[i].hsl[0];
-        hsl[1] = icicles[i].hsl[1];
-        hsl[2] = icicles[i].hsl[2] * origin_intensity;
-        int led = icicles[i].led.origin;
-        ledstrip->channel[0].leds[led] = hsl2rgb(hsl);
-        for (int ice_led = 1; ice_led < n_icicle_leds; ++ice_led)
+        MovingLed_get_intensity(&icicles[i], &origin_intensity, &destination_intensity);
+        int led = icicles[i].origin;
+        float hsl_out[3];
+        lerp_hsl(icicle_colors[0], icicle_colors[1], origin_intensity, hsl_out);
+        ledstrip->channel[0].leds[led] = hsl2rgb(hsl_out);
+        for (int ice_led = 0; ice_led < n_icicle_leds; ++ice_led)
         {
-            led = geometry.neighbors[led][icicles[i].led.direction];
+            led = geometry.neighbors[led][icicles[i].direction];
             if (led == -1)
                 break;
-            hsl[2] = icicles[i].hsl[2] * (origin_intensity * icicle_weights[ice_led] + destination_intensity * icicle_weights[ice_led - 1]);
-            ledstrip->channel[0].leds[led] = hsl2rgb(hsl);
+            lerp_hsl(icicle_colors[ice_led+1], icicle_colors[ice_led+2], origin_intensity, hsl_out);
+            ledstrip->channel[0].leds[led] = hsl2rgb(hsl_out);
+            //if(i == 0) printf("Ice led %i: %f\n", led, hsl[2]);
         }
         //printf("Updated %d led with intensity %f\n", icicles[i].led.origin, origin_intensity);
     }
@@ -573,7 +597,7 @@ void XmasSource_init(int n_leds, int time_speed)
     xmas_source.basic_source.update = XmasSource_update_leds;
     xmas_source.basic_source.destruct = XmasSource_destruct;
     xmas_source.basic_source.process_message = XmasSource_process_message;
-    xmas_source.mode = XM_ICICLES;
+    xmas_source.mode = XM_SNOWFLAKES;
     xmas_source.first_update = 0;
     XmasSource_read_geometry();
     Snowflakes_init();
