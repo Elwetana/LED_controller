@@ -248,14 +248,12 @@ int MovingLed_get_intensity(moving_led_t* moving_led, float* at_origin, float* a
 static moving_led_t snowflakes[C_N_SNOWFLAKES];
 static period_data_t diff_data[C_N_SNOWFLAKES];
 static period_data_t spec_data[C_N_SNOWFLAKES];
-const int hue = 210;
-const double sat = 0.8;
-const double lgt = 0.5;
 const double k_diff = 0.5 / 2.;
 const double k_spec = 0.5 / 1.5;
 const double spec_phase = M_PI / 2;
 const double spec = 20;
-
+static const int C_SNOWFLAKE_COLOR = 11;
+static hsl_t snowflake_colors[3]; // 0 is black before and after, 2 is the actual snowflake, 1 is the edge
 const double move_chance = 0.01; //chance per frame
 
 void Snowflakes_init()
@@ -274,6 +272,10 @@ void Snowflakes_init()
         snowflakes[flake].is_moving = 0;
         snowflakes[flake].stop_at_destination = 1;
     }
+    rgb2hsl(xmas_source.basic_source.gradient.colors[C_SNOWFLAKE_COLOR], &snowflake_colors[2]);
+    rgb2hsl(xmas_source.basic_source.gradient.colors[C_SNOWFLAKE_COLOR+1], &snowflake_colors[1]);
+    snowflake_colors[0] = snowflake_colors[1];
+    snowflake_colors[0].l = 0.f;
 }
 
 void Snowflakes_update()
@@ -349,36 +351,36 @@ static int update_leds_snowflake(ws2811_t* ledstrip)
             flake_leds[7] = geometry.neighbors[flake_leds[1]][(dir + 6) % 8];
         }
 
-        float origin_intensity, dest_intensity;
-        MovingLed_get_intensity(&snowflakes[flake], &origin_intensity, &dest_intensity);
+        float origin_intensity, destination_intensity;
+        MovingLed_get_intensity(&snowflakes[flake], &origin_intensity, &destination_intensity);
 
         double diff_alpha = get_angle(&diff_data[flake]);
         double spec_alpha = get_angle(&spec_data[flake]);
-        hsl_t hsl;
-        hsl.h = hue / 360.f;
-        hsl.s = (float)sat;
-        double l = lgt + k_diff * cos(diff_alpha) + k_spec * pow(cos(spec_alpha + spec_phase), spec);
-        l = lgt;
-        if (l > 1) l = 1;
-        float l_origin = (float)l * origin_intensity + 0.5 * (float)l * dest_intensity;
-        float l_destin = (float)l * dest_intensity + 0.5 * (float)l * origin_intensity;
+        double l = k_diff * cos(diff_alpha) + k_spec * pow(cos(spec_alpha + spec_phase), spec);
 
+        hsl_t centre_col = snowflake_colors[2];
+        centre_col.l += l;
+        if (centre_col.l + l > 1.f) centre_col.l = 1.f;
+        hsl_t edge_col = snowflake_colors[1];
+        edge_col.l += (float)pow(l, 2);
+        if (edge_col.l > 1.f) edge_col.l = 1.f;
+        hsl_t black_col = snowflake_colors[0];
         //now set all leds
-        hsl.l = l_origin;
-        ledstrip->channel[0].leds[flake_leds[0]] = hsl2rgb(&hsl);
-        hsl.l = l_destin;
-        if(flake_leds[1] != -1) ledstrip->channel[0].leds[flake_leds[1]] = hsl2rgb(&hsl);
-        /*hsl[2] = (float)pow(l_origin, 2) * 0.5;
+        hsl_t res;
+        lerp_hsl(&edge_col, &centre_col, destination_intensity, &res);
+        ledstrip->channel[0].leds[flake_leds[0]] = hsl2rgb(&res);
+        lerp_hsl(&centre_col, &edge_col, destination_intensity, &res);
+        if (flake_leds[1] != -1) ledstrip->channel[0].leds[flake_leds[1]] = hsl2rgb(&res);
+        lerp_hsl(&black_col, &edge_col, destination_intensity, &res);
         for (int i = 2; i < 5; ++i)
         {
-            if (flake_leds[i] != -1) ledstrip->channel[0].leds[flake_leds[i]] = hsl2rgb(hsl);
-        }*/
-        hsl.l = (float)pow(l_destin, 2) * 0.5;
-        if (flake_leds[5] != -1) ledstrip->channel[0].leds[flake_leds[5]] = hsl2rgb(&hsl);
-        /*for (int i = 5; i < 8; ++i)
+            if (flake_leds[i] != -1) ledstrip->channel[0].leds[flake_leds[i]] = hsl2rgb(&res);
+        }
+        lerp_hsl(&edge_col, &black_col, destination_intensity, &res);
+        for (int i = 5; i < 8; ++i)
         {
-            if (flake_leds[i] != -1) ledstrip->channel[0].leds[flake_leds[i]] = hsl2rgb(hsl);
-        }*/
+            if (flake_leds[i] != -1) ledstrip->channel[0].leds[flake_leds[i]] = hsl2rgb(&res);
+        }
     }
     return 1;
 }
