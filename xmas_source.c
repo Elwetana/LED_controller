@@ -252,7 +252,7 @@ const double k_diff = 0.5 / 2.;
 const double k_spec = 0.5 / 1.5;
 const double spec_phase = M_PI / 2;
 const double spec = 20;
-static const int C_SNOWFLAKE_COLOR = 10;
+static const int C_SNOWFLAKE_COLOR = 11;
 static hsl_t snowflake_colors[3]; // 0 is black before and after, 2 is the actual snowflake, 1 is the edge
 const double move_chance = 0.01; //chance per frame
 
@@ -276,7 +276,7 @@ void Snowflakes_init()
     rgb2hsl(xmas_source.basic_source.gradient.colors[C_SNOWFLAKE_COLOR+1], &snowflake_colors[1]);
     snowflake_colors[0] = snowflake_colors[1];
     snowflake_colors[0].l = 0.f;
-    for(int i = 0; i < 3; ++i) printf("Color %i -- h: %f, s: %f, l: %f\n", i, snowflake_colors[i].h, snowflake_colors[i].s, snowflake_colors[i].l);
+    //for(int i = 0; i < 3; ++i) printf("Color %i -- h: %f, s: %f, l: %f\n", i, snowflake_colors[i].h, snowflake_colors[i].s, snowflake_colors[i].l);
 }
 
 void Snowflakes_update()
@@ -293,7 +293,7 @@ void Snowflakes_update()
             //printf("Moving snowflake number %d\n", flake);
             //now we need to generate direction, let's say there is 50% chance of going down
             float r01 = random_01();
-            int dir = (r01 < 0.999f) ? DOWN : (r01 < 0.75f) ? LEFT : RIGHT;
+            int dir = (r01 < 0.5f) ? DOWN : (r01 < 0.75f) ? LEFT : RIGHT;
             //check if there is a led in this direction
             if ((geometry.neighbors[snowflakes[flake].origin][dir] == -1) || (geometry.neighbors[snowflakes[flake].origin][dir + 1] != 1))
             {
@@ -314,6 +314,15 @@ void Snowflakes_update()
         }
     }
     //printf("SF update finished\n");
+}
+
+
+static void add_close_neighbor(int* add_to, int add_index, int led_index, dir_t dir)
+{
+    if(geometry.neighbors[led_index][dir + 1] == 1)
+    {
+        add_to[add_index] = geometry.neighbors[led_index][dir];
+    }
 }
 
 static int update_leds_snowflake(ws2811_t* ledstrip)
@@ -343,13 +352,13 @@ static int update_leds_snowflake(ws2811_t* ledstrip)
         }
         for (int i = 0; i < 4; ++i)
         {
-            flake_leds[1 + i] = geometry.neighbors[flake_leds[0]][(dir + 2 * i) % 8];
+            add_close_neighbor(flake_leds, flake_leds[0], i + 1, (dir + 2 * i) % 8);
         }
         if (snowflakes[flake].is_moving)
         {
-            flake_leds[5] = geometry.neighbors[flake_leds[1]][dir];
-            flake_leds[6] = geometry.neighbors[flake_leds[1]][(dir + 2) % 8];
-            flake_leds[7] = geometry.neighbors[flake_leds[1]][(dir + 6) % 8];
+            add_close_neighbor(flake_leds, flake_leds[1], 5, dir);
+            add_close_neighbor(flake_leds, flake_leds[1], 6, (dir + 2) % 8);
+            add_close_neighbor(flake_leds, flake_leds[1], 7, (dir + 6) % 8);
         }
 
         float origin_intensity, destination_intensity;
@@ -358,7 +367,6 @@ static int update_leds_snowflake(ws2811_t* ledstrip)
         double diff_alpha = get_angle(&diff_data[flake]);
         double spec_alpha = get_angle(&spec_data[flake]);
         double l = k_diff * cos(diff_alpha) + k_spec * pow(cos(spec_alpha + spec_phase), spec);
-        l = 0;
 
         hsl_t centre_col = snowflake_colors[2];
         centre_col.l += l;
@@ -369,17 +377,17 @@ static int update_leds_snowflake(ws2811_t* ledstrip)
         hsl_t black_col = snowflake_colors[0];
         //now set all leds
         hsl_t res;
-        lerp_hsl(&edge_col, &centre_col, destination_intensity, &res);
+        lerp_hsl(&edge_col, &centre_col, origin_intensity, &res);
         ledstrip->channel[0].leds[flake_leds[0]] = hsl2rgb(&res);
-        lerp_hsl(&centre_col, &edge_col, destination_intensity, &res);
+        lerp_hsl(&centre_col, &edge_col, origin_intensity, &res);
         if (flake_leds[1] != -1) ledstrip->channel[0].leds[flake_leds[1]] = hsl2rgb(&res);
-        lerp_hsl(&black_col, &edge_col, destination_intensity, &res);
-        for (int i = 2; i < 5; ++i)
+        lerp_hsl(&black_col, &edge_col, origin_intensity, &res);
+        for (int i = 2; i < 5; ++i) // 2,5
         {
             if (flake_leds[i] != -1) ledstrip->channel[0].leds[flake_leds[i]] = hsl2rgb(&res);
         }
-        lerp_hsl(&edge_col, &black_col, destination_intensity, &res);
-        for (int i = 5; i < 8; ++i)
+        lerp_hsl(&edge_col, &black_col, origin_intensity, &res);
+        for (int i = 5; i < 8; ++i) //5,8
         {
             if (flake_leds[i] != -1) ledstrip->channel[0].leds[flake_leds[i]] = hsl2rgb(&res);
         }
