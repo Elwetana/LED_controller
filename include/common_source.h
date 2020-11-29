@@ -40,10 +40,12 @@ typedef struct BasicSource
     SourceGradient gradient;
     uint64_t current_time; //in ns
     uint64_t time_delta;
+    void(*construct)();
     void(*init)(int, int);
     int(*update)(int, ws2811_t*);
     void(*destruct)();
     void(*process_message)(const char*);
+    void(*process_config)(const char*, const char*);
 } BasicSource;
 
 typedef struct SourceConfig {
@@ -52,6 +54,7 @@ typedef struct SourceConfig {
 
 extern SourceConfig source_config;
 
+void BasicSource_construct(BasicSource* basic_source);
 void BasicSource_init(BasicSource* basic_source, int n_leds, int time_speed, SourceColors* source_colors);
 float random_01();
 

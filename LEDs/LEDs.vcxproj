@@ -155,6 +155,7 @@
     <ClCompile Include="..\faketime.c" />
     <ClCompile Include="..\fire_source.c" />
     <ClCompile Include="..\getopt.c" />
+    <ClCompile Include="..\ini.c" />
     <ClCompile Include="..\led_main.c" />
     <ClCompile Include="..\listener.c" />
     <ClCompile Include="..\morse_source.c" />
@@ -174,6 +175,7 @@
       <DeploymentContent Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</DeploymentContent>
       <FileType>Document</FileType>
     </Text>
+    <None Include="config.ini" />
     <None Include="packages.config">
       <FileType>Document</FileType>
     </None>
@@ -189,6 +191,7 @@
     <ClInclude Include="..\include\faketime.h" />
     <ClInclude Include="..\include\fire_source.h" />
     <ClInclude Include="..\include\getopt.h" />
+    <ClInclude Include="..\include\ini.h" />
     <ClInclude Include="..\include\led_main.h" />
     <ClInclude Include="..\include\listener.h" />
     <ClInclude Include="..\include\morse_source.h" />

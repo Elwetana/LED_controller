@@ -83,14 +83,20 @@ void PerlinSource_destruct()
 void PerlinSource_init(int n_leds, int time_speed)
 {
     BasicSource_init(&perlin_source.basic_source, n_leds, time_speed, source_config.colors[PERLIN_SOURCE]);
+    PerlinSource_build_noise();
+}
+
+void PerlinSource_construct()
+{
+    BasicSource_construct(&perlin_source.basic_source);
+    perlin_source.basic_source.init = PerlinSource_init;
     perlin_source.basic_source.update = PerlinSource_update_leds;
     perlin_source.basic_source.destruct = PerlinSource_destruct;
-    PerlinSource_build_noise();
 }
 
 PerlinSource perlin_source =
 {
-    .basic_source.init = PerlinSource_init,
+    .basic_source.construct = PerlinSource_construct,
     .noise_freq = { 5, 11, 23, 47 },
     .noise_weight = { 8.0 / 15.0, 4.0 / 15.0, 2.0 / 15.0, 1.0 / 15.0 }
 };

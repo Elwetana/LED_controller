@@ -436,13 +436,19 @@ void DiscoSource_destruct()
 void DiscoSource_init(int n_leds, int time_speed)
 {
     BasicSource_init(&disco_source.basic_source, n_leds, time_speed, source_config.colors[DISCO_SOURCE]);
-    disco_source.basic_source.update = DiscoSource_update_leds;
-    disco_source.basic_source.destruct = DiscoSource_destruct;
     sound_hw_init();
     aubio_init();
     freq_map_init();
 }
 
+void DiscoSource_construct()
+{
+    BasicSource_construct(&disco_source.basic_source);
+    disco_source.basic_source.init = DiscoSource_init;
+    disco_source.basic_source.update = DiscoSource_update_leds;
+    disco_source.basic_source.destruct = DiscoSource_destruct;
+}
+
 DiscoSource disco_source = { 
-    .basic_source.init = DiscoSource_init 
+    .basic_source.construct = DiscoSource_construct
 };

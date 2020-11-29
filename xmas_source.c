@@ -22,6 +22,11 @@
 #include "xmas_source.h"
 
 
+struct {
+    int n_snowflakes;
+} config;
+
+
 #pragma region Geometry
 
 typedef enum dir {
@@ -352,13 +357,13 @@ static int update_leds_snowflake(ws2811_t* ledstrip)
         }
         for (int i = 0; i < 4; ++i)
         {
-            add_close_neighbor(flake_leds, flake_leds[0], i + 1, (dir + 2 * i) % 8);
+            add_close_neighbor(flake_leds, i + 1, flake_leds[0], (dir + 2 * i) % 8);
         }
         if (snowflakes[flake].is_moving)
         {
-            add_close_neighbor(flake_leds, flake_leds[1], 5, dir);
-            add_close_neighbor(flake_leds, flake_leds[1], 6, (dir + 2) % 8);
-            add_close_neighbor(flake_leds, flake_leds[1], 7, (dir + 6) % 8);
+            add_close_neighbor(flake_leds, 5, flake_leds[1], dir);
+            add_close_neighbor(flake_leds, 6, flake_leds[1], (dir + 2) % 8);
+            add_close_neighbor(flake_leds, 7, flake_leds[1], (dir + 6) % 8);
         }
 
         float origin_intensity, destination_intensity;
@@ -574,6 +579,12 @@ void XmasSource_process_message(const char* msg)
         printf("Unknown target: %s, payload was: %s\n", target, payload);
 }
 
+void XmasSource_process_config(const char* name, const char* value)
+{
+    printf("hello %s %s \n", name, value);
+
+}
+
 //returns 1 if leds were updated, 0 if update is not necessary
 int XmasSource_update_leds(int frame, ws2811_t* ledstrip)
 {
@@ -605,9 +616,6 @@ void XmasSource_destruct()
 void XmasSource_init(int n_leds, int time_speed)
 {
     BasicSource_init(&xmas_source.basic_source, n_leds, time_speed, source_config.colors[XMAS_SOURCE]);
-    xmas_source.basic_source.update = XmasSource_update_leds;
-    xmas_source.basic_source.destruct = XmasSource_destruct;
-    xmas_source.basic_source.process_message = XmasSource_process_message;
     xmas_source.mode = XM_SNOWFLAKES;
     xmas_source.first_update = 0;
     XmasSource_read_geometry();
@@ -615,13 +623,24 @@ void XmasSource_init(int n_leds, int time_speed)
     Icicles_init();
 }
 
+void XmasSource_construct()
+{
+    BasicSource_construct(&xmas_source.basic_source);
+    xmas_source.basic_source.init = XmasSource_init;
+    xmas_source.basic_source.update = XmasSource_update_leds;
+    xmas_source.basic_source.destruct = XmasSource_destruct;
+    xmas_source.basic_source.process_message = XmasSource_process_message;
+    xmas_source.basic_source.process_config = XmasSource_process_config;
+}
+
 XmasSource xmas_source = {
-    .basic_source.init = XmasSource_init,
+    .basic_source.construct = XmasSource_construct,
     .first_update = 0,
     .led_index = 0
 };
 
 #pragma endregion
+
 
 /*
     XINPUT_STATE state;

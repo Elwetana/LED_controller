@@ -42,7 +42,21 @@ void BasicSource_process_message(const char* msg)
     (void)msg;
 }
 
+void BasicSource_process_config(const char* name, const char* value)
+{
+    (void)name;
+    (void)value;
+}
+
 void BasicSource_destruct() {}
+
+void BasicSource_construct(BasicSource* basic_source)
+{
+    basic_source->update = BasicSource_update;
+    basic_source->destruct = BasicSource_destruct;
+    basic_source->process_message = BasicSource_process_message;
+    basic_source->process_config = BasicSource_process_config;
+}
 
 void BasicSource_init(BasicSource* basic_source, int n_leds, int time_speed, SourceColors* source_colors)
 {
@@ -52,7 +66,4 @@ void BasicSource_init(BasicSource* basic_source, int n_leds, int time_speed, Sou
     basic_source->n_leds = n_leds;
     basic_source->time_speed = time_speed;
     BasicSource_build_gradient(basic_source, colors, steps, n_steps);
-    basic_source->update = BasicSource_update;
-    basic_source->destruct = BasicSource_destruct;
-    basic_source->process_message = BasicSource_process_message;
 }

@@ -166,14 +166,20 @@ void FireSource_destruct()
 void FireSource_init(int n_leds, int time_speed)
 {
     BasicSource_init(&fire_source.basic_source, n_leds, time_speed, source_config.colors[EMBERS_SOURCE]);
+    FireSource_build_embers(&fire_source);
+}
+
+void FireSource_construct()
+{
+    BasicSource_construct(&fire_source.basic_source);
+    fire_source.basic_source.init = FireSource_init;
     fire_source.basic_source.update = FireSource_update_leds;
     fire_source.basic_source.destruct = FireSource_destruct;
-    FireSource_build_embers(&fire_source);
 }
 
 FireSource fire_source =
 {
-    .basic_source.init = FireSource_init,
+    .basic_source.construct = FireSource_construct,
     .ember_data = {
         [0] =
         {

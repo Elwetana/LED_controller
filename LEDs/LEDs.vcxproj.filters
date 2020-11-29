@@ -63,9 +63,13 @@
     <ClCompile Include="..\faketime.c">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="..\ini.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <None Include="packages.config" />
+    <None Include="config.ini" />
   </ItemGroup>
   <ItemGroup>
     <Text Include="..\config" />
@@ -121,6 +125,9 @@
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="..\include\xmas_source.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\include\ini.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>

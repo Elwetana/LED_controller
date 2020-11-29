@@ -33,10 +33,16 @@ void ColorSource_init(int n_leds, int time_speed)
 {
     BasicSource_init(&color_source.basic_source, n_leds, time_speed, source_config.colors[COLOR_SOURCE]);
     color_source.first_update = 0;
+}
+
+void ColorSource_construct()
+{
+    BasicSource_construct(&color_source.basic_source);
     color_source.basic_source.update = ColorSource_update_leds;
+    color_source.basic_source.init = ColorSource_init;
 }
 
 ColorSource color_source = {
-    .basic_source.init = ColorSource_init,
+    .basic_source.construct = ColorSource_construct,
     .first_update = 0 
 };

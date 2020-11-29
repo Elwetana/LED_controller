@@ -276,9 +276,6 @@ void MorseSource_destruct()
 void MorseSource_init(int n_leds, int time_speed)
 {
     BasicSource_init(&morse_source.basic_source, n_leds, time_speed, source_config.colors[MORSE_SOURCE]);
-    morse_source.basic_source.update = MorseSource_update_leds;
-    morse_source.basic_source.destruct = MorseSource_destruct;
-    morse_source.basic_source.process_message = MorseSource_process_message;
     MorseSource_read_font();
     MorseSource_convert_morse();
     MorseSource_assign_text("AHOJ URSULO");
@@ -286,8 +283,17 @@ void MorseSource_init(int n_leds, int time_speed)
     //MorseSource_debug_init();
 }
 
+void MorseSource_construct()
+{
+    BasicSource_construct(&morse_source.basic_source);
+    morse_source.basic_source.init = MorseSource_init;
+    morse_source.basic_source.update = MorseSource_update_leds;
+    morse_source.basic_source.destruct = MorseSource_destruct;
+    morse_source.basic_source.process_message = MorseSource_process_message;
+}
+
 MorseSource morse_source = {
-    .basic_source.init = MorseSource_init,
+    .basic_source.construct = MorseSource_construct,
     .cmorse = { ".-", "-...", "-.-.", "-..", ".", "..-.", "--.", "....", "..", ".---","-.-", ".-..", "--",
               "-.", "---", ".--.", "--.-", ".-.", "...", "-", "..-", "...-", ".--", "-..-", "-.--", "--.." },
     .morse = { {0, {0}} },

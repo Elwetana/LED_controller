@@ -20,6 +20,7 @@
 #include "xmas_source.h"
 #include "source_manager.h"
 #include "listener.h"
+#include "ini.h"
 
 enum SourceType string_to_SourceType(char* source)
 {
@@ -62,11 +63,16 @@ struct LedParam {
 static struct LedParam led_param;
 static void read_config();
 
+void SourceManager_construct_sources()
+{
+    for(enum SourceType source_type = EMBERS_SOURCE; source_type < N_SOURCE_TYPES; ++source_type)
+    {
+        sources[source_type]->construct();
+    }
+}
+
 void SourceManager_init(enum SourceType source_type, int led_count, int time_speed)
 {
-    read_config();
-    Listener_init();
-
     led_param.led_count = led_count;
     led_param.time_speed = time_speed;
 
@@ -77,6 +83,10 @@ void SourceManager_init(enum SourceType source_type, int led_count, int time_spe
     sources[MORSE_SOURCE]  = &morse_source.basic_source;
     sources[DISCO_SOURCE]  = &disco_source.basic_source;
     sources[XMAS_SOURCE]   = &xmas_source.basic_source;
+    SourceManager_construct_sources();
+
+    Listener_init();
+    read_config();
     set_source(source_type);
 }
 
@@ -243,9 +253,8 @@ void SourceConfig_destruct()
     free(source_config.colors);
 }
 
-static void read_config()
+static void read_color_config()
 {
-    SourceConfig_init();
     FILE* config = fopen("config", "r");
     if (config == NULL) {
         printf("Config not found\n");
@@ -290,4 +299,17 @@ static void read_config()
         sc->colors[n_steps] = color;
         SourceConfig_add_color(name, sc);
     }
+}
+
+static void ini_file_handler(void* user, const char* section, const char* name, const char* value)
+{
+    enum SourceType source_type = string_to_SourceType(section);
+    sources[source_type]->process_config(name, value);
+}
+
+static void read_config()
+{
+    SourceConfig_init();
+    read_color_config();
+    ini_parse("config.ini", ini_file_handler, NULL);
 }
