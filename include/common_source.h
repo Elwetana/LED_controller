@@ -45,7 +45,7 @@ typedef struct BasicSource
     int(*update)(int, ws2811_t*);
     void(*destruct)();
     void(*process_message)(const char*);
-    void(*process_config)(const char*, const char*);
+    int(*process_config)(const char*, const char*);
 } BasicSource;
 
 typedef struct SourceConfig {

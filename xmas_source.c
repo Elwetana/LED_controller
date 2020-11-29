@@ -23,7 +23,31 @@
 
 
 struct {
+    //snowflakes
     int n_snowflakes;
+    float k_diff;
+    float k_spec;
+    float spec_phase;
+    float spec;
+    int snowflake_color;
+    float move_chance;
+    long diff_base_period;
+    long diff_period_range;
+    long spec_base_period;
+    long spec_period_range;
+    float down_chance;
+    float left_chance;
+    //glitter
+    float glitter_chance;
+    int glitter_color;
+    float glt_green;
+    float glt_red;
+    float glt_orange;
+    float glt_purple;
+    float glt_blue;
+    //icicles
+    int n_icicle_leds;
+    float icicle_speed;
 } config;
 
 
@@ -43,15 +67,13 @@ typedef enum dir {
 // index of upper neighbor, distance to upper neighbor, index of right neighbor, distance to right neighbor, ...
 // order is up, right, down, left
 // the last column (12) is the height, i.e. how many leds there are below me
-struct SGeometry {
+static struct {
     int (*neighbors)[HEIGHT + 1];
     int* heads;
     int* springs;
     int n_heads;
     int n_springs;
-};
-
-static struct SGeometry geometry;
+} geometry;
 
 //Geometry calculations {{{ 
 // These functions are only called during init
@@ -249,27 +271,23 @@ int MovingLed_get_intensity(moving_led_t* moving_led, float* at_origin, float* a
 
 #pragma region Snowflakes
 
-#define C_N_SNOWFLAKES 5
-static moving_led_t snowflakes[C_N_SNOWFLAKES];
-static period_data_t diff_data[C_N_SNOWFLAKES];
-static period_data_t spec_data[C_N_SNOWFLAKES];
-const double k_diff = 0.5 / 2.;
-const double k_spec = 0.5 / 1.5;
-const double spec_phase = M_PI / 2;
-const double spec = 20;
-static const int C_SNOWFLAKE_COLOR = 11;
+static moving_led_t* snowflakes;
+static period_data_t* diff_data;
+static period_data_t* spec_data;
 static hsl_t snowflake_colors[3]; // 0 is black before and after, 2 is the actual snowflake, 1 is the edge
-const double move_chance = 0.01; //chance per frame
 
 void Snowflakes_init()
 {
-    int d = (int)(xmas_source.basic_source.n_leds / C_N_SNOWFLAKES);
-    for (int flake = 0; flake < C_N_SNOWFLAKES; ++flake)
+    snowflakes = malloc(sizeof(moving_led_t) * config.n_snowflakes);
+    diff_data = malloc(sizeof(period_data_t) * config.n_snowflakes);
+    spec_data = malloc(sizeof(period_data_t) * config.n_snowflakes);
+    int d = (int)(xmas_source.basic_source.n_leds / config.n_snowflakes);
+    for (int flake = 0; flake < config.n_snowflakes; ++flake)
     {
-        diff_data[flake].basePeriod  =  20000;
-        diff_data[flake].periodRange =   7500;
-        spec_data[flake].basePeriod  =  30000;
-        spec_data[flake].periodRange =   2000;
+        diff_data[flake].basePeriod  = config.diff_base_period;
+        diff_data[flake].periodRange = config.diff_period_range;
+        spec_data[flake].basePeriod  = config.spec_base_period;
+        spec_data[flake].periodRange = config.spec_period_range;
 
         snowflakes[flake].origin = flake * d;
         snowflakes[flake].speed = 0.5f;
@@ -277,8 +295,8 @@ void Snowflakes_init()
         snowflakes[flake].is_moving = 0;
         snowflakes[flake].stop_at_destination = 1;
     }
-    rgb2hsl(xmas_source.basic_source.gradient.colors[C_SNOWFLAKE_COLOR], &snowflake_colors[2]);
-    rgb2hsl(xmas_source.basic_source.gradient.colors[C_SNOWFLAKE_COLOR+1], &snowflake_colors[1]);
+    rgb2hsl(xmas_source.basic_source.gradient.colors[config.snowflake_color], &snowflake_colors[2]);
+    rgb2hsl(xmas_source.basic_source.gradient.colors[config.snowflake_color+1], &snowflake_colors[1]);
     snowflake_colors[0] = snowflake_colors[1];
     snowflake_colors[0].l = 0.f;
     //for(int i = 0; i < 3; ++i) printf("Color %i -- h: %f, s: %f, l: %f\n", i, snowflake_colors[i].h, snowflake_colors[i].s, snowflake_colors[i].l);
@@ -286,19 +304,19 @@ void Snowflakes_init()
 
 void Snowflakes_update()
 {
-    for (int flake = 0; flake < C_N_SNOWFLAKES; flake++)
+    for (int flake = 0; flake < config.n_snowflakes; flake++)
     {
         if(snowflakes[flake].is_moving)
         {
             MovingLed_move(&snowflakes[flake]);
             continue;
         }
-        if (random_01() < move_chance)
+        if (random_01() < config.move_chance)
         {
             //printf("Moving snowflake number %d\n", flake);
             //now we need to generate direction, let's say there is 50% chance of going down
             float r01 = random_01();
-            int dir = (r01 < 0.5f) ? DOWN : (r01 < 0.75f) ? LEFT : RIGHT;
+            int dir = (r01 < config.down_chance) ? DOWN : (r01 < (config.down_chance + config.left_chance)) ? LEFT : RIGHT;
             //check if there is a led in this direction
             if ((geometry.neighbors[snowflakes[flake].origin][dir] == -1) || (geometry.neighbors[snowflakes[flake].origin][dir + 1] != 1))
             {
@@ -321,7 +339,6 @@ void Snowflakes_update()
     //printf("SF update finished\n");
 }
 
-
 static void add_close_neighbor(int* add_to, int add_index, int led_index, dir_t dir)
 {
     if(geometry.neighbors[led_index][dir + 1] == 1)
@@ -343,7 +360,7 @@ static int update_leds_snowflake(ws2811_t* ledstrip)
     //    3 0 1 5  -> for snowflake moving to right
     //      2 6
     int flake_leds[8];
-    for (int flake = 0; flake < C_N_SNOWFLAKES; ++flake)
+    for (int flake = 0; flake < config.n_snowflakes; ++flake)
     {
         flake_leds[0] = snowflakes[flake].origin;
         for(int i = 1; i < 8; ++i)
@@ -371,7 +388,7 @@ static int update_leds_snowflake(ws2811_t* ledstrip)
 
         double diff_alpha = get_angle(&diff_data[flake]);
         double spec_alpha = get_angle(&spec_data[flake]);
-        double l = k_diff * cos(diff_alpha) + k_spec * pow(cos(spec_alpha + spec_phase), spec);
+        double l = config.k_diff * cos(diff_alpha) + config.k_spec * pow(cos(spec_alpha + config.spec_phase), config.spec);
 
         hsl_t centre_col = snowflake_colors[2];
         centre_col.l += l;
@@ -404,17 +421,15 @@ static int update_leds_snowflake(ws2811_t* ledstrip)
 
 #pragma region Glitter
 
-const float glitter_chance = 0.0055555;
-
 static int select_glitter_color()
 {
     //1 - green 30% , 2 -- red 30%, 3 -- bright orange 10%, 4 -- purple 10%, 5 -- blue 20%
     float r01 = random_01();
-    if(r01 < 0.30f) return 1;
-    if(r01 < 0.60f) return 2;
-    if(r01 < 0.70f) return 3;
-    if(r01 < 0.80f) return 4;
-    return 5;
+    if (r01 < config.glt_green)  return 0; else r01 -= config.glt_green;
+    if (r01 < config.glt_red)    return 1; else r01 -= config.glt_red;
+    if (r01 < config.glt_orange) return 2; else r01 -= config.glt_orange;
+    if (r01 < config.glt_purple) return 3;
+    return 4;
 }
 
 static int update_leds_glitter(ws2811_t* ledstrip)
@@ -425,7 +440,7 @@ static int update_leds_glitter(ws2811_t* ledstrip)
         for (int led = 0; led < xmas_source.basic_source.n_leds; ++led)
         {
             int col = select_glitter_color();
-            ledstrip->channel[0].leds[led] = xmas_source.basic_source.gradient.colors[col];
+            ledstrip->channel[0].leds[led] = xmas_source.basic_source.gradient.colors[config.glitter_color + col];
             printf("Setting led %d to color %x\n", led, xmas_source.basic_source.gradient.colors[col]);
         }
         xmas_source.first_update = 1;
@@ -434,7 +449,7 @@ static int update_leds_glitter(ws2811_t* ledstrip)
     else
     {
         //in all subsequent updates there is a chance that exactly one led will be set to new colour (or possibly the same colour)
-        if (random_01() < glitter_chance)
+        if (random_01() < config.glitter_chance)
         {
             int led = (int)(random_01() * xmas_source.basic_source.n_leds);
             int col = select_glitter_color();
@@ -451,30 +466,30 @@ static int update_leds_glitter(ws2811_t* ledstrip)
 #pragma region Icicles
 
 static moving_led_t* icicles;
-static const int n_icicle_leds = 4;
-static hsl_t icicle_colors[6]; // 0 and 5 are black before and after, the rest is { 6, 7, 8, 9 } in config
+static hsl_t* icicle_colors; // 0 and 5 are black before and after, the rest is { 6, 7, 8, 9 } in config
 static const int C_ICICLE_COLOR = 6;
 
 static void Icicles_init()
 {
+    icicle_colors = malloc(sizeof(hsl_t) * (config.n_icicle_leds + 2));
     icicles = malloc(sizeof(moving_led_t) * geometry.n_heads);
     for (int i = 0; i < geometry.n_heads; ++i)
     {
         icicles[i].origin = geometry.heads[i];
         icicles[i].direction = DOWN;
         icicles[i].distance = 0;
-        icicles[i].speed = 5.f;
+        icicles[i].speed = config.icicle_speed;
         icicles[i].stop_at_destination = 0;
         icicles[i].is_moving = 1;
     }
-    for(int i = 0; i < n_icicle_leds; ++i)
+    for(int i = 0; i < config.n_icicle_leds; ++i)
     {
         rgb2hsl(xmas_source.basic_source.gradient.colors[C_ICICLE_COLOR+i], &icicle_colors[i+1]);
     }
     icicle_colors[0] = icicle_colors[1];
     icicle_colors[0].l = 0.f;
-    icicle_colors[n_icicle_leds + 1] = icicle_colors[n_icicle_leds];
-    icicle_colors[n_icicle_leds + 1].l = 0.f;
+    icicle_colors[config.n_icicle_leds + 1] = icicle_colors[config.n_icicle_leds];
+    icicle_colors[config.n_icicle_leds + 1].l = 0.f;
 }
 
 /**
@@ -504,7 +519,7 @@ static int update_leds_icicles(ws2811_t* ledstrip)
         hsl_t hsl_out;
         lerp_hsl(&icicle_colors[0], &icicle_colors[1], origin_intensity, &hsl_out);
         ledstrip->channel[0].leds[led] = hsl2rgb(&hsl_out);
-        for (int ice_led = 0; ice_led < n_icicle_leds; ++ice_led)
+        for (int ice_led = 0; ice_led < config.n_icicle_leds; ++ice_led)
         {
             led = geometry.neighbors[led][icicles[i].direction];
             if (led == -1)
@@ -579,10 +594,98 @@ void XmasSource_process_message(const char* msg)
         printf("Unknown target: %s, payload was: %s\n", target, payload);
 }
 
-void XmasSource_process_config(const char* name, const char* value)
+int XmasSource_process_config(const char* name, const char* value)
 {
-    printf("hello %s %s \n", name, value);
-
+    if (strcasecmp(name, "n_snowflakes") == 0) {
+        config.n_snowflakes = atoi(value);
+        return 1;
+    }
+    if (strcasecmp(name, "k_diff", 6) == 0) {
+        config.k_diff = atof(value);
+        return 1;
+    }
+    if (strcasecmp(name, "k_spec") == 0) {
+        config.k_spec = atof(value);
+        return 1;
+    }
+    if (strcasecmp(name, "spec_phase") == 0) {
+        config.spec_phase = atof(value);
+        return 1;
+    }
+    if (strcasecmp(name, "spec") == 0) {
+        config.spec = atof(value);
+        return 1;
+    }
+    if (strcasecmp(name, "snowflake_color") == 0) {
+        config.snowflake_color = atoi(value);
+        return 1;
+    }
+    if (strcasecmp(name, "move_chance") == 0) {
+        config.move_chance = atof(value);
+        return 1;
+    }
+    if (strcasecmp(name, "diff_base_period") == 0) {
+        config.diff_base_period = atol(value);
+        return 1;
+    }
+    if (strcasecmp(name, "diff_period_range") == 0) {
+        config.diff_period_range = atol(value);
+        return 1;
+    }
+    if (strcasecmp(name, "spec_base_period") == 0) {
+        config.spec_base_period = atol(value);
+        return 1;
+    }
+    if (strcasecmp(name, "spec_period_range") == 0) {
+        config.spec_period_range = atol(value);
+        return 1;
+    }
+    if (strcasecmp(name, "down_chance") == 0) {
+        config.down_chance = atof(value);
+        return 1;
+    }
+    if (strcasecmp(name, "left_chance") == 0) {
+        config.left_chance = atof(value);
+        return 1;
+    }
+    if (strcasecmp(name, "glitter_chance") == 0) {
+        config.glitter_chance = atof(value);
+        return 1;
+    }
+    if (strcasecmp(name, "glitter_color") == 0) {
+        config.glitter_color = atoi(value);
+        return 1;
+    }
+    if (strcasecmp(name, "glt_green") == 0) {
+        config.glt_green = atof(value);
+        return 1;
+    }
+    if (strcasecmp(name, "glt_red") == 0) {
+        config.glt_red = atof(value);
+        return 1;
+    }
+    if (strcasecmp(name, "glt_orange") == 0) {
+        config.glt_orange = atof(value);
+        return 1;
+    }
+    if (strcasecmp(name, "glt_purple") == 0) {
+        config.glt_purple = atof(value);
+        return 1;
+    }
+    if (strcasecmp(name, "glt_blue") == 0) {
+        config.glt_blue = atof(value);
+        return 1;
+    }
+    if (strcasecmp(name, "n_icicle_leds") == 0) {
+        config.n_icicle_leds = atoi(value);
+        return 1;
+    }
+    if (strcasecmp(name, "icicle_speed") == 0) {
+        config.icicle_speed = atof(value);
+        return 1;
+    }
+    printf("Unknown config option %s with value %s\n", name, value);
+    return 0;
 }
 
 //returns 1 if leds were updated, 0 if update is not necessary
@@ -610,6 +713,10 @@ void XmasSource_destruct()
     free(geometry.neighbors);
     free(geometry.heads);
     free(geometry.springs);
+    free(snowflakes);
+    free(diff_data);
+    free(spec_data);
+    free(icicle_colors);
     free(icicles);
 }
 

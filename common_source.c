@@ -42,7 +42,7 @@ void BasicSource_process_message(const char* msg)
     (void)msg;
 }
 
-void BasicSource_process_config(const char* name, const char* value)
+int BasicSource_process_config(const char* name, const char* value)
 {
     (void)name;
     (void)value;

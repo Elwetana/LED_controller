@@ -305,8 +305,7 @@ static int ini_file_handler(void* user, const char* section, const char* name, c
 {
     (void)user;
     enum SourceType source_type = string_to_SourceType(section);
-    sources[source_type]->process_config(name, value);
-    return 1;
+    return sources[source_type]->process_config(name, value);
 }
 
 static void read_config()
