@@ -354,9 +354,9 @@ static int update_leds_snowflake(ws2811_t* ledstrip)
 
         double diff_alpha = get_angle(&diff_data[flake]);
         double spec_alpha = get_angle(&spec_data[flake]);
-        float hsl[3];
-        hsl[0] = hue / 360.f;
-        hsl[1] = (float)sat;
+        hsl_t hsl;
+        hsl.h = hue / 360.f;
+        hsl.s = (float)sat;
         double l = lgt + k_diff * cos(diff_alpha) + k_spec * pow(cos(spec_alpha + spec_phase), spec);
         l = lgt;
         if (l > 1) l = 1;
@@ -364,17 +364,17 @@ static int update_leds_snowflake(ws2811_t* ledstrip)
         float l_destin = (float)l * dest_intensity + 0.5 * (float)l * origin_intensity;
 
         //now set all leds
-        hsl[2] = l_origin;
-        ledstrip->channel[0].leds[flake_leds[0]] = hsl2rgb(hsl);
-        hsl[2] = l_destin;
-        if(flake_leds[1] != -1) ledstrip->channel[0].leds[flake_leds[1]] = hsl2rgb(hsl);
+        hsl.l = l_origin;
+        ledstrip->channel[0].leds[flake_leds[0]] = hsl2rgb(&hsl);
+        hsl.l = l_destin;
+        if(flake_leds[1] != -1) ledstrip->channel[0].leds[flake_leds[1]] = hsl2rgb(&hsl);
         /*hsl[2] = (float)pow(l_origin, 2) * 0.5;
         for (int i = 2; i < 5; ++i)
         {
             if (flake_leds[i] != -1) ledstrip->channel[0].leds[flake_leds[i]] = hsl2rgb(hsl);
         }*/
-        hsl[2] = (float)pow(l_destin, 2) * 0.5;
-        if (flake_leds[5] != -1) ledstrip->channel[0].leds[flake_leds[5]] = hsl2rgb(hsl);
+        hsl.l = (float)pow(l_destin, 2) * 0.5;
+        if (flake_leds[5] != -1) ledstrip->channel[0].leds[flake_leds[5]] = hsl2rgb(&hsl);
         /*for (int i = 5; i < 8; ++i)
         {
             if (flake_leds[i] != -1) ledstrip->channel[0].leds[flake_leds[i]] = hsl2rgb(hsl);
@@ -435,7 +435,8 @@ static int update_leds_glitter(ws2811_t* ledstrip)
 
 static moving_led_t* icicles;
 static const int n_icicle_leds = 4;
-static float icicle_colors[6][3]; // 0 and 5 are black before and after, the rest is { 6, 7, 8, 9 } in config
+static hsl_t icicle_colors[6]; // 0 and 5 are black before and after, the rest is { 6, 7, 8, 9 } in config
+static const int C_ICICLE_COLOR = 6;
 
 static void Icicles_init()
 {
@@ -451,23 +452,21 @@ static void Icicles_init()
     }
     for(int i = 0; i < n_icicle_leds; ++i)
     {
-        rgb2hsl(xmas_source.basic_source.gradient.colors[6+i], icicle_colors[i+1]);
+        rgb2hsl(xmas_source.basic_source.gradient.colors[C_ICICLE_COLOR+i], &icicle_colors[i+1]);
     }
-    for(int i = 0; i < 3; ++i)
-    {
-        icicle_colors[0][i] = icicle_colors[1][i];
-        icicle_colors[n_icicle_leds + 1][i] = icicle_colors[n_icicle_leds][i];
-    }
-    icicle_colors[0][2] = 0.f;
-    icicle_colors[n_icicle_leds + 1][2] = 0.f;
+    icicle_colors[0] = icicle_colors[1];
+    icicle_colors[0].l = 0.f;
+    icicle_colors[n_icicle_leds + 1] = icicle_colors[n_icicle_leds];
+    icicle_colors[n_icicle_leds + 1].l = 0.f;
 }
 
-//  Let's assume that origin/destination split in 0th led is 0.3/0.7
-//  Led Weight  Result
-//   0    1      0.3
-//   1    0.5    0.7 + 0.5 * 0.3
-//   2    0.25   0.5 * 0.7 + 0.25 * 0.3
-//  etc.
+/**
+* Every element in icicles is just the top led. We than render (n_icicle_leds + 1) leds:
+*   Actual LEDs:         o    o    o    o    o
+*   Icicle elements:       *    *    *    *      -> movement
+* We add two black elements in front and in the end and then we interpolate between icicle elements
+* to get the colour of the LED
+*/
 static int update_leds_icicles(ws2811_t* ledstrip)
 {
     for (int led = 0; led < xmas_source.basic_source.n_leds; ++led)
@@ -485,16 +484,16 @@ static int update_leds_icicles(ws2811_t* ledstrip)
         float origin_intensity, destination_intensity;
         MovingLed_get_intensity(&icicles[i], &origin_intensity, &destination_intensity);
         int led = icicles[i].origin;
-        float hsl_out[3];
-        lerp_hsl(icicle_colors[0], icicle_colors[1], origin_intensity, hsl_out);
-        ledstrip->channel[0].leds[led] = hsl2rgb(hsl_out);
+        hsl_t hsl_out;
+        lerp_hsl(&icicle_colors[0], &icicle_colors[1], origin_intensity, &hsl_out);
+        ledstrip->channel[0].leds[led] = hsl2rgb(&hsl_out);
         for (int ice_led = 0; ice_led < n_icicle_leds; ++ice_led)
         {
             led = geometry.neighbors[led][icicles[i].direction];
             if (led == -1)
                 break;
-            lerp_hsl(icicle_colors[ice_led+1], icicle_colors[ice_led+2], origin_intensity, hsl_out);
-            ledstrip->channel[0].leds[led] = hsl2rgb(hsl_out);
+            lerp_hsl(&icicle_colors[ice_led+1], &icicle_colors[ice_led+2], origin_intensity, &hsl_out);
+            ledstrip->channel[0].leds[led] = hsl2rgb(&hsl_out);
             //if(i == 0) printf("Ice led %i: %f\n", led, hsl[2]);
         }
         //printf("Updated %d led with intensity %f\n", icicles[i].led.origin, origin_intensity);
