@@ -3,7 +3,7 @@
 
 #include "common_source.h"
 
-enum SourceType string_to_SourceType(char*);
+enum SourceType string_to_SourceType(const char*);
 void SourceConfig_add_color(char* source_name, SourceColors* source_colors);
 void SourceConfig_destruct();
 void SourceColors_destruct(SourceColors* source_colors);

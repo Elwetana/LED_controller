@@ -22,7 +22,7 @@
 #include "listener.h"
 #include "ini.h"
 
-enum SourceType string_to_SourceType(char* source)
+enum SourceType string_to_SourceType(const char* source)
 {
     if (!strncasecmp("EMBERS", source, 6)) {
         return EMBERS_SOURCE;
@@ -301,10 +301,12 @@ static void read_color_config()
     }
 }
 
-static void ini_file_handler(void* user, const char* section, const char* name, const char* value)
+static int ini_file_handler(void* user, const char* section, const char* name, const char* value)
 {
+    (void)user;
     enum SourceType source_type = string_to_SourceType(section);
     sources[source_type]->process_config(name, value);
+    return 1;
 }
 
 static void read_config()

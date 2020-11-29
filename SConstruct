@@ -18,6 +18,7 @@ srcs = Split('''
     source_manager.c    
     colours.c
     listener.c
+    ini.c
 ''')
 
 
