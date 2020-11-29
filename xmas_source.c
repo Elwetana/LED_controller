@@ -252,7 +252,7 @@ const double k_diff = 0.5 / 2.;
 const double k_spec = 0.5 / 1.5;
 const double spec_phase = M_PI / 2;
 const double spec = 20;
-static const int C_SNOWFLAKE_COLOR = 11;
+static const int C_SNOWFLAKE_COLOR = 10;
 static hsl_t snowflake_colors[3]; // 0 is black before and after, 2 is the actual snowflake, 1 is the edge
 const double move_chance = 0.01; //chance per frame
 
@@ -276,6 +276,7 @@ void Snowflakes_init()
     rgb2hsl(xmas_source.basic_source.gradient.colors[C_SNOWFLAKE_COLOR+1], &snowflake_colors[1]);
     snowflake_colors[0] = snowflake_colors[1];
     snowflake_colors[0].l = 0.f;
+    for(int i = 0; i < 3; ++i) printf("Color %i -- h: %f, s: %f, l: %f\n", i, snowflake_colors[i].h, snowflake_colors[i].s, snowflake_colors[i].l);
 }
 
 void Snowflakes_update()
@@ -357,6 +358,7 @@ static int update_leds_snowflake(ws2811_t* ledstrip)
         double diff_alpha = get_angle(&diff_data[flake]);
         double spec_alpha = get_angle(&spec_data[flake]);
         double l = k_diff * cos(diff_alpha) + k_spec * pow(cos(spec_alpha + spec_phase), spec);
+        l = 0;
 
         hsl_t centre_col = snowflake_colors[2];
         centre_col.l += l;

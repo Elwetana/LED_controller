@@ -376,14 +376,14 @@ int DiscoSource_update_leds(int frame, ws2811_t* ledstrip)
     if(bpm > bpm_slow) bpmrange++;
     if(bpm > bpm_fast) bpmrange++;
     ws2811_led_t color = disco_source.basic_source.gradient.colors[bpmrange * 5 + fq_max_band];
-    float hsl[3];
-    rgb2hsl(color, hsl);
-    hsl[2] = (1.0f - phase) * 0.5f;
-    hsl[2] *= hsl[2];
+    hsl_t hsl;
+    rgb2hsl(color, &hsl);
+    hsl.l = (1.0f - phase) * 0.5f;
+    hsl.l *= hsl.l;
     float intensity = fq_max_sum / fq_norm;
-    hsl[1] = (intensity > 1) ? 1 : (intensity > (1.0f - phase) ? intensity : 1.0f - phase);
+    hsl.s = (intensity > 1) ? 1 : (intensity > (1.0f - phase) ? intensity : 1.0f - phase);
     //printf("band: %i color %x, s %f, l %f\n", fq_max_band, color, hsl[1], hsl[2]);
-    color = hsl2rgb(hsl);
+    color = hsl2rgb(&hsl);
     if (frame % 30000 == 0) {
         recalibrate_bpm_boundaries(bpm_statistics);
 #ifdef DISCODBG
@@ -393,7 +393,7 @@ int DiscoSource_update_leds(int frame, ws2811_t* ledstrip)
 #ifdef DISCODBG
     hsldist[0][fq_max_band]++;
     for(int i = 1; i < 3; ++i) {
-        int j = (int)(hsl[i] * 10);
+        int j = (int)(hsl.f[i] * 10);
         hsldist[i][j]++;
     }
     hsldist[3][bpmrange]++;

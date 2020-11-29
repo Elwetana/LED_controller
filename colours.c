@@ -145,19 +145,19 @@ void test_rgb2hsl()
 {
     const int n_tests = 5;
     ws2811_led_t inputs[5] = {0x00FF0000, 0x00808000, 0x00000080, 0x00A0A0A0, 0x0050C0F0};
-    float outputs[5][3] = {
-        {0.0f, 1.0f, 0.5f},
-        {1.0f/6.0f, 1.0f, 0.25f},
-        {4.0f/6.0f, 1.0f, 0.25f},
-        {0.0f, 0.0f, 0.63f},
-        {198.f/360.f, 0.84f, 0.63f}
+    hsl_t outputs[5] = {
+        {.h=0.0f,        .s=1.0f,  .l=0.5f },
+        {.h=1.0f/6.0f,   .s=1.0f,  .l=0.25f},
+        {.h=4.0f/6.0f,   .s=1.0f,  .l=0.25f},
+        {.h=0.0f,        .s=0.0f,  .l=0.63f},
+        {.h=198.f/360.f, .s=0.84f, .l=0.63f}
     };
     hsl_t hsl;
     for(int i = 0; i < n_tests; ++i)
     {
         rgb2hsl(inputs[i], &hsl);
-        printf("Expected %f %f %f,\nReceived %f %f %f\n\n", outputs[i][0], outputs[i][1], outputs[i][2], hsl.h, hsl.s, hsl.l);
-        ws2811_led_t rgb = hsl2rgb(outputs[i]);
+        printf("Expected %f %f %f,\nReceived %f %f %f\n\n", outputs[i].h, outputs[i].s, outputs[i].l, hsl.h, hsl.s, hsl.l);
+        ws2811_led_t rgb = hsl2rgb(&outputs[i]);
         printf("Expected %x,\nReceived %x\n\n", inputs[i], rgb);
         printf("---\n");
     }
