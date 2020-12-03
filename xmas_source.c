@@ -552,46 +552,19 @@ static int update_leds_debug(ws2811_t* ledstrip)
     return 1;
 }
 
-
-// The whole message is e.g. LED MSG MORSETEXT?HI%20URSULA
-// This function will only receive the part after LED MSG
-void XmasSource_process_message(const char* msg)
+XMAS_MODE_t string_to_xmas_mode(const char* txt)
 {
-    char* sep = strchr(msg, '?');
-    if (sep == NULL)
-    {
-        printf("Message does not contain target %s\n", msg);
-        return;
-    }
-    if ((sep - msg) >= 32)
-    {
-        printf("Target is too long or poorly formatted: %s\n", msg);
-        return;
-    }
-    if ((strlen(sep + 1) >= 64))
-    {
-        printf("Message too long or poorly formatted: %s\n", msg);
-        return;
-    }
-    char target[32];
-    char payload[64];
-    strncpy(target, msg, sep - msg);
-    strncpy(payload, sep + 1, 64);
-    target[sep - msg] = 0x0;
-    if (!strncasecmp(target, "MORSETEXT", 9))
-    {
-        xmas_source.led_index = atoi(payload);
-        xmas_source.first_update = 0;
-        printf("Debug info: %s\n", payload);
-    }
-    else if (!strncasecmp(target, "MORSEMODE", 9))
-    {
-        //int mode = atoi(payload);
-        //MorseSource_change_mode(mode);
-        //printf("Setting new MorseSource mode: %i\n", mode);
-    }
-    else
-        printf("Unknown target: %s, payload was: %s\n", target, payload);
+    if (strcasecmp(txt, "debug") == 0)
+        return XM_DEBUG;
+    if (strcasecmp(txt, "snowflakes") == 0)
+        return XM_SNOWFLAKES;
+    if (strcasecmp(txt, "icicles") == 0)
+        return XM_ICICLES;
+    if (strcasecmp(txt, "glitter") == 0)
+        return XM_GLITTER;
+    if (strcasecmp(txt, "glitter2") == 0)
+        return XM_GLITTER2;
+    return N_XMAS_MODES;
 }
 
 int XmasSource_process_config(const char* name, const char* value)
@@ -708,16 +681,90 @@ int XmasSource_update_leds(int frame, ws2811_t* ledstrip)
     return 0;
 }
 
+void XmasSource_destruct_current_mode()
+{
+    switch (xmas_source.mode)
+    {
+    case XM_DEBUG:
+    case XM_GLITTER:
+        break;
+    case XM_ICICLES:
+        free(icicle_colors);
+        free(icicles);
+        break;
+    case XM_SNOWFLAKES:
+        free(snowflakes);
+        free(diff_data);
+        free(spec_data);
+        break;
+    }
+}
+
 void XmasSource_destruct()
 {
+    XmasSource_destruct_current_mode();
     free(geometry.neighbors);
     free(geometry.heads);
     free(geometry.springs);
-    free(snowflakes);
-    free(diff_data);
-    free(spec_data);
-    free(icicle_colors);
-    free(icicles);
+}
+
+void XmasSource_init_current_mode()
+{
+    switch (xmas_source.mode)
+    {
+    case XM_DEBUG:
+    case XM_GLITTER:
+        break;
+    case XM_ICICLES:
+        Icicles_init();
+        break;
+    case XM_SNOWFLAKES:
+        Snowflakes_init();
+        break;
+    }
+}
+
+// The whole message is e.g. LED MSG MODE?GLITTER
+// This function will only receive the part after LED MSG
+void XmasSource_process_message(const char* msg)
+{
+    char* sep = strchr(msg, '?');
+    if (sep == NULL)
+    {
+        printf("Message does not contain target %s\n", msg);
+        return;
+    }
+    if ((sep - msg) >= 32)
+    {
+        printf("Target is too long or poorly formatted: %s\n", msg);
+        return;
+    }
+    if ((strlen(sep + 1) >= 64))
+    {
+        printf("Message too long or poorly formatted: %s\n", msg);
+        return;
+    }
+    char target[32];
+    char payload[64];
+    strncpy(target, msg, sep - msg);
+    strncpy(payload, sep + 1, 64);
+    target[sep - msg] = 0x0;
+    if (!strncasecmp(target, "MODE", 4))
+    {
+        XMAS_MODE_t mode = string_to_xmas_mode(payload);
+        if (mode == N_XMAS_MODES)
+        {
+            printf("Mode not recognized: %s\n", payload);
+            return;
+        }
+        XmasSource_destruct_current_mode();
+        xmas_source.mode = mode;
+        XmasSource_init_current_mode();
+        xmas_source.first_update = 0;
+        printf("Switched mode in XmasSource to: %s\n", payload);
+    }
+    else
+        printf("Unknown target: %s, payload was: %s\n", target, payload);
 }
 
 void XmasSource_init(int n_leds, int time_speed)
@@ -726,8 +773,7 @@ void XmasSource_init(int n_leds, int time_speed)
     xmas_source.mode = XM_SNOWFLAKES;
     xmas_source.first_update = 0;
     XmasSource_read_geometry();
-    Snowflakes_init();
-    Icicles_init();
+    XmasSource_init_current_mode();
 }
 
 void XmasSource_construct()

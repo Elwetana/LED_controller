@@ -69,13 +69,26 @@ void MorseSource_assign_text(const char* new_text)
     if (morse_source.text != NULL) free(morse_source.text);
     morse_source.text_length = strlen(new_text);
     morse_source.text = malloc(sizeof(char) * (morse_source.text_length + 1));
-    strcpy(morse_source.text, new_text);
-    printf("Set new Morse text: %s\n", new_text);
+    for (int i = 0; i < morse_source.text_length; ++i)
+        morse_source.text[i] = toupper(new_text[i]);
+    morse_source.text[morse_source.text_length] = 0x0;
+    printf("Set new Morse text: %s\n", morse_source.text);
 }
 
-void MorseSource_change_mode(int new_mode)
+void MorseSource_change_mode(enum EMorseMode new_mode)
 {
     morse_source.mode = new_mode;
+}
+
+enum EMorseMode string_to_MorseMode(const char* txt)
+{
+    if (strcasecmp(txt, "scroll") == 0)
+        return MM_MORSE_SCROLL;
+    if (strcasecmp(txt, "text") == 0)
+        return MM_TEXT_SCROLL;
+    if (strcasecmp(txt, "blink") == 0)
+        return MM_MORSE_BLINK;
+    return MM_NO_MODE;
 }
 
 void MorseSource_debug_init()
@@ -227,7 +240,7 @@ int MorseSource_update_leds(int frame, ws2811_t* ledstrip)
     return 1;
 }
 
-// The whole message is e.g. LED MSG MORSETEXT?HI%20URSULA
+// The whole message is e.g. LED MSG TEXT?HI%20URSULA, or LED MSG MODE?BLINK
 // This function will only receive the part after LED MSG
 void MorseSource_process_message(const char* msg)
 {
@@ -252,16 +265,21 @@ void MorseSource_process_message(const char* msg)
     strncpy(target, msg, sep - msg);
     strncpy(payload, sep + 1, 64);
     target[sep - msg] = 0x0;
-    if (!strncasecmp(target, "MORSETEXT", 9))
+    if (!strncasecmp(target, "TEXT", 4))
     {
         MorseSource_assign_text(payload);
         printf("Setting new MorseSource text: %s\n", payload);
     }
-    else if (!strncasecmp(target, "MORSEMODE", 9))
+    else if (!strncasecmp(target, "MODE", 4))
     {
-        int mode = atoi(payload);
+        enum EMorseMode mode = string_to_MorseMode(payload);
+        if (mode == MM_NO_MODE)
+        {
+            printf("Morse mode not found %s\n", payload);
+            return;
+        }
         MorseSource_change_mode(mode);
-        printf("Setting new MorseSource mode: %i\n", mode);
+        printf("Setting new MorseSource mode: %s\n", payload);
     }
     else
         printf("Unknown target: %s, payload was: %s\n", target, payload);
@@ -278,7 +296,7 @@ void MorseSource_init(int n_leds, int time_speed)
     BasicSource_init(&morse_source.basic_source, n_leds, time_speed, source_config.colors[MORSE_SOURCE]);
     MorseSource_read_font();
     MorseSource_convert_morse();
-    MorseSource_assign_text("AHOJ URSULO");
+    MorseSource_assign_text("HELLO WORLD");
     MorseSource_change_mode(MM_NO_MODE);
     //MorseSource_debug_init();
 }
