@@ -10,6 +10,14 @@ struct MorseChar {
     char data[16]; //<- no character has more than 4 dashes: 4*3 + 4 spaces = 16
 };
 
+enum EMorseMode
+{
+    MM_MORSE_SCROLL,
+    MM_TEXT_SCROLL,
+    MM_MORSE_BLINK,
+    MM_NO_MODE
+};
+
 typedef struct MorseSource {
     BasicSource basic_source;
     char* cmorse[26];
@@ -17,16 +25,8 @@ typedef struct MorseSource {
     struct MorseChar morse[26];
     char* text;
     int text_length;
-    int mode;
+    enum EMorseMode mode;
 } MorseSource;
-
-enum EMorseMode
-{
-	MM_MORSE_SCROLL,
-	MM_TEXT_SCROLL,
-	MM_MORSE_BLINK,
-	MM_NO_MODE
-};
 
 extern MorseSource morse_source;
 
