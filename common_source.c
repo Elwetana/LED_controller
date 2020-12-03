@@ -46,6 +46,7 @@ int BasicSource_process_config(const char* name, const char* value)
 {
     (void)name;
     (void)value;
+    return 1;
 }
 
 void BasicSource_destruct() {}

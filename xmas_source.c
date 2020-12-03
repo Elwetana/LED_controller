@@ -295,6 +295,7 @@ void Snowflakes_init()
         snowflakes[flake].is_moving = 0;
         snowflakes[flake].stop_at_destination = 1;
     }
+    for(int i=0;i<config.n_snowflakes;++i) printf("Flake %d origin %d\n",i,snowflakes[i].origin);
     rgb2hsl(xmas_source.basic_source.gradient.colors[config.snowflake_color], &snowflake_colors[2]);
     rgb2hsl(xmas_source.basic_source.gradient.colors[config.snowflake_color+1], &snowflake_colors[1]);
     snowflake_colors[0] = snowflake_colors[1];
@@ -313,7 +314,7 @@ void Snowflakes_update()
         }
         if (random_01() < config.move_chance)
         {
-            //printf("Moving snowflake number %d\n", flake);
+            printf("Moving snowflake number %d\n", flake);
             //now we need to generate direction, let's say there is 50% chance of going down
             float r01 = random_01();
             int dir = (r01 < config.down_chance) ? DOWN : (r01 < (config.down_chance + config.left_chance)) ? LEFT : RIGHT;
@@ -600,7 +601,7 @@ int XmasSource_process_config(const char* name, const char* value)
         config.n_snowflakes = atoi(value);
         return 1;
     }
-    if (strcasecmp(name, "k_diff", 6) == 0) {
+    if (strcasecmp(name, "k_diff") == 0) {
         config.k_diff = atof(value);
         return 1;
     }
@@ -723,7 +724,7 @@ void XmasSource_destruct()
 void XmasSource_init(int n_leds, int time_speed)
 {
     BasicSource_init(&xmas_source.basic_source, n_leds, time_speed, source_config.colors[XMAS_SOURCE]);
-    xmas_source.mode = XM_SNOWFLAKES;
+    xmas_source.mode = XM_GLITTER;
     xmas_source.first_update = 0;
     XmasSource_read_geometry();
     Snowflakes_init();
