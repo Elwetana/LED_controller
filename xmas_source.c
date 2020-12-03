@@ -40,11 +40,23 @@ struct {
     //glitter
     float glitter_chance;
     int glitter_color;
+    float glitter_prob1;
+    float glitter_prob2;
+    float glitter_prob3;
+    float glitter_prob4;
+    //glitter1
+    float glt1_chance;
+    int glt1_color;
     float glt_green;
     float glt_red;
     float glt_orange;
     float glt_purple;
     float glt_blue;
+    //glitter2
+    float glt2_chance;
+    int glt2_color;
+    float glt_sky;
+    float glt_star;
     //icicles
     int n_icicle_leds;
     float icicle_speed;
@@ -199,6 +211,7 @@ typedef struct PeriodData {
     long nextChange;
     long basePeriod;   
     long periodRange;
+    double phaseShift;
 } period_data_t;
 
 /**
@@ -214,7 +227,7 @@ double get_angle(period_data_t* period_data)
         period_data->lastChange = period_data->nextChange;
         period_data->nextChange = cur_time + period_data->basePeriod + (long)((random_01() - 0.5f) * period_data->periodRange);
     }
-    return 2 * M_PI * (double)(cur_time - period_data->lastChange) / (double)(period_data->nextChange - period_data->lastChange);
+    return 2 * M_PI * (double)(cur_time - period_data->lastChange) / (double)(period_data->nextChange - period_data->lastChange) + period_data->phaseShift;
 }
 
 typedef struct MovingLed {
@@ -286,8 +299,10 @@ void Snowflakes_init()
     {
         diff_data[flake].basePeriod  = config.diff_base_period;
         diff_data[flake].periodRange = config.diff_period_range;
+        diff_data[flake].phaseShift  = 0;
         spec_data[flake].basePeriod  = config.spec_base_period;
         spec_data[flake].periodRange = config.spec_period_range;
+        spec_data[flake].phaseShift  = config.spec_phase;
 
         snowflakes[flake].origin = flake * d;
         snowflakes[flake].speed = 0.5f;
@@ -388,7 +403,7 @@ static int update_leds_snowflake(ws2811_t* ledstrip)
 
         double diff_alpha = get_angle(&diff_data[flake]);
         double spec_alpha = get_angle(&spec_data[flake]);
-        double l = config.k_diff * cos(diff_alpha) + config.k_spec * pow(cos(spec_alpha + config.spec_phase), config.spec);
+        double l = config.k_diff * cos(diff_alpha) + config.k_spec * pow(cos(spec_alpha), config.spec);
 
         hsl_t centre_col = snowflake_colors[2];
         centre_col.l += l;
@@ -425,40 +440,67 @@ static int select_glitter_color()
 {
     //1 - green 30% , 2 -- red 30%, 3 -- bright orange 10%, 4 -- purple 10%, 5 -- blue 20%
     float r01 = random_01();
-    if (r01 < config.glt_green)  return 0; else r01 -= config.glt_green;
-    if (r01 < config.glt_red)    return 1; else r01 -= config.glt_red;
-    if (r01 < config.glt_orange) return 2; else r01 -= config.glt_orange;
-    if (r01 < config.glt_purple) return 3;
+    if (r01 < config.glitter_prob1) return 0; else r01 -= config.glitter_prob1;
+    if (r01 < config.glitter_prob2) return 1; else r01 -= config.glitter_prob2;
+    if (r01 < config.glitter_prob3) return 2; else r01 -= config.glitter_prob3;
+    if (r01 < config.glitter_prob4) return 3;
     return 4;
+}
+
+static period_data_t* glitter_periods;
+static ws2811_led_t* glitter_colors;
+
+static void Glitter1_init()
+{
+    config.glitter_prob1 = config.glt_green;
+    config.glitter_prob2 = config.glt_red;
+    config.glitter_prob3 = config.glt_orange;
+    config.glitter_prob4 = config.glt_purple;
+    config.glitter_color = config.glt1_color;
+    config.glitter_chance = config.glt1_chance;
+    glitter_periods = malloc(sizeof(period_data_t) * xmas_source.basic_source.n_leds);
+    glitter_colors = malloc(sizeof(ws2811_led_t) * xmas_source.basic_source.n_leds);
+    for (int led = 0; led < xmas_source.basic_source.n_leds; ++led)
+    {
+        int col = select_glitter_color();
+        glitter_colors[led] = xmas_source.basic_source.gradient.colors[config.glitter_color + col];
+        glitter_periods[led].basePeriod = 2000;
+        glitter_periods[led].periodRange = 1;
+        glitter_periods[led].phaseShift = M_PI * (double)led / (double)xmas_source.basic_source.n_leds;
+        //printf("Setting led %d to color %x\n", led, xmas_source.basic_source.gradient.colors[col]);
+    }
+}
+
+static void Glitter1_destruct()
+{
+    free(glitter_periods);
+    free(glitter_colors);
+}
+
+ws2811_led_t multiply_rgb_color(ws2811_led_t rgb, double t)
+{
+    int r = (int)(((rgb >> 16) & 0xFF) * t);
+    int g = (int)(((rgb >> 8) & 0xFF) * t);
+    int b = (int)((rgb & 0xFF) * t);
+    return r << 16 & g << 8 & b;
 }
 
 static int update_leds_glitter(ws2811_t* ledstrip)
 {
-    if (xmas_source.first_update == 0)
+    //in all subsequent updates there is a chance that exactly one led will be set to new colour (or possibly the same colour)
+    if (random_01() < config.glitter_chance)
     {
-        //for the first update, we set every led randomly to one of the five glitter colours -- these are gradient colours 1-5
-        for (int led = 0; led < xmas_source.basic_source.n_leds; ++led)
-        {
-            int col = select_glitter_color();
-            ledstrip->channel[0].leds[led] = xmas_source.basic_source.gradient.colors[config.glitter_color + col];
-            printf("Setting led %d to color %x\n", led, xmas_source.basic_source.gradient.colors[col]);
-        }
-        xmas_source.first_update = 1;
+        int led = (int)(random_01() * xmas_source.basic_source.n_leds);
+        int col = select_glitter_color();
+        glitter_colors[led] = xmas_source.basic_source.gradient.colors[col];
+        printf("Resetting led %d to color %x\n", led, xmas_source.basic_source.gradient.colors[col]);
         return 1;
     }
-    else
+    for (int led = 0; led < xmas_source.basic_source.n_leds; ++led)
     {
-        //in all subsequent updates there is a chance that exactly one led will be set to new colour (or possibly the same colour)
-        if (random_01() < config.glitter_chance)
-        {
-            int led = (int)(random_01() * xmas_source.basic_source.n_leds);
-            int col = select_glitter_color();
-            ledstrip->channel[0].leds[led] = xmas_source.basic_source.gradient.colors[col];
-            printf("Resetting led %d to color %x\n", led, xmas_source.basic_source.gradient.colors[col]);
-            return 1;
-        }
+        double t = 0.5 + 0.5 * cos(get_angle(&glitter_periods[led]));
+        ledstrip->channel[0].leds[led] =  glitter_colors[led];
     }
-    return 0;
 }
 
 #pragma endregion
@@ -621,12 +663,12 @@ int XmasSource_process_config(const char* name, const char* value)
         config.left_chance = atof(value);
         return 1;
     }
-    if (strcasecmp(name, "glitter_chance") == 0) {
-        config.glitter_chance = atof(value);
+    if (strcasecmp(name, "glt1_chance") == 0) {
+        config.glt1_chance = atof(value);
         return 1;
     }
-    if (strcasecmp(name, "glitter_color") == 0) {
-        config.glitter_color = atoi(value);
+    if (strcasecmp(name, "glt1_color") == 0) {
+        config.glt1_color = atoi(value);
         return 1;
     }
     if (strcasecmp(name, "glt_green") == 0) {
@@ -647,6 +689,23 @@ int XmasSource_process_config(const char* name, const char* value)
     }
     if (strcasecmp(name, "glt_blue") == 0) {
         config.glt_blue = atof(value);
+        return 1;
+    }
+    if (strcasecmp(name, "glt2_color") == 0) {
+        config.glt2_color = atof(value);
+        return 1;
+    }
+
+    if (strcasecmp(name, "glt_sky") == 0) {
+        config.glt_sky = atof(value);
+        return 1;
+    }
+    if (strcasecmp(name, "glt_star") == 0) {
+        config.glt_star = atof(value);
+        return 1;
+    }
+    if (strcasecmp(name, "glt2_chance") == 0) {
+        config.glt2_chance = atof(value);
         return 1;
     }
     if (strcasecmp(name, "n_icicle_leds") == 0) {
@@ -686,7 +745,9 @@ void XmasSource_destruct_current_mode()
     switch (xmas_source.mode)
     {
     case XM_DEBUG:
+        break;
     case XM_GLITTER:
+        Glitter1_destruct();
         break;
     case XM_ICICLES:
         free(icicle_colors);
@@ -713,7 +774,9 @@ void XmasSource_init_current_mode()
     switch (xmas_source.mode)
     {
     case XM_DEBUG:
+        break;
     case XM_GLITTER:
+        Glitter1_init();
         break;
     case XM_ICICLES:
         Icicles_init();
@@ -770,7 +833,7 @@ void XmasSource_process_message(const char* msg)
 void XmasSource_init(int n_leds, int time_speed)
 {
     BasicSource_init(&xmas_source.basic_source, n_leds, time_speed, source_config.colors[XMAS_SOURCE]);
-    xmas_source.mode = XM_SNOWFLAKES;
+    xmas_source.mode = XM_GLITTER;
     xmas_source.first_update = 0;
     XmasSource_read_geometry();
     XmasSource_init_current_mode();
