@@ -19,6 +19,8 @@ srcs = Split('''
     colours.c
     listener.c
     ini.c
+    game_source.c
+    controller.c
 ''')
 
 

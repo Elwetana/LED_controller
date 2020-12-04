@@ -18,6 +18,7 @@
 #include "morse_source.h"
 #include "disco_source.h"
 #include "xmas_source.h"
+#include "game_source.h"
 #include "source_manager.h"
 #include "listener.h"
 #include "ini.h"
@@ -42,8 +43,11 @@ enum SourceType string_to_SourceType(const char* source)
     else if (!strncasecmp("DISCO", source, 5)) {
         return DISCO_SOURCE;
     }
-    else if (!strncasecmp("XMAS", source, 5)) {
+    else if (!strncasecmp("XMAS", source, 4)) {
         return XMAS_SOURCE;
+    }
+    else if (!strncasecmp("GAME", source, 4)) {
+        return GAME_SOURCE;
     }
     else {
         printf("Unknown source");
@@ -93,6 +97,7 @@ void SourceManager_init(enum SourceType source_type, int led_count, int time_spe
     sources[MORSE_SOURCE]  = &morse_source.basic_source;
     sources[DISCO_SOURCE]  = &disco_source.basic_source;
     sources[XMAS_SOURCE]   = &xmas_source.basic_source;
+    sources[GAME_SOURCE]   = &game_source.basic_source;
     SourceManager_construct_sources();
 
     Listener_init();

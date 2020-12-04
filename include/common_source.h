@@ -18,6 +18,7 @@ enum SourceType {
     MORSE_SOURCE,
     DISCO_SOURCE,
     XMAS_SOURCE,
+    GAME_SOURCE,
     N_SOURCE_TYPES
 };
 

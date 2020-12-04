@@ -13,8 +13,6 @@
 #else
 #include "fakeled.h"
 #include "faketime.h"
-#include <Xinput.h>
-#pragma comment(lib, "XInput.lib")
 #endif // __linux__
 
 #include "common_source.h"
@@ -952,18 +950,4 @@ XmasSource xmas_source = {
 
 #pragma endregion
 
-
-/*
-    XINPUT_STATE state;
-    DWORD dwUserIndex = 0;
-    while (1)
-    {
-        DWORD res = XInputGetState(dwUserIndex, &state);
-        if(state.Gamepad.wButtons != 0)
-            printf("Res: %d, buttons: %d\n", res, state.Gamepad.wButtons);
-
-    }
-
-
-*/
 #pragma GCC diagnostic pop

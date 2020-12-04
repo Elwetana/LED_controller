@@ -150,10 +150,12 @@
     <ClCompile Include="..\color_source.c" />
     <ClCompile Include="..\colours.c" />
     <ClCompile Include="..\common_source.c" />
+    <ClCompile Include="..\controller.c" />
     <ClCompile Include="..\disco_source.c" />
     <ClCompile Include="..\fakeled.c" />
     <ClCompile Include="..\faketime.c" />
     <ClCompile Include="..\fire_source.c" />
+    <ClCompile Include="..\game_source.c" />
     <ClCompile Include="..\getopt.c" />
     <ClCompile Include="..\ini.c" />
     <ClCompile Include="..\led_main.c" />
@@ -185,11 +187,14 @@
     <ClInclude Include="..\include\color_source.h" />
     <ClInclude Include="..\include\colours.h" />
     <ClInclude Include="..\include\common_source.h" />
+    <ClInclude Include="..\include\controller.h" />
     <ClInclude Include="..\include\disco_source.h" />
+    <ClInclude Include="..\include\fakeinput.h" />
     <ClInclude Include="..\include\fakeled.h" />
     <ClInclude Include="..\include\fakesignal.h" />
     <ClInclude Include="..\include\faketime.h" />
     <ClInclude Include="..\include\fire_source.h" />
+    <ClInclude Include="..\include\game_source.h" />
     <ClInclude Include="..\include\getopt.h" />
     <ClInclude Include="..\include\ini.h" />
     <ClInclude Include="..\include\led_main.h" />
