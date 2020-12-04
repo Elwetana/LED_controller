@@ -458,8 +458,10 @@ static ws2811_led_t* glitter_colors;
 
 static void Glitter_init_common()
 {
-    glitter_periods = malloc(sizeof(period_data_t) * xmas_source.basic_source.n_leds);
-    glitter_colors = malloc(sizeof(ws2811_led_t) * xmas_source.basic_source.n_leds);
+    if(!glitter_periods)
+        glitter_periods = malloc(sizeof(period_data_t) * xmas_source.basic_source.n_leds);
+    if(!glitter_colors)
+        glitter_colors = malloc(sizeof(ws2811_led_t) * xmas_source.basic_source.n_leds);
     long cur_time = xmas_source.basic_source.current_time / (long)1e6;
     for (int led = 0; led < xmas_source.basic_source.n_leds; ++led)
     {
@@ -494,6 +496,8 @@ static void Glitter_destruct()
 {
     free(glitter_periods);
     free(glitter_colors);
+    glitter_periods = NULL;
+    glitter_colors = NULL;
 }
 
 ws2811_led_t multiply_rgb_color(ws2811_led_t rgb, double t)
@@ -512,7 +516,7 @@ static int update_leds_glitter(ws2811_t* ledstrip)
         int led = (int)(random_01() * xmas_source.basic_source.n_leds);
         int col = select_glitter_color();
         glitter_colors[led] = xmas_source.basic_source.gradient.colors[col];
-        printf("Resetting led %d to color %x\n", led, xmas_source.basic_source.gradient.colors[col]);
+        //printf("Resetting led %d to color %x\n", led, xmas_source.basic_source.gradient.colors[col]);
         return 1;
     }
     for (int led = 0; led < xmas_source.basic_source.n_leds; ++led)
@@ -611,7 +615,8 @@ static int update_leds_debug(ws2811_t* ledstrip)
     }
     for (int led = 0; led < xmas_source.basic_source.n_leds; ++led)
     {
-        ledstrip->channel[0].leds[led] = led == xmas_source.led_index ? xmas_source.basic_source.gradient.colors[0] : 0;
+        //ledstrip->channel[0].leds[led] = led == xmas_source.led_index ? xmas_source.basic_source.gradient.colors[0] : 0;
+        ledstrip->channel[0].leds[led] = led < sizeof(xmas_source.basic_source.gradient.colors)/sizeof(int) ? xmas_source.basic_source.gradient.colors[led] : 0;
     }
     xmas_source.first_update = 1;
     return 1;
