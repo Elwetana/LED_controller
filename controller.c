@@ -31,7 +31,7 @@ static char* button_names[] = {
 static WORD current_state;
 static WORD last_state;
 static WORD processed;
-static enum EButtons xMap[] = { DPAD_U, DPAD_D, DPAD_L, DPAD_R, BTN_Start, BTN_Back, BTN_L3, BTN_R3, BTN_LB, BTN_RB, BTN_ERROR, BTN_ERROR, BTN_A, BTN_B, BTN_X, BTN_Y };
+static enum EButtons xMap[] = { DPAD_U, DPAD_D, DPAD_L, DPAD_R, XBTN_Start, XBTN_Back, XBTN_L3, XBTN_R3, XBTN_LB, XBTN_RB, XBTN_ERROR, XBTN_ERROR, XBTN_A, XBTN_B, XBTN_X, XBTN_Y };
 /*
 XINPUT_GAMEPAD_DPAD_UP	    0x0001
 XINPUT_GAMEPAD_DPAD_DOWN	0x0002
@@ -53,7 +53,7 @@ XINPUT_GAMEPAD_Y	        0x8000
 void Controller_init()
 {
 #ifdef __linux__
-    int input = open("/dev/input/event0", O_RDONLY | O_NONBLOCK);
+    input = open("/dev/input/event0", O_RDONLY | O_NONBLOCK);
 #else
     current_state = 0;
     last_state = 0;

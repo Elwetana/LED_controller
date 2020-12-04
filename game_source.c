@@ -82,6 +82,7 @@ void GameSource_init(int n_leds, int time_speed, uint64_t current_time)
 {
     BasicSource_init(&game_source.basic_source, n_leds, time_speed, source_config.colors[GAME_SOURCE], current_time);
     game_source.first_update = 0;
+    Controller_init();
 }
 
 void GameSource_construct()
