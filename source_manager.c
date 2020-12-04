@@ -17,10 +17,12 @@
 #include "chaser_source.h"
 #include "morse_source.h"
 #include "disco_source.h"
+#include "xmas_source.h"
 #include "source_manager.h"
 #include "listener.h"
+#include "ini.h"
 
-enum SourceType string_to_SourceType(char* source)
+enum SourceType string_to_SourceType(const char* source)
 {
     if (!strncasecmp("EMBERS", source, 6)) {
         return EMBERS_SOURCE;
@@ -40,6 +42,9 @@ enum SourceType string_to_SourceType(char* source)
     else if (!strncasecmp("DISCO", source, 5)) {
         return DISCO_SOURCE;
     }
+    else if (!strncasecmp("XMAS", source, 5)) {
+        return XMAS_SOURCE;
+    }
     else {
         printf("Unknown source");
         exit(-1);
@@ -47,6 +52,9 @@ enum SourceType string_to_SourceType(char* source)
 }
 
 static BasicSource* sources[N_SOURCE_TYPES];
+static uint64_t* current_time;
+static uint64_t* time_delta;
+
 
 struct LedParam {
     int led_count;
@@ -55,11 +63,26 @@ struct LedParam {
 static struct LedParam led_param;
 static void read_config();
 
-void SourceManager_init(enum SourceType source_type, int led_count, int time_speed)
+void SourceManager_construct_sources()
 {
-    read_config();
-    Listener_init();
+    for(enum SourceType source_type = EMBERS_SOURCE; source_type < N_SOURCE_TYPES; ++source_type)
+    {
+        sources[source_type]->construct();
+    }
+}
 
+void set_source(enum SourceType source_type, uint64_t cur_time)
+{
+    sources[source_type]->init(led_param.led_count, led_param.time_speed, cur_time);
+    SourceManager_update_leds = sources[source_type]->update;
+    SourceManager_destruct_source = sources[source_type]->destruct;
+    SourceManager_process_message = sources[source_type]->process_message;
+    current_time = &sources[source_type]->current_time;
+    time_delta = &sources[source_type]->time_delta;
+}
+
+void SourceManager_init(enum SourceType source_type, int led_count, int time_speed, uint64_t cur_time)
+{
     led_param.led_count = led_count;
     led_param.time_speed = time_speed;
 
@@ -69,15 +92,18 @@ void SourceManager_init(enum SourceType source_type, int led_count, int time_spe
     sources[CHASER_SOURCE] = &chaser_source.basic_source;
     sources[MORSE_SOURCE]  = &morse_source.basic_source;
     sources[DISCO_SOURCE]  = &disco_source.basic_source;
-    set_source(source_type);
+    sources[XMAS_SOURCE]   = &xmas_source.basic_source;
+    SourceManager_construct_sources();
+
+    Listener_init();
+    read_config();
+    set_source(source_type, cur_time);
 }
 
-void set_source(enum SourceType source_type)
+void SourceManager_set_time(uint64_t time_ns, uint64_t time_delta_ns)
 {
-    sources[source_type]->init(led_param.led_count, led_param.time_speed);
-    SourceManager_update_leds = sources[source_type]->update;
-    SourceManager_destruct_source = sources[source_type]->destruct;
-    SourceManager_process_message = sources[source_type]->process_message;
+    *current_time = time_ns;
+    *time_delta = time_delta_ns;
 }
 
 inline int ishex(int x)
@@ -122,26 +148,19 @@ void process_source_message(const char* param)
     else if (!strncasecmp("OFF", param, 3))
     {
         strcpy(source_name, "COLOR");
-        color = 0x0;
+        color = 0; 
     }
     else
     {
         strncpy(source_name, param, 63);
     }
-    if (color != -1) // this is only possible for color source now
-    {
-        SourceColors_destruct(source_config.colors[COLOR_SOURCE]);
-        SourceColors* sc = malloc(sizeof(SourceColors));
-        sc->colors = malloc(sizeof(ws2811_led_t) * 2);
-        sc->steps = malloc(sizeof(int) * 1);
-        sc->n_steps = 1;
-        sc->colors[0] = color;
-        sc->colors[1] = color;
-        sc->steps[0] = 1;
-        SourceConfig_add_color(source_name, sc);
-    }
     SourceManager_destruct_source();
-    set_source(string_to_SourceType(source_name));
+    uint64_t cur_time = *current_time;
+    set_source(string_to_SourceType(source_name), cur_time);
+    if (color == 0)
+    {
+        SourceManager_process_message("color?000000");
+    }
     printf("Changing source to %s\n", param);
 }
 
@@ -182,7 +201,7 @@ void check_message()
             printf("Malformatted URL-encoded text: %s\n", param);
             goto quit;
         }
-        printf("Sending message to source: %s\n", message);
+        //printf("Sending message to source: %s\n", message);
         SourceManager_process_message(message);
     }
     else
@@ -221,14 +240,13 @@ void SourceConfig_destruct()
 {
     for (int i = 0; i < N_SOURCE_TYPES; ++i)
     {
-        SourceColors_destruct(source_config.colors[i]);
+        SourceColors_destruct(source_config.colors[i]); //TODO: this crashes if not all sources have their colours in config
     }
     free(source_config.colors);
 }
 
-static void read_config()
+static void read_color_config()
 {
-    SourceConfig_init();
     FILE* config = fopen("config", "r");
     if (config == NULL) {
         printf("Config not found\n");
@@ -273,4 +291,18 @@ static void read_config()
         sc->colors[n_steps] = color;
         SourceConfig_add_color(name, sc);
     }
+}
+
+static int ini_file_handler(void* user, const char* section, const char* name, const char* value)
+{
+    (void)user;
+    enum SourceType source_type = string_to_SourceType(section);
+    return sources[source_type]->process_config(name, value);
+}
+
+static void read_config()
+{
+    SourceConfig_init();
+    read_color_config();
+    ini_parse("config.ini", ini_file_handler, NULL);
 }

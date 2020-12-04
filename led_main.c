@@ -192,7 +192,11 @@ int main(int argc, char *argv[])
     parseargs(argc, argv);
     int led_count = ledstring.channel[0].count;
 
-    SourceManager_init(arg_options.source_type, led_count, arg_options.time_speed);
+    struct timespec now;
+    clock_gettime(CLOCK_MONOTONIC_RAW, &now);
+    uint64_t last_update_ns = now.tv_sec * (long long)1e9 + now.tv_nsec;
+    long frame = 0;
+    SourceManager_init(arg_options.source_type, led_count, arg_options.time_speed, last_update_ns);
     printf("Init source with %i leds\n", led_count);
 
     setup_handlers();
@@ -205,14 +209,11 @@ int main(int argc, char *argv[])
     printf("Init successful\n");
     srand(0); //for testing we want random to be stable
 
-    uint64_t last_update_ns = 0;
-    long frame = 0;
 #ifdef PRINT_FPS
     uint64_t fps_time_ns = 0;
 #endif
     while (running)
     {
-        struct timespec now;
         clock_gettime(CLOCK_MONOTONIC_RAW, &now);
         uint64_t current_ns = now.tv_sec * (long long)1e9 + now.tv_nsec;
         uint64_t delta_us = (current_ns - last_update_ns) / (long)1e3;
@@ -235,7 +236,9 @@ int main(int argc, char *argv[])
 
         // Now we have to save the current time so that we know how much time we spent working
         clock_gettime(CLOCK_MONOTONIC_RAW, &now);
-        last_update_ns = now.tv_sec * (long long)1e9 + now.tv_nsec;
+        current_ns = now.tv_sec * (long long)1e9 + now.tv_nsec;
+        SourceManager_set_time(current_ns, current_ns - last_update_ns);
+        last_update_ns = current_ns;
         if (SourceManager_update_leds(frame, &ledstring))
         {
             if ((ret = ws2811_render(&ledstring)) != WS2811_SUCCESS)

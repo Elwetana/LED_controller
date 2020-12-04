@@ -17,6 +17,7 @@ enum SourceType {
     CHASER_SOURCE,
     MORSE_SOURCE,
     DISCO_SOURCE,
+    XMAS_SOURCE,
     N_SOURCE_TYPES
 };
 
@@ -37,10 +38,14 @@ typedef struct BasicSource
     int n_leds;
     int time_speed;
     SourceGradient gradient;
-    void(*init)(int, int);
+    uint64_t current_time; //in ns
+    uint64_t time_delta;
+    void(*construct)();
+    void(*init)(int, int, uint64_t);
     int(*update)(int, ws2811_t*);
     void(*destruct)();
     void(*process_message)(const char*);
+    int(*process_config)(const char*, const char*);
 } BasicSource;
 
 typedef struct SourceConfig {
@@ -49,7 +54,8 @@ typedef struct SourceConfig {
 
 extern SourceConfig source_config;
 
-void BasicSource_init(BasicSource* basic_source, int n_leds, int time_speed, SourceColors* source_colors);
+void BasicSource_construct(BasicSource* basic_source);
+void BasicSource_init(BasicSource* basic_source, int n_leds, int time_speed, SourceColors* source_colors, uint64_t current_time);
 float random_01();
 
 

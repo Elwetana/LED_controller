@@ -14,9 +14,11 @@ srcs = Split('''
     chaser_source.c
     morse_source.c
     disco_source.c
+    xmas_source.c
     source_manager.c    
     colours.c
     listener.c
+    ini.c
 ''')
 
 

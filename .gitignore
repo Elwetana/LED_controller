@@ -8,4 +8,5 @@ LEDs/.vs/
 *.o
 *.log
 led_main
+controller_test
 AubioTest/x64/

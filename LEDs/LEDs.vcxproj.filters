@@ -57,12 +57,23 @@
     <ClCompile Include="..\disco_source.c">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="..\xmas_source.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="..\faketime.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="..\ini.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <None Include="packages.config" />
+    <None Include="config.ini" />
   </ItemGroup>
   <ItemGroup>
     <Text Include="..\config" />
+    <Text Include="..\geometry" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\include\color_source.h">
@@ -111,6 +122,12 @@
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="..\sound\fakealsa.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\include\xmas_source.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\include\ini.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>
