@@ -297,11 +297,14 @@ void Snowflakes_init()
     diff_data = malloc(sizeof(period_data_t) * config.n_snowflakes);
     spec_data = malloc(sizeof(period_data_t) * config.n_snowflakes);
     int d = (int)(xmas_source.basic_source.n_leds / config.n_snowflakes);
+    long cur_time = xmas_source.basic_source.current_time / (long)1e6;
     for (int flake = 0; flake < config.n_snowflakes; ++flake)
     {
+        diff_data[flake].nextChange  = cur_time - 1;
         diff_data[flake].basePeriod  = config.diff_base_period;
         diff_data[flake].periodRange = config.diff_period_range;
         diff_data[flake].phaseShift  = 0;
+        spec_data[flake].nextChange  = cur_time - 1;
         spec_data[flake].basePeriod  = config.spec_base_period;
         spec_data[flake].periodRange = config.spec_period_range;
         spec_data[flake].phaseShift  = config.spec_phase;
@@ -737,7 +740,7 @@ int XmasSource_process_config(const char* name, const char* value)
         return 1;
     }
     if (strcasecmp(name, "glt1_period_range") == 0) {
-        glt1_config.base_period = atol(value);
+        glt1_config.period_range = atol(value);
         return 1;
     }
     //glitter2
@@ -786,9 +789,10 @@ int XmasSource_process_config(const char* name, const char* value)
         return 1;
     }
     if (strcasecmp(name, "glt2_period_range") == 0) {
-        glt2_config.base_period = atol(value);
+        glt2_config.period_range = atol(value);
         return 1;
-    }    //icicles
+    }    
+    //icicles
     if (strcasecmp(name, "n_icicle_leds") == 0) {
         config.n_icicle_leds = atoi(value);
         return 1;
@@ -920,9 +924,9 @@ void XmasSource_process_message(const char* msg)
         printf("Unknown target: %s, payload was: %s\n", target, payload);
 }
 
-void XmasSource_init(int n_leds, int time_speed)
+void XmasSource_init(int n_leds, int time_speed, uint64_t current_time)
 {
-    BasicSource_init(&xmas_source.basic_source, n_leds, time_speed, source_config.colors[XMAS_SOURCE]);
+    BasicSource_init(&xmas_source.basic_source, n_leds, time_speed, source_config.colors[XMAS_SOURCE], current_time);
     xmas_source.mode = XM_GLITTER;
     xmas_source.first_update = 0;
     XmasSource_read_geometry();

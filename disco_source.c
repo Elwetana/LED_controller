@@ -433,9 +433,9 @@ void DiscoSource_destruct()
     free(band_boundaries);
 }
 
-void DiscoSource_init(int n_leds, int time_speed)
+void DiscoSource_init(int n_leds, int time_speed, uint64_t current_time)
 {
-    BasicSource_init(&disco_source.basic_source, n_leds, time_speed, source_config.colors[DISCO_SOURCE]);
+    BasicSource_init(&disco_source.basic_source, n_leds, time_speed, source_config.colors[DISCO_SOURCE], current_time);
     sound_hw_init();
     aubio_init();
     freq_map_init();

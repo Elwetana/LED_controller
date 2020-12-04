@@ -292,9 +292,9 @@ void MorseSource_destruct()
     morse_source.text = NULL;
 }
 
-void MorseSource_init(int n_leds, int time_speed)
+void MorseSource_init(int n_leds, int time_speed, uint64_t current_time)
 {
-    BasicSource_init(&morse_source.basic_source, n_leds, time_speed, source_config.colors[MORSE_SOURCE]);
+    BasicSource_init(&morse_source.basic_source, n_leds, time_speed, source_config.colors[MORSE_SOURCE], current_time);
     MorseSource_read_font();
     MorseSource_convert_morse();
     MorseSource_assign_text("HELLO WORLD");

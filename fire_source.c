@@ -163,9 +163,9 @@ void FireSource_destruct()
     free(fire_source.embers);
 }
 
-void FireSource_init(int n_leds, int time_speed)
+void FireSource_init(int n_leds, int time_speed, uint64_t current_time)
 {
-    BasicSource_init(&fire_source.basic_source, n_leds, time_speed, source_config.colors[EMBERS_SOURCE]);
+    BasicSource_init(&fire_source.basic_source, n_leds, time_speed, source_config.colors[EMBERS_SOURCE], current_time);
     FireSource_build_embers(&fire_source);
 }
 

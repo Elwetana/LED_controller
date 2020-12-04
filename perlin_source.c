@@ -80,9 +80,9 @@ void PerlinSource_destruct()
     }
 }
 
-void PerlinSource_init(int n_leds, int time_speed)
+void PerlinSource_init(int n_leds, int time_speed, uint64_t current_time)
 {
-    BasicSource_init(&perlin_source.basic_source, n_leds, time_speed, source_config.colors[PERLIN_SOURCE]);
+    BasicSource_init(&perlin_source.basic_source, n_leds, time_speed, source_config.colors[PERLIN_SOURCE], current_time);
     PerlinSource_build_noise();
 }
 

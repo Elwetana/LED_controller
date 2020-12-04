@@ -53,9 +53,9 @@ int ChaserSource_update_leds(int frame, ws2811_t* ledstrip)
     return 1;
 }
 
-void ChaserSource_init(int n_leds, int time_speed)
+void ChaserSource_init(int n_leds, int time_speed, uint64_t current_time)
 {
-    BasicSource_init(&chaser_source.basic_source, n_leds, time_speed, source_config.colors[CHASER_SOURCE]);
+    BasicSource_init(&chaser_source.basic_source, n_leds, time_speed, source_config.colors[CHASER_SOURCE], current_time);
 }
 
 void ChaserSource_construct()

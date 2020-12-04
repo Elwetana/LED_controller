@@ -59,12 +59,13 @@ void BasicSource_construct(BasicSource* basic_source)
     basic_source->process_config = BasicSource_process_config;
 }
 
-void BasicSource_init(BasicSource* basic_source, int n_leds, int time_speed, SourceColors* source_colors)
+void BasicSource_init(BasicSource* basic_source, int n_leds, int time_speed, SourceColors* source_colors, uint64_t current_time)
 {
     ws2811_led_t* colors = source_colors->colors;
     int* steps = source_colors->steps;
     int n_steps = source_colors->n_steps;
     basic_source->n_leds = n_leds;
     basic_source->time_speed = time_speed;
+    basic_source->current_time = current_time;
     BasicSource_build_gradient(basic_source, colors, steps, n_steps);
 }

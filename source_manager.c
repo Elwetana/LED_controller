@@ -71,7 +71,17 @@ void SourceManager_construct_sources()
     }
 }
 
-void SourceManager_init(enum SourceType source_type, int led_count, int time_speed)
+void set_source(enum SourceType source_type, uint64_t cur_time)
+{
+    sources[source_type]->init(led_param.led_count, led_param.time_speed, cur_time);
+    SourceManager_update_leds = sources[source_type]->update;
+    SourceManager_destruct_source = sources[source_type]->destruct;
+    SourceManager_process_message = sources[source_type]->process_message;
+    current_time = &sources[source_type]->current_time;
+    time_delta = &sources[source_type]->time_delta;
+}
+
+void SourceManager_init(enum SourceType source_type, int led_count, int time_speed, uint64_t cur_time)
 {
     led_param.led_count = led_count;
     led_param.time_speed = time_speed;
@@ -87,17 +97,7 @@ void SourceManager_init(enum SourceType source_type, int led_count, int time_spe
 
     Listener_init();
     read_config();
-    set_source(source_type);
-}
-
-void set_source(enum SourceType source_type)
-{
-    sources[source_type]->init(led_param.led_count, led_param.time_speed);
-    SourceManager_update_leds = sources[source_type]->update;
-    SourceManager_destruct_source = sources[source_type]->destruct;
-    SourceManager_process_message = sources[source_type]->process_message;
-    current_time = &sources[source_type]->current_time;
-    time_delta = &sources[source_type]->time_delta;
+    set_source(source_type, cur_time);
 }
 
 void SourceManager_set_time(uint64_t time_ns, uint64_t time_delta_ns)
@@ -148,27 +148,19 @@ void process_source_message(const char* param)
     else if (!strncasecmp("OFF", param, 3))
     {
         strcpy(source_name, "COLOR");
-        color = 0x0;
+        color = 0; 
     }
     else
     {
         strncpy(source_name, param, 63);
     }
-    //TODO: change into message to colour source
-    if (color != -1) // this is only possible for color source now
-    {
-        SourceColors_destruct(source_config.colors[COLOR_SOURCE]);
-        SourceColors* sc = malloc(sizeof(SourceColors));
-        sc->colors = malloc(sizeof(ws2811_led_t) * 2);
-        sc->steps = malloc(sizeof(int) * 1);
-        sc->n_steps = 1;
-        sc->colors[0] = color;
-        sc->colors[1] = color;
-        sc->steps[0] = 1;
-        SourceConfig_add_color(source_name, sc);
-    }
     SourceManager_destruct_source();
-    set_source(string_to_SourceType(source_name));
+    uint64_t cur_time = *current_time;
+    set_source(string_to_SourceType(source_name), cur_time);
+    if (color == 0)
+    {
+        SourceManager_process_message("color?000000");
+    }
     printf("Changing source to %s\n", param);
 }
 
