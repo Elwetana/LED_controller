@@ -37,45 +37,32 @@ struct {
     long spec_period_range;
     float down_chance;
     float left_chance;
-    //glitter
-    float glitter_chance;
-    int glitter_color;
-    float glitter_prob1;
-    float glitter_prob2;
-    float glitter_prob3;
-    float glitter_prob4;
-    float glitter_phase_position;
-    float glitter_phase_constant;
-    float glitter_phase_random;
-    float glitter_amp_add;
-    float glitter_amp_mul;
-    //glitter1
-    float glt1_chance;
-    int glt1_color;
-    float glt_green;
-    float glt_red;
-    float glt_orange;
-    float glt_purple;
-    float glt_blue;
-    float glt1_phase_position;
-    float glt1_phase_constant;
-    float glt1_phase_random;
-    float glt1_amp_add;
-    float glt1_amp_mul;
-    //glitter2
-    float glt2_chance;
-    int glt2_color;
-    float glt_sky;
-    float glt_star;
-    float glt2_phase_position;
-    float glt2_phase_constant;
-    float glt2_phase_random;
-    float glt2_amp_add;
-    float glt2_amp_mul;
     //icicles
     int n_icicle_leds;
     float icicle_speed;
 } config;
+
+typedef struct GlitterConfig
+{
+    float glitter_chance;
+    int color;
+    long base_period;
+    long period_range;
+    float phase_position;
+    float phase_constant;
+    float phase_random;
+    float prob1;
+    float prob2;
+    float prob3;
+    float prob4;
+    float prob5;
+    float amp_add;
+    float amp_mul;
+} glitter_config_t;
+
+glitter_config_t* glitter_config;
+glitter_config_t glt1_config;
+glitter_config_t glt2_config;
 
 
 #pragma region Geometry
@@ -456,10 +443,10 @@ static int select_glitter_color()
 {
     //1 - green 30% , 2 -- red 30%, 3 -- bright orange 10%, 4 -- purple 10%, 5 -- blue 20%
     float r01 = random_01();
-    if (r01 < config.glitter_prob1) return 0; else r01 -= config.glitter_prob1;
-    if (r01 < config.glitter_prob2) return 1; else r01 -= config.glitter_prob2;
-    if (r01 < config.glitter_prob3) return 2; else r01 -= config.glitter_prob3;
-    if (r01 < config.glitter_prob4) return 3;
+    if (r01 < glitter_config->prob1) return 0; else r01 -= glitter_config->prob1;
+    if (r01 < glitter_config->prob2) return 1; else r01 -= glitter_config->prob2;
+    if (r01 < glitter_config->prob3) return 2; else r01 -= glitter_config->prob3;
+    if (r01 < glitter_config->prob4) return 3;
     return 4;
 }
 
@@ -474,13 +461,13 @@ static void Glitter_init_common()
     for (int led = 0; led < xmas_source.basic_source.n_leds; ++led)
     {
         int col = select_glitter_color();
-        glitter_colors[led] = xmas_source.basic_source.gradient.colors[config.glitter_color + col];
-        glitter_periods[led].nextChange = cur_time;
-        glitter_periods[led].basePeriod = 20000;
-        glitter_periods[led].periodRange = 1;
-        glitter_periods[led].phaseShift = config.glitter_phase_constant + 
-            config.glitter_phase_position * (double)led / (double)xmas_source.basic_source.n_leds +
-            config.glitter_phase_random * random_01();
+        glitter_colors[led] = xmas_source.basic_source.gradient.colors[glitter_config->color + col];
+        glitter_periods[led].nextChange = cur_time - 1;
+        glitter_periods[led].basePeriod = glitter_config->base_period;
+        glitter_periods[led].periodRange = glitter_config->period_range;
+        glitter_periods[led].phaseShift = glitter_config->phase_constant +
+            glitter_config->phase_position * (double)led / (double)xmas_source.basic_source.n_leds +
+            glitter_config->phase_random * random_01();
         //printf("Setting led %d to shift %f\n", led, glitter_periods[led].phaseShift);
     }
 }
@@ -488,34 +475,14 @@ static void Glitter_init_common()
 
 static void Glitter1_init()
 {
-    config.glitter_prob1 = config.glt_green;
-    config.glitter_prob2 = config.glt_red;
-    config.glitter_prob3 = config.glt_orange;
-    config.glitter_prob4 = config.glt_purple;
-    config.glitter_color = config.glt1_color;
-    config.glitter_chance = config.glt1_chance;
-    config.glitter_phase_constant = config.glt1_phase_constant;
-    config.glitter_phase_position = config.glt1_phase_position;
-    config.glitter_phase_random = config.glt1_phase_random;
-    config.glitter_amp_add = config.glt1_amp_add;
-    config.glitter_amp_mul = config.glt1_amp_mul;
+    glitter_config = &glt1_config;
     Glitter_init_common();
     printf("Glitter 1 initialized\n");
 }
 
 static void Glitter2_init()
 {
-    config.glitter_prob1 = config.glt_sky;
-    config.glitter_prob2 = config.glt_star;
-    config.glitter_prob3 = 1.f;
-    config.glitter_prob4 = 1.f;
-    config.glitter_color = config.glt2_color;
-    config.glitter_chance = config.glt2_chance;
-    config.glitter_phase_constant = config.glt2_phase_constant;
-    config.glitter_phase_position = config.glt2_phase_position;
-    config.glitter_phase_random = config.glt2_phase_random;
-    config.glitter_amp_add = config.glt2_amp_add;
-    config.glitter_amp_mul = config.glt2_amp_mul;
+    glitter_config = &glt2_config;
     Glitter_init_common();
     printf("Glitter 2 initialized\n");
 }
@@ -537,7 +504,7 @@ ws2811_led_t multiply_rgb_color(ws2811_led_t rgb, double t)
 static int update_leds_glitter(ws2811_t* ledstrip)
 {
     //in all subsequent updates there is a chance that exactly one led will be set to new colour (or possibly the same colour)
-    if (random_01() < config.glitter_chance)
+    if (random_01() < glitter_config->glitter_chance)
     {
         int led = (int)(random_01() * xmas_source.basic_source.n_leds);
         int col = select_glitter_color();
@@ -548,7 +515,7 @@ static int update_leds_glitter(ws2811_t* ledstrip)
     for (int led = 0; led < xmas_source.basic_source.n_leds; ++led)
     {
         float angle = get_angle(&glitter_periods[led]);
-        double t = config.glitter_amp_add + config.glitter_amp_mul * cos(angle);
+        double t = glitter_config->amp_add + glitter_config->amp_mul * cos(angle);
         ledstrip->channel[0].leds[led] = multiply_rgb_color(glitter_colors[led], t);
         //printf("%f  ", t);
     }
@@ -716,91 +683,112 @@ int XmasSource_process_config(const char* name, const char* value)
         config.left_chance = atof(value);
         return 1;
     }
+    //glitter1
     if (strcasecmp(name, "glt1_chance") == 0) {
-        config.glt1_chance = atof(value);
+        glt1_config.glitter_chance = atof(value);
         return 1;
     }
     if (strcasecmp(name, "glt1_color") == 0) {
-        config.glt1_color = atoi(value);
+        glt1_config.color = atoi(value);
         return 1;
     }
     if (strcasecmp(name, "glt_green") == 0) {
-        config.glt_green = atof(value);
+        glt1_config.prob1 = atof(value);
         return 1;
     }
     if (strcasecmp(name, "glt_red") == 0) {
-        config.glt_red = atof(value);
+        glt1_config.prob2 = atof(value);
         return 1;
     }
     if (strcasecmp(name, "glt_orange") == 0) {
-        config.glt_orange = atof(value);
+        glt1_config.prob3 = atof(value);
         return 1;
     }
     if (strcasecmp(name, "glt_purple") == 0) {
-        config.glt_purple = atof(value);
+        glt1_config.prob4 = atof(value);
         return 1;
     }
     if (strcasecmp(name, "glt_blue") == 0) {
-        config.glt_blue = atof(value);
+        glt1_config.prob5 = atof(value);
         return 1;
     }
     if (strcasecmp(name, "glt1_phase_position") == 0) {
-        config.glt1_phase_position = atof(value);
+        glt1_config.phase_position = atof(value);
         return 1;
     }
     if (strcasecmp(name, "glt1_phase_constant") == 0) {
-        config.glt1_phase_constant = atof(value);
-        return 1;
-    }
-    if (strcasecmp(name, "glt2_phase_position") == 0) {
-        config.glt2_phase_position = atof(value);
-        return 1;
-    }
-    if (strcasecmp(name, "glt2_phase_constant") == 0) {
-        config.glt2_phase_constant = atof(value);
+        glt1_config.phase_constant = atof(value);
         return 1;
     }
     if (strcasecmp(name, "glt1_phase_random") == 0) {
-        config.glt1_phase_random = atof(value);
-        return 1;
-    }
-    if (strcasecmp(name, "glt2_phase_random") == 0) {
-        config.glt2_phase_random = atof(value);
+        glt1_config.phase_random = atof(value);
         return 1;
     }
     if (strcasecmp(name, "glt1_amp_add") == 0) {
-        config.glt1_amp_add = atof(value);
+        glt1_config.amp_add = atof(value);
         return 1;
     }
     if (strcasecmp(name, "glt1_amp_mul") == 0) {
-        config.glt1_amp_mul = atof(value);
+        glt1_config.amp_mul = atof(value);
+        return 1;
+    }
+    if (strcasecmp(name, "glt1_base_period") == 0) {
+        glt1_config.base_period = atol(value);
+        return 1;
+    }
+    if (strcasecmp(name, "glt1_period_range") == 0) {
+        glt1_config.base_period = atol(value);
+        return 1;
+    }
+    //glitter2
+    if (strcasecmp(name, "glt2_phase_position") == 0) {
+        glt2_config.phase_position = atof(value);
+        return 1;
+    }
+    if (strcasecmp(name, "glt2_phase_constant") == 0) {
+        glt2_config.phase_constant = atof(value);
+        return 1;
+    }
+    if (strcasecmp(name, "glt2_phase_random") == 0) {
+        glt2_config.phase_random = atof(value);
         return 1;
     }
     if (strcasecmp(name, "glt2_amp_add") == 0) {
-        config.glt2_amp_add = atof(value);
+        glt2_config.amp_add = atof(value);
         return 1;
     }
     if (strcasecmp(name, "glt2_amp_mul") == 0) {
-        config.glt2_amp_mul = atof(value);
+        glt2_config.amp_mul = atof(value);
         return 1;
     }
     if (strcasecmp(name, "glt2_color") == 0) {
-        config.glt2_color = atof(value);
+        glt2_config.color = atof(value);
         return 1;
     }
 
     if (strcasecmp(name, "glt_sky") == 0) {
-        config.glt_sky = atof(value);
+        glt2_config.prob1 = atof(value);
         return 1;
     }
     if (strcasecmp(name, "glt_star") == 0) {
-        config.glt_star = atof(value);
+        glt2_config.prob2 = atof(value);
+        glt2_config.prob3 = 1.f;
+        glt2_config.prob4 = 1.f;
+        glt2_config.prob5 = 1.f;
         return 1;
     }
     if (strcasecmp(name, "glt2_chance") == 0) {
-        config.glt2_chance = atof(value);
+        glt2_config.glitter_chance = atof(value);
         return 1;
     }
+    if (strcasecmp(name, "glt2_base_period") == 0) {
+        glt2_config.base_period = atol(value);
+        return 1;
+    }
+    if (strcasecmp(name, "glt2_period_range") == 0) {
+        glt2_config.base_period = atol(value);
+        return 1;
+    }    //icicles
     if (strcasecmp(name, "n_icicle_leds") == 0) {
         config.n_icicle_leds = atoi(value);
         return 1;
