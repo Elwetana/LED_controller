@@ -57,8 +57,11 @@ void ColorSource_process_message(const char* msg)
     target[sep - msg] = 0x0;
     if (!strncasecmp(target, "color", 5))
     {
-        color_source.basic_source.gradient.colors[0] = atoi(payload);
-        printf("Switched colour in ColorSource to: %s\n", payload);
+        int col;
+        col = (int)strtol(payload, NULL, 16);
+        color_source.basic_source.gradient.colors[0] = col;
+        color_source.first_update = 0;
+        printf("Switched colour in ColorSource to: %s = %x\n", payload, col);
     }
     else
         printf("ColorSource: Unknown target: %s, payload was: %s\n", target, payload);

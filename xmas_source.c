@@ -446,10 +446,10 @@ static int select_glitter_color()
 {
     //1 - green 30% , 2 -- red 30%, 3 -- bright orange 10%, 4 -- purple 10%, 5 -- blue 20%
     float r01 = random_01();
-    if (r01 < glitter_config->prob1) return 0; else r01 -= glitter_config->prob1;
-    if (r01 < glitter_config->prob2) return 1; else r01 -= glitter_config->prob2;
-    if (r01 < glitter_config->prob3) return 2; else r01 -= glitter_config->prob3;
-    if (r01 < glitter_config->prob4) return 3;
+    if (r01 < glitter_config->prob1) return glitter_config->color + 0; else r01 -= glitter_config->prob1;
+    if (r01 < glitter_config->prob2) return glitter_config->color + 1; else r01 -= glitter_config->prob2;
+    if (r01 < glitter_config->prob3) return glitter_config->color + 2; else r01 -= glitter_config->prob3;
+    if (r01 < glitter_config->prob4) return glitter_config->color + 3;
     return 4;
 }
 
@@ -466,7 +466,7 @@ static void Glitter_init_common()
     for (int led = 0; led < xmas_source.basic_source.n_leds; ++led)
     {
         int col = select_glitter_color();
-        glitter_colors[led] = xmas_source.basic_source.gradient.colors[glitter_config->color + col];
+        glitter_colors[led] = xmas_source.basic_source.gradient.colors[col];
         glitter_periods[led].nextChange = cur_time - 1;
         glitter_periods[led].basePeriod = glitter_config->base_period;
         glitter_periods[led].periodRange = glitter_config->period_range;
@@ -616,7 +616,7 @@ static int update_leds_debug(ws2811_t* ledstrip)
     for (int led = 0; led < xmas_source.basic_source.n_leds; ++led)
     {
         //ledstrip->channel[0].leds[led] = led == xmas_source.led_index ? xmas_source.basic_source.gradient.colors[0] : 0;
-        ledstrip->channel[0].leds[led] = led < sizeof(xmas_source.basic_source.gradient.colors)/sizeof(int) ? xmas_source.basic_source.gradient.colors[led] : 0;
+        ledstrip->channel[0].leds[led] = led < (int)sizeof(xmas_source.basic_source.gradient.colors)/(int)sizeof(int) ? xmas_source.basic_source.gradient.colors[led] : 0;
     }
     xmas_source.first_update = 1;
     return 1;
