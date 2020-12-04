@@ -36,6 +36,7 @@ typedef struct Projectile
     dir_t direction;
     int zdepth;
     ws2811_led_t color;
+    int deleted;
 } projectile_t;
 
 typedef struct CanvasPixel
@@ -54,6 +55,8 @@ static int n_projectiles = 0;
 */
 static int Projecile_process(projectile_t* projectile, int stencil_index, ws2811_led_t* leds)
 {
+    if(projectile->deleted)
+        return 0;
     /* speed = 3.5, time = 1, position = 7, offset = 0.3
     *     -> distance = 3.5, result position = 10.8, leds: (7) 0.7 - (8) 1 - (9) 1 - (10) 1 - (11) 0.8
     * speed = 0.5, time = 1, position = 7, offset = 0.3
@@ -86,6 +89,7 @@ static int Projecile_process(projectile_t* projectile, int stencil_index, ws2811
         }
         else
         {
+            projectile->deleted = 1;
             return 0;
         }
     }
@@ -112,7 +116,7 @@ int GameSource_update_leds(int frame, ws2811_t* ledstrip)
     enum EState state;
     int i = Controller_get_button(&button, &state);
     if(i != 0) printf("controller button: %s, state: %i\n", Controller_get_button_name(button), state);
-    if (i != 0 && button == XBTN_A && state = BT_pressed)
+    if (i != 0 && button == XBTN_A && state == BT_pressed)
     {
         projectiles[n_projectiles].color = game_source.basic_source.gradient.colors[0];
         projectiles[n_projectiles].position = 0;
