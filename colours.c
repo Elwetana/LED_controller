@@ -9,6 +9,14 @@
 #define max(x,y)  ((x) > (y)) ? (x) : (y)
 #endif
 
+ws2811_led_t multiply_rgb_color(ws2811_led_t rgb, double t)
+{
+    int r = (int)(((rgb >> 16) & 0xFF) * t);
+    int g = (int)(((rgb >> 8) & 0xFF) * t);
+    int b = (int)((rgb & 0xFF) * t);
+    return r << 16 | g << 8 | b;
+}
+
 void hsl_copy(const hsl_t* hsl_in, hsl_t* hsl_out)
 {
     hsl_out->h = hsl_in->h;

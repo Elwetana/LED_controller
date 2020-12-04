@@ -473,7 +473,6 @@ static void Glitter_init_common()
     }
 }
 
-
 static void Glitter1_init()
 {
     glitter_config = &glt1_config;
@@ -492,14 +491,6 @@ static void Glitter_destruct()
 {
     free(glitter_periods);
     free(glitter_colors);
-}
-
-ws2811_led_t multiply_rgb_color(ws2811_led_t rgb, double t)
-{
-    int r = (int)(((rgb >> 16) & 0xFF) * t);
-    int g = (int)(((rgb >> 8) & 0xFF) * t);
-    int b = (int)((rgb & 0xFF) * t);
-    return r << 16 | g << 8 | b;
 }
 
 static int update_leds_glitter(ws2811_t* ledstrip)

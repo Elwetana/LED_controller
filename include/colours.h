@@ -28,6 +28,7 @@ typedef union
 } hsl_t;
 
 
+ws2811_led_t multiply_rgb_color(ws2811_led_t rgb, double t);
 void rgb2hsl(ws2811_led_t rgb, hsl_t* hsl);
 ws2811_led_t hsl2rgb(hsl_t* hsl);
 void test_rgb2hsl();
