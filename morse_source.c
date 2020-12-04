@@ -8,6 +8,7 @@
 #include <math.h>
 #ifdef __linux__
 #include "ws2811.h"
+#include <ctype.h>
 #else
 #include "fakeled.h"
 #endif // __linux__

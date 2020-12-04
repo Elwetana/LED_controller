@@ -461,15 +461,18 @@ static void Glitter1_init()
     config.glitter_chance = config.glt1_chance;
     glitter_periods = malloc(sizeof(period_data_t) * xmas_source.basic_source.n_leds);
     glitter_colors = malloc(sizeof(ws2811_led_t) * xmas_source.basic_source.n_leds);
+    long cur_time = xmas_source.basic_source.current_time / (long)1e6;
     for (int led = 0; led < xmas_source.basic_source.n_leds; ++led)
     {
         int col = select_glitter_color();
         glitter_colors[led] = xmas_source.basic_source.gradient.colors[config.glitter_color + col];
-        glitter_periods[led].basePeriod = 2000;
+        glitter_periods[led].nextChange = cur_time;
+        glitter_periods[led].basePeriod = 20000;
         glitter_periods[led].periodRange = 1;
         glitter_periods[led].phaseShift = M_PI * (double)led / (double)xmas_source.basic_source.n_leds;
         //printf("Setting led %d to color %x\n", led, xmas_source.basic_source.gradient.colors[col]);
     }
+    printf("Glitter 1 initialized\n");
 }
 
 static void Glitter1_destruct()
@@ -483,7 +486,7 @@ ws2811_led_t multiply_rgb_color(ws2811_led_t rgb, double t)
     int r = (int)(((rgb >> 16) & 0xFF) * t);
     int g = (int)(((rgb >> 8) & 0xFF) * t);
     int b = (int)((rgb & 0xFF) * t);
-    return r << 16 & g << 8 & b;
+    return r << 16 | g << 8 | b;
 }
 
 static int update_leds_glitter(ws2811_t* ledstrip)
@@ -499,9 +502,10 @@ static int update_leds_glitter(ws2811_t* ledstrip)
     }
     for (int led = 0; led < xmas_source.basic_source.n_leds; ++led)
     {
-        double t = 0.5 + 0.5 * cos(get_angle(&glitter_periods[led]));
-        ledstrip->channel[0].leds[led] =  glitter_colors[led];
+        double t = 0.75 + 0.5 * cos(get_angle(&glitter_periods[led]));
+        ledstrip->channel[0].leds[led] = multiply_rgb_color(glitter_colors[led], t);
     }
+    return 1;
 }
 
 #pragma endregion
@@ -730,6 +734,8 @@ int XmasSource_update_leds(int frame, ws2811_t* ledstrip)
         return update_leds_snowflake(ledstrip);
     case XM_GLITTER:
         return update_leds_glitter(ledstrip);
+    case XM_GLITTER2:
+        return 0;
     case XM_ICICLES:
         return update_leds_icicles(ledstrip);
     case XM_DEBUG:
@@ -750,6 +756,8 @@ void XmasSource_destruct_current_mode()
     case XM_GLITTER:
         Glitter1_destruct();
         break;
+    case XM_GLITTER2:
+        break;
     case XM_ICICLES:
         free(icicle_colors);
         free(icicles);
@@ -758,6 +766,8 @@ void XmasSource_destruct_current_mode()
         free(snowflakes);
         free(diff_data);
         free(spec_data);
+        break;
+    case N_XMAS_MODES:
         break;
     }
 }
@@ -779,11 +789,15 @@ void XmasSource_init_current_mode()
     case XM_GLITTER:
         Glitter1_init();
         break;
+    case XM_GLITTER2:
+        break;
     case XM_ICICLES:
         Icicles_init();
         break;
     case XM_SNOWFLAKES:
         Snowflakes_init();
+        break;
+    case N_XMAS_MODES:
         break;
     }
 }
