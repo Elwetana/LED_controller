@@ -9,6 +9,14 @@
 #define max(x,y)  ((x) > (y)) ? (x) : (y)
 #endif
 
+ws2811_led_t alpha_blend_rgb(ws2811_led_t upper, ws2811_led_t lower, double upper_alpha)
+{
+    int r = (int)(((upper >> 16) & 0xFF) * upper_alpha + ((lower >> 16) & 0xFF) * (1. - upper_alpha));
+    int g = (int)(((upper >> 8) & 0xFF) * upper_alpha + ((lower >> 8) & 0xFF) * (1. - upper_alpha));
+    int b = (int)((upper & 0xFF) * upper_alpha + (lower & 0xFF) * (1. - upper_alpha));
+    return r << 16 | g << 8 | b;
+}
+
 ws2811_led_t multiply_rgb_color(ws2811_led_t rgb, double t)
 {
     int r = (int)(((rgb >> 16) & 0xFF) * t);
@@ -104,6 +112,9 @@ ws2811_led_t hsl2rgb(hsl_t* hsl)
     return float2int(r) << 16 | float2int(g) << 8 | float2int(b);
 }
 
+/*!
+* \returns  hsl1 for t == 0 and hsl2 for t == 1
+*/
 void lerp_hsl(const hsl_t* hsl1, const hsl_t* hsl2, const float t, hsl_t* hsl_out)
 {
     for (int i = 0; i < 3; ++i)
@@ -119,6 +130,18 @@ void lerp_hsl(const hsl_t* hsl1, const hsl_t* hsl2, const float t, hsl_t* hsl_ou
     {
         hsl_out->h += 1;
     }
+}
+
+/*!
+* \returns  rgb1 for t == 0 and rgb2 for t == 1
+*/
+ws2811_led_t lerp_rgb(const ws2811_led_t rgb1, const ws2811_led_t rgb2, const float t)
+{
+    hsl_t hsl1, hsl2, hsl_out;
+    rgb2hsl(rgb1, &hsl1);
+    rgb2hsl(rgb2, &hsl2);
+    lerp_hsl(&hsl1, &hsl2, t, &hsl_out);
+    return hsl2rgb(&hsl_out);
 }
 
 void fill_gradient(ws2811_led_t* gradient, int offset, ws2811_led_t from_color, ws2811_led_t to_color, int steps, int max_index)
