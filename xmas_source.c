@@ -600,8 +600,8 @@ static int update_leds_debug(ws2811_t* ledstrip)
     }
     for (int led = 0; led < xmas_source.basic_source.n_leds; ++led)
     {
-        //ledstrip->channel[0].leds[led] = led == xmas_source.led_index ? xmas_source.basic_source.gradient.colors[0] : 0;
-        ledstrip->channel[0].leds[led] = led < (int)sizeof(xmas_source.basic_source.gradient.colors)/(int)sizeof(int) ? xmas_source.basic_source.gradient.colors[led] : 0;
+        ledstrip->channel[0].leds[led] = led == xmas_source.led_index ? xmas_source.basic_source.gradient.colors[0] : 0;
+        //ledstrip->channel[0].leds[led] = led < (int)sizeof(xmas_source.basic_source.gradient.colors)/(int)sizeof(int) ? xmas_source.basic_source.gradient.colors[led] : 0;
     }
     xmas_source.first_update = 1;
     return 1;
@@ -909,6 +909,11 @@ void XmasSource_process_message(const char* msg)
         XmasSource_init_current_mode();
         xmas_source.first_update = 0;
         printf("Switched mode in XmasSource to: %s\n", payload);
+    }
+    else if (!strncasecmp(target, "DEBUG", 5))
+    {
+        xmas_source.led_index = atoi(payload);
+        printf("Set new debug led to %i\n", xmas_source.led_index);
     }
     else
         printf("Unknown target: %s, payload was: %s\n", target, payload);
