@@ -913,6 +913,7 @@ void XmasSource_process_message(const char* msg)
     else if (!strncasecmp(target, "DEBUG", 5))
     {
         xmas_source.led_index = atoi(payload);
+        xmas_source.first_update = 0;
         printf("Set new debug led to %i\n", xmas_source.led_index);
     }
     else
