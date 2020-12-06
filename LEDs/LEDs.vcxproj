@@ -161,6 +161,7 @@
     <ClCompile Include="..\led_main.c" />
     <ClCompile Include="..\listener.c" />
     <ClCompile Include="..\morse_source.c" />
+    <ClCompile Include="..\moving_object.c" />
     <ClCompile Include="..\perlin_source.c" />
     <ClCompile Include="..\sound\test.c" />
     <ClCompile Include="..\source_manager.c" />
@@ -200,6 +201,7 @@
     <ClInclude Include="..\include\led_main.h" />
     <ClInclude Include="..\include\listener.h" />
     <ClInclude Include="..\include\morse_source.h" />
+    <ClInclude Include="..\include\moving_object.h" />
     <ClInclude Include="..\include\perlin_source.h" />
     <ClInclude Include="..\include\source_manager.h" />
     <ClInclude Include="..\include\xmas_source.h" />

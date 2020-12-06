@@ -22,4 +22,11 @@ struct input_event {
 	int value;
 };
 
+struct input_event ie;
+int read(int input, struct input_event* ie, int size)
+{
+	return 1;
+}
+
+
 #endif  /* __FAKE_INPUT__ */
