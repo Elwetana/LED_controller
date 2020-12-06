@@ -6,26 +6,36 @@
 * it ignores triggers and joysticks.
 */
 
+#define C_BTN_OFFSET 300
+
+/*! The actual codes defined in linux/input.h start with 304 for BTN_A 
+* For better lookup we need codes to start from 0 */
 enum EButtons
 {
-	DPAD_L = 300,
-	DPAD_R = 301,
-	DPAD_U = 302,
-	DPAD_D = 303,
-	XBTN_A = 304,
-	XBTN_B = 305,
-	XBTN_X = 307,
-	XBTN_Y = 308,
-	XBTN_ERROR = 309,
-	XBTN_LB = 310,
-	XBTN_RB = 311,
-	XBTN_Back  = 314,
-	XBTN_Start = 315,
-	XBTN_Xbox  = 316,
-	XBTN_L3 = 317,
-	XBTN_R3 = 318
+	DPAD_L		=  0,
+	DPAD_R		=  1,
+	DPAD_U		=  2,
+	DPAD_D		=  3,
+	XBTN_A		=  4,
+	XBTN_B		=  5,
+
+	XBTN_X		=  7,
+	XBTN_Y		=  8,
+	XBTN_ERROR	=  9,
+	XBTN_LB		= 10,
+	XBTN_RB		= 11,
+
+
+	XBTN_Back	= 14,
+	XBTN_Start	= 15,
+	XBTN_Xbox	= 16,
+	XBTN_L3		= 17,
+	XBTN_R3		= 18,
 };
 
+#define C_MAX_XBTN  19 //this must be define for statically allocated arrays
+
+/*! Released = 0, Pressed = 1 */
 enum EState
 {
 	BT_released,

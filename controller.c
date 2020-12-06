@@ -123,7 +123,7 @@ int Controller_get_button(enum EButtons* button, enum EState* state)
     {
         if (ie.type == EV_KEY)
         {
-            *button = ie.code;
+            *button = ie.code - C_BTN_OFFSET;
             *state = ie.value;
             return 1;
         }

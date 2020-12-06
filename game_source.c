@@ -22,6 +22,8 @@
 #include "colours.h"
 #include "moving_object.h"
 
+#define GAME_DEBUG
+
 enum StencilFlags
 {
     SF_Player,
@@ -40,12 +42,68 @@ typedef struct PulseObject
 struct
 {
     moving_object_t ship;
-
+    int health;
 } player_object;
 
 
 static moving_object_t objects[MAX_N_OBJECTS];
 static int n_objects = 0;
+
+
+
+//handlers of the button events, the lower half is on_release
+static void(*button_handlers[2 * C_MAX_XBTN])();
+
+
+//TODO  -- this is all wrong, we must separate facing and movement direction
+void ButtonHandler_move_player_left()
+{
+    int dir = SGN(player_object.ship.target, player_object.ship.position);
+    //if dir == 1, we need to turn the ship around, in this case it's enough that position > 1
+    //if dir == -1, we are already moving left and we need postion > 1 + length
+    // e.g. dir==1, pos = 2, length = 3 =>   . . P * * will become . . . * * P . => position is 5
+    if (player_object.ship.position > ((dir > 0) * player_object.ship.length + 1.))
+    {
+        player_object.ship.position += (dir > 0) * player_object.ship.length;
+        player_object.ship.target = (uint32_t)player_object.ship.position - 1;
+        player_object.ship.speed = config.player_ship_speed;
+    }
+}
+
+void ButtonHandler_move_player_right()
+{
+    int dir = SGN(player_object.ship.target, player_object.ship.position);
+    //if dir == 1, we are already moving right and we need postion < n_leds - length - 1
+    //if dir == -1, we need to turn the ship around, in this case it's enough that position < n_leds - 1
+    if (player_object.ship.position > ((dir > 0) * player_object.ship.length + 1.))
+    {
+        player_object.ship.position += (dir > 0) * player_object.ship.length;
+        player_object.ship.target = (uint32_t)player_object.ship.position - 1;
+        player_object.ship.speed = config.player_ship_speed;
+    }
+}
+
+static void Input_init()
+{
+    button_handlers[C_MAX_XBTN + XBTN_LB] = ButtonHandler_move_player_left;
+}
+
+
+static void Input_check()
+{
+    enum EButtons button;
+    enum EState state;
+    int i = Controller_get_button(&button, &state);
+#ifdef GAME_DEBUG
+    if (i != 0) printf("controller button: %s, state: %i\n", Controller_get_button_name(button), state);
+#endif // GAME_DEBUG
+    if (i != 0 && button == XBTN_A && state == BT_pressed)
+    {
+        
+    }
+
+}
+
 
 
 //====== Stencil and Collisions =======
@@ -81,10 +139,9 @@ void MovinObject_process_stencil()
 int GameSource_update_leds(int frame, ws2811_t* ledstrip)
 {
     (void)frame;
-    enum EButtons button;
-    enum EState state;
-    int i = Controller_get_button(&button, &state);
-    if(i != 0) printf("controller button: %s, state: %i\n", Controller_get_button_name(button), state);
+    Canvas_clear();
+    unit_tests();
+/*    if(i != 0) printf("controller button: %s, state: %i\n", Controller_get_button_name(button), state);
     if (i != 0 && button == XBTN_A && state == BT_pressed)
     {
         objects[n_objects].color[0] = game_source.basic_source.gradient.colors[0];
@@ -95,7 +152,7 @@ int GameSource_update_leds(int frame, ws2811_t* ledstrip)
         objects[n_objects].length = 1;
         objects[n_objects].on_arrival = MovingObject_arrive_delete;
         n_objects++;
-    }
+    }*/
     for (int led = 0; led < game_source.basic_source.n_leds; ++led)
     {
         ledstrip->channel[0].leds[led] = 0;
@@ -105,6 +162,30 @@ int GameSource_update_leds(int frame, ws2811_t* ledstrip)
         MovingObject_process(&objects[p], 1, ledstrip->channel[0].leds, 1);
     }
     return 1;
+}
+
+PlayerObject_init()
+{
+    MovingObject_init_stopped(&player_object.ship, config.player_start_position, config.player_ship_size, 1, config.color_index_player);
+    player_object.health = config.player_health_levels;
+}
+
+/*! Init all game objects and modes */
+Game_source_init_objects()
+{
+    config.player_start_position = 180;
+    config.player_ship_size = 5;
+    config.color_index_R = 0;
+    config.color_index_G = 1;
+    config.color_index_B = 2;
+    config.color_index_C = 3;
+    config.color_index_M = 4;
+    config.color_index_Y = 5;
+    config.color_index_W = 6;
+    config.color_index_player = 7;
+    config.player_health_levels = 6; //i.e 7 - 12 is index of player health levels
+
+    PlayerObject_init();
 }
 
 //msg = color?xxxxxx
@@ -148,8 +229,9 @@ void GameSource_init(int n_leds, int time_speed, uint64_t current_time)
 {
     BasicSource_init(&game_source.basic_source, n_leds, time_speed, source_config.colors[GAME_SOURCE], current_time);
     game_source.first_update = 0;
-    canvas = malloc(sizeof(pixel_t) * n_leds);
     Controller_init();
+    canvas = malloc(sizeof(pixel_t) * n_leds);
+    Game_source_init_objects();
 }
 
 void GameSource_destruct()
