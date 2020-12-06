@@ -24,7 +24,7 @@ typedef struct MorseSource {
     char font[MORSE_FONT_CHAR_H][26 * MORSE_FONT_CHAR_W];
     struct MorseChar morse[26];
     char* text;
-    int text_length;
+    size_t text_length;
     enum EMorseMode mode;
 } MorseSource;
 

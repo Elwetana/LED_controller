@@ -120,7 +120,7 @@ inline int ishex(int x)
 
 // Decode URL-encoded strings
 // https://rosettacode.org/wiki/URL_decoding#C
-int decode(const char* s, char* dec)
+int64_t decode(const char* s, char* dec)
 {
     char* o;
     const char* end = s + strlen(s);
@@ -145,7 +145,7 @@ void process_source_message(const char* param)
     char* sep = strchr(param, '?');
     if (sep != NULL)
     {
-        int name_length = sep - param;
+        int64_t name_length = sep - param;
         strncpy(source_name, param, name_length);
         source_name[name_length] = 0x0;
         color = strtol(sep + 1, NULL, 16);
@@ -183,7 +183,7 @@ void check_message()
     }
     if (strlen(msg) > 64) 
     {
-        printf("Message too long: %s, %i", msg, strlen(msg));
+        printf("Message too long: %s, %zi", msg, strlen(msg));
         goto quit;
     }
     char command[64];
@@ -194,6 +194,9 @@ void check_message()
         printf("Unknown message received %s\n", msg);
         goto quit;
     }
+    //make sure strings are null-terminated
+    command[63] = 0x0;
+    param[63] = 0x0;
     if (!strncasecmp(command, "SOURCE", 6))
     {
         process_source_message(param);

@@ -207,12 +207,17 @@ static void XmasSource_read_geometry()
 
 typedef struct PeriodData {
     //all are times in ms
-    long lastChange;
-    long nextChange;
-    long basePeriod;   
-    long periodRange;
+    unsigned long lastChange;
+    unsigned long nextChange;
+    unsigned long basePeriod;
+    unsigned long periodRange;
     double phaseShift;
 } period_data_t;
+
+unsigned long current_time_in_ms()
+{
+    return (unsigned long)(xmas_source.basic_source.current_time / (uint64_t)1e6);
+}
 
 /**
 * Generate linearly increasing number from 0 to 2 * pi, with some random variation
@@ -221,7 +226,7 @@ typedef struct PeriodData {
 */
 double get_angle(period_data_t* period_data)
 {
-    long cur_time = xmas_source.basic_source.current_time / (long)1e6;
+    unsigned long cur_time = current_time_in_ms();
     if (cur_time >= period_data->nextChange)
     {
         period_data->lastChange = period_data->nextChange;
@@ -264,7 +269,7 @@ void MovingLed_move(moving_led_t* moving_led)
 
 int MovingLed_get_intensity(moving_led_t* moving_led, float* at_origin, float* at_destination)
 {
-    *at_origin = (1 - moving_led->distance);
+    *at_origin = (1.f - moving_led->distance);
     *at_destination = moving_led->distance;
     /*
     if(moving_led->distance > 0.5f)
@@ -295,7 +300,7 @@ void Snowflakes_init()
     diff_data = malloc(sizeof(period_data_t) * config.n_snowflakes);
     spec_data = malloc(sizeof(period_data_t) * config.n_snowflakes);
     int d = (int)(xmas_source.basic_source.n_leds / config.n_snowflakes);
-    long cur_time = xmas_source.basic_source.current_time / (long)1e6;
+    unsigned long cur_time = current_time_in_ms();
     for (int flake = 0; flake < config.n_snowflakes; ++flake)
     {
         diff_data[flake].nextChange  = cur_time - 1;
@@ -458,7 +463,7 @@ static void Glitter_init_common()
 {
     glitter_periods = malloc(sizeof(period_data_t) * xmas_source.basic_source.n_leds);
     glitter_colors = malloc(sizeof(ws2811_led_t) * xmas_source.basic_source.n_leds);
-    long cur_time = xmas_source.basic_source.current_time / (long)1e6;
+    unsigned long cur_time = current_time_in_ms();
     for (int led = 0; led < xmas_source.basic_source.n_leds; ++led)
     {
         int col = select_glitter_color();
