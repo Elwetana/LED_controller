@@ -145,7 +145,7 @@ int MovingObject_process(moving_object_t* object, int stencil_index, ws2811_led_
         {
             render_with_z_test(trailing_color, 1., leds, trailing_led, object->zdepth);
         }
-        if (leading_led == object->target)
+        if (dir * (leading_led - (int)object->target) >= 0) //when moving right, condition is >=, when moving left it's <=
         {
             target_reached = 1;
             distance = -offset;
@@ -288,6 +288,27 @@ int unit_tests()
     assert(leds[5] == 125); //0.75 * 100 + 0.25 * 200
     assert(leds[6] == 70);  //0.75 * 60 + 0.25 * 100
     assert(leds[7] == 15);
+
+    for (int i = 0; i < 20; i++) leds[i] = 0;
+    Canvas_clear();
+
+    //already after target
+    o.speed = 2.75;
+    o.position = 3;
+    o.target = 5;
+    o.facing = MO_FORWARD;
+    MovingObject_process(&o, 0, leds, 1);
+    assert(o.position == 5);
+    assert(leds[0] == 0);
+    assert(leds[1] == 0);
+    assert(leds[2] == 0);
+    assert(leds[3] == 60);
+    assert(leds[4] == 100);
+    assert(leds[5] == 200);
+    assert(leds[6] == 0);  
+    assert(leds[7] == 0);
+
+    //moving left, facing backward
 
     return 0;
 }
