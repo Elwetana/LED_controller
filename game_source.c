@@ -139,8 +139,7 @@ void MovinObject_process_stencil()
 int GameSource_update_leds(int frame, ws2811_t* ledstrip)
 {
     (void)frame;
-    Canvas_clear();
-    unit_tests();
+    //unit_tests();
 /*    if(i != 0) printf("controller button: %s, state: %i\n", Controller_get_button_name(button), state);
     if (i != 0 && button == XBTN_A && state == BT_pressed)
     {
@@ -166,7 +165,7 @@ int GameSource_update_leds(int frame, ws2811_t* ledstrip)
 
 PlayerObject_init()
 {
-    MovingObject_init_stopped(&player_object.ship, config.player_start_position, config.player_ship_size, 1, config.color_index_player);
+    MovingObject_init_stopped(&player_object.ship, config.player_start_position, MO_BACKWARD, config.player_ship_size, 1, config.color_index_player);
     player_object.health = config.player_health_levels;
 }
 
