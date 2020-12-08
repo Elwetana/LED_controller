@@ -5,7 +5,6 @@
 //returns +1 if a >= b, -1 if a < b
 #define SGN(a,b) 1 - 2 * ((a) - (b) < 0.0001)    
 
-#define MAX_N_OBJECTS     256
 #define MAX_OBJECT_LENGTH  16
 
 enum MovingObjectFacing
@@ -29,9 +28,21 @@ typedef struct MovingObject
     void(*on_arrival)(struct MovingObject*);
 } moving_object_t;
 
+
+struct MoveResults
+{
+    int dir;             //!< -1 - moving left, +1 moving right
+    int df_not_aligned;  //!<  0 if facing == dir, +1 if facing != dir
+    int trail_start;
+    double trail_offset; //!< number from <0,1>
+    int body_start;
+    double body_offset;
+    int target_reached;  //!< 0 - target not reached, 1 target was reached, -1 target was already reached without moving
+    double end_position;
+};
+
 typedef struct CanvasPixel
 {
-    //ws2811_led_t color;
     int zbuffer;
     int stencil;
     int object_index;
@@ -40,7 +51,8 @@ typedef struct CanvasPixel
 /*! Canvas for painting helper information (not actual colours), like z-buffer */
 pixel_t* canvas;
 
-void Canvas_clear();
+/*! Clear canvas and reset led colors */
+void Canvas_clear(ws2811_led_t* leds);
 
 /*! Init MovingObject with basic values and single colour */
 void MovingObject_init_stopped(moving_object_t* object, double position, enum MovingObjectFacing facing, uint32_t length, int zdepth, uint32_t color_index);
@@ -52,12 +64,22 @@ void MovingObject_arrive_delete(moving_object_t* object);
 void MovingObject_arrive_stop(moving_object_t* object);
 
 /*!
+ * @brief Set the facing, if the facing is changed, we have to adjust the position
+ * @param facing    desired facing
+*/
+void MovingObject_set_facing(moving_object_t* object, enum MovingObjectFacing facing);
+
+
+int MovingObject_get_move_results(moving_object_t* object, struct MoveResults* move_results);
+
+int MovingObject_render(moving_object_t* object, struct MoveResults* move_results, ws2811_led_t* leds, int render_trail);
+
+/*!
 * Move and render the object
-* \param stencil_index  will be written to stencil.
 * \param render_path    1 -- all intermediate leds will be lit, 0 -- only the end position will be rendered
 * \return               0 when the object arrives at _target_, 1 otherwise
 */
-int MovingObject_process(moving_object_t* object, int stencil_index, ws2811_led_t* leds, int render_path);
+int MovingObject_update(moving_object_t* object, struct MoveResults* move_results);
 
 
 int unit_tests();

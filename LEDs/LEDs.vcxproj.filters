@@ -75,6 +75,9 @@
     <ClCompile Include="..\moving_object.c">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="..\input_handler.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <None Include="packages.config" />
@@ -149,6 +152,12 @@
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="..\include\moving_object.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\include\input_handler.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\include\game_source_priv.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>

@@ -158,6 +158,7 @@
     <ClCompile Include="..\game_source.c" />
     <ClCompile Include="..\getopt.c" />
     <ClCompile Include="..\ini.c" />
+    <ClCompile Include="..\input_handler.c" />
     <ClCompile Include="..\led_main.c" />
     <ClCompile Include="..\listener.c" />
     <ClCompile Include="..\morse_source.c" />
@@ -196,8 +197,10 @@
     <ClInclude Include="..\include\faketime.h" />
     <ClInclude Include="..\include\fire_source.h" />
     <ClInclude Include="..\include\game_source.h" />
+    <ClInclude Include="..\include\game_source_priv.h" />
     <ClInclude Include="..\include\getopt.h" />
     <ClInclude Include="..\include\ini.h" />
+    <ClInclude Include="..\include\input_handler.h" />
     <ClInclude Include="..\include\led_main.h" />
     <ClInclude Include="..\include\listener.h" />
     <ClInclude Include="..\include\morse_source.h" />

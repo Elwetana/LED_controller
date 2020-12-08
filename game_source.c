@@ -17,114 +17,155 @@
 #endif // __linux__
 
 #include "common_source.h"
-#include "game_source.h"
-#include "controller.h"
 #include "colours.h"
 #include "moving_object.h"
+#include "input_handler.h"
+#include "game_source_priv.h"
+#include "game_source.h"
 
 #define GAME_DEBUG
 
+#define MAX_N_OBJECTS     256
+const int C_BKGRND_OBJ_INDEX =   0;
+const int C_OBJECT_OBJ_INDEX =  32; //ships and asteroids
+const int C_PROJCT_OBJ_INDEX = 128; //projectiles
+const int C_PLAYER_OBJ_INDEX = MAX_N_OBJECTS - 1;
+
 enum StencilFlags
 {
+    SF_Background,
     SF_Player,
     SF_PlayerProjectile,
     SF_Enemy,
-    SF_EnemyProjectile
+    SF_EnemyProjectile,
+    SF_N_FLAGS
 };
 
+/*!
+ * @brief Handlers are indexed in_stencil_object_index * SF_N_FLAGS + object_being_checked_index
+ * All handlers take pointers in this order and 
+ * @return  1 - use the new index
+ *          2 - use the new index and erase the old index from here to end
+ *          0 - keep the use already written index
+ */
+int (*stencil_handlers[SF_N_FLAGS * SF_N_FLAGS])(game_object_t*, game_object_t*);
 
-typedef struct PulseObject
-{
-    int moving_object_index;
-    ws2811_led_t source_color[MAX_OBJECT_LENGTH];
-} pulse_object_t;
-
-struct
-{
-    moving_object_t ship;
-    int health;
-} player_object;
-
-
-static moving_object_t objects[MAX_N_OBJECTS];
-static int n_objects = 0;
-
-
-
-//handlers of the button events, the lower half is on_release
-static void(*button_handlers[2 * C_MAX_XBTN])();
-
-
-//TODO  -- this is all wrong, we must separate facing and movement direction
-void ButtonHandler_move_player_left()
-{
-    int dir = SGN(player_object.ship.target, player_object.ship.position);
-    //if dir == 1, we need to turn the ship around, in this case it's enough that position > 1
-    //if dir == -1, we are already moving left and we need postion > 1 + length
-    // e.g. dir==1, pos = 2, length = 3 =>   . . P * * will become . . . * * P . => position is 5
-    if (player_object.ship.position > ((dir > 0) * player_object.ship.length + 1.))
-    {
-        player_object.ship.position += (dir > 0) * player_object.ship.length;
-        player_object.ship.target = (uint32_t)player_object.ship.position - 1;
-        player_object.ship.speed = config.player_ship_speed;
-    }
-}
-
-void ButtonHandler_move_player_right()
-{
-    int dir = SGN(player_object.ship.target, player_object.ship.position);
-    //if dir == 1, we are already moving right and we need postion < n_leds - length - 1
-    //if dir == -1, we need to turn the ship around, in this case it's enough that position < n_leds - 1
-    if (player_object.ship.position > ((dir > 0) * player_object.ship.length + 1.))
-    {
-        player_object.ship.position += (dir > 0) * player_object.ship.length;
-        player_object.ship.target = (uint32_t)player_object.ship.position - 1;
-        player_object.ship.speed = config.player_ship_speed;
-    }
-}
-
-static void Input_init()
-{
-    button_handlers[C_MAX_XBTN + XBTN_LB] = ButtonHandler_move_player_left;
-}
-
-
-static void Input_check()
-{
-    enum EButtons button;
-    enum EState state;
-    int i = Controller_get_button(&button, &state);
-#ifdef GAME_DEBUG
-    if (i != 0) printf("controller button: %s, state: %i\n", Controller_get_button_name(button), state);
-#endif // GAME_DEBUG
-    if (i != 0 && button == XBTN_A && state == BT_pressed)
-    {
-        
-    }
-
-}
+game_object_t game_objects[MAX_N_OBJECTS];
 
 
 
 //====== Stencil and Collisions =======
 
-static void MovingObject_stencil_test()
+int StencilHandler_impossible(game_object_t* obj1, game_object_t* obj2)
 {
-    //canvas[object->position].stencil = stencil_index;
-
+    (void)obj1;
+    (void)obj2;
+    assert(0); //this is a handler that should never be called
+    return -1;
 }
 
-/*! Iterates over all MovingObjects and paint their
+int StencilHandler_player_is_hit(game_object_t* projectile, game_object_t* player)
+{
+    assert(player == &player_object);
+    //find where is the collision
+}
+
+static void Stencil_erase_object(int start_led, int dir)
+{
+    int stencil_index = canvas[start_led].stencil;
+    int led = start_led;
+    while (canvas[led].stencil == stencil_index)
+    {
+        canvas[led].stencil = -1;
+        canvas[led].object_index = -1;
+        led += dir;
+    }
+}
+
+static void MovingObject_stencil_test(int object_index)
+{
+    struct MoveResults* mr = &game_objects[object_index].mr;
+    int led_start = mr->trail_start;
+    int led_end = mr->body_start + mr->dir * (game_objects[object_index].body.length - 1);
+    assert(led_start >= 0 && led_start < game_source.basic_source.n_leds - 1);
+    assert(led_end >= 0 && led_end < game_source.basic_source.n_leds - 1);
+    if (mr->body_offset > 0) led_end++;
+    int other_index = -1;
+    int result_stencil = -1;
+    int result_index = -1;
+    for (int led = led_start; mr->dir * (led_end - led) > 0; led += mr->dir)
+    {
+        if (canvas[led].object_index == -1)
+        {
+            canvas[led].stencil = game_objects[object_index].stencil_flag;
+            canvas[led].object_index = object_index;
+            continue;
+        }
+        //we have a collision and we have to handle it
+        if (canvas[led].object_index == other_index) //we've solved this collision here before
+        {
+            canvas[led].stencil = result_stencil;
+            canvas[led].object_index = result_index;
+            continue;
+        }
+        other_index = canvas[led].object_index;
+        int handler_index = canvas[led].stencil * SF_N_FLAGS + game_objects[object_index].stencil_flag;
+        int res;
+        if (!stencil_handlers[handler_index]) //we don't have a handler, default option is to replace the old stencil
+        {
+            res = 1;
+        }
+        else
+        {
+            res = stencil_handlers[handler_index](&game_objects[other_index], &game_objects[object_index]);
+        }
+        switch (res)
+        {
+        case 2:
+            Stencil_erase_object(led, mr->dir);
+            result_stencil = game_objects[object_index].stencil_flag;
+            result_index = object_index;
+            break;
+        case 1:
+            result_stencil = game_objects[object_index].stencil_flag;
+            result_index = object_index;
+            break;
+        case 0:
+            result_stencil = canvas[led].stencil;
+            result_index = other_index;
+            break;
+        }
+        canvas[led].stencil = result_stencil;
+        canvas[led].object_index = result_index;
+    }
+}
+
+/*! Iterates over all GameObjects and paint their
 * stencil ids into the stencil itself, When a collision
 * is detected, appropriate handler function is called
 * from table Stencil_handlers
 */
-void MovinObject_process_stencil()
+void Stencil_check_movement()
 {
-    
+    for (int object_index = 0; object_index < MAX_N_OBJECTS; ++object_index)
+    {
+        if (game_objects[object_index].body.deleted)
+        {
+            continue;
+        }
+        MovingObject_get_move_results(&game_objects[object_index].body, &game_objects[object_index].mr);
+        MovingObject_stencil_test(object_index);
+    }
 }
 
+void Stencil_init()
+{
+    for (int i = 0; i < SF_N_FLAGS * SF_N_FLAGS; ++i)
+    {
+        stencil_handlers[i] = NULL;
+    }
 
+}
 
 /*! The sequence of actions during one loop:
 *   - process inputs - this may include timers?
@@ -140,39 +181,37 @@ int GameSource_update_leds(int frame, ws2811_t* ledstrip)
 {
     (void)frame;
     //unit_tests();
-/*    if(i != 0) printf("controller button: %s, state: %i\n", Controller_get_button_name(button), state);
-    if (i != 0 && button == XBTN_A && state == BT_pressed)
-    {
-        objects[n_objects].color[0] = game_source.basic_source.gradient.colors[0];
-        objects[n_objects].position = 0;
-        objects[n_objects].target = 199;
-        objects[n_objects].speed = 50.f;
-        objects[n_objects].zdepth = 1;
-        objects[n_objects].length = 1;
-        objects[n_objects].on_arrival = MovingObject_arrive_delete;
-        n_objects++;
-    }*/
-    for (int led = 0; led < game_source.basic_source.n_leds; ++led)
-    {
-        ledstrip->channel[0].leds[led] = 0;
-    }
+    Canvas_clear(ledstrip->channel[0].leds);
+    InputHandler_process_input();
+    Stencil_check_movement();
+    /*
     for (int p = 0; p < n_objects; ++p)
     {
-        MovingObject_process(&objects[p], 1, ledstrip->channel[0].leds, 1);
-    }
+        //MovingObject_update(&objects[p], 1, ledstrip->channel[0].leds, 1);
+    }*/
     return 1;
 }
 
 PlayerObject_init()
 {
-    MovingObject_init_stopped(&player_object.ship, config.player_start_position, MO_BACKWARD, config.player_ship_size, 1, config.color_index_player);
-    player_object.health = config.player_health_levels;
+    player_object = &game_objects[C_PLAYER_OBJ_INDEX];
+    MovingObject_init_stopped(&player_object->body, config.player_start_position, MO_BACKWARD, config.player_ship_size, 1, config.color_index_player);
+    player_object->health = config.player_health_levels;
+}
+
+GameObjects_init()
+{
+    for (int i = 0; i < MAX_N_OBJECTS; ++i)
+        game_objects[i].body.deleted = 1;
+    PlayerObject_init();
 }
 
 /*! Init all game objects and modes */
 Game_source_init_objects()
 {
+    //placeholder -- config will be read from file
     config.player_start_position = 180;
+    config.player_ship_speed = 1;
     config.player_ship_size = 5;
     config.color_index_R = 0;
     config.color_index_G = 1;
@@ -184,7 +223,9 @@ Game_source_init_objects()
     config.color_index_player = 7;
     config.player_health_levels = 6; //i.e 7 - 12 is index of player health levels
 
-    PlayerObject_init();
+    InputHandler_init();
+    GameObjects_init();
+    Stencil_init();
 }
 
 //msg = color?xxxxxx
@@ -228,7 +269,6 @@ void GameSource_init(int n_leds, int time_speed, uint64_t current_time)
 {
     BasicSource_init(&game_source.basic_source, n_leds, time_speed, source_config.colors[GAME_SOURCE], current_time);
     game_source.first_update = 0;
-    Controller_init();
     canvas = malloc(sizeof(pixel_t) * n_leds);
     Game_source_init_objects();
 }
