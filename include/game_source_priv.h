@@ -18,6 +18,9 @@ struct
 } config;
 
 
+#define MAX_N_OBJECTS     256
+extern const int C_PLAYER_OBJ_INDEX;
+
 typedef struct GameObject
 {
 	moving_object_t body;
@@ -25,8 +28,10 @@ typedef struct GameObject
 	enum StencilFlags stencil_flag;
 	ws2811_led_t source_color[MAX_OBJECT_LENGTH];
 	int health;
+	struct PulseObject pulse;
 } game_object_t;
 
 game_object_t* player_object;
+game_object_t game_objects[MAX_N_OBJECTS];
 
 #endif /* __GAME_SOURCE_PRIV_H__ */

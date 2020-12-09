@@ -15,8 +15,10 @@
 #endif // __linux__
 
 #include "controller.h"
+#include "colours.h"
 #include "common_source.h"
 #include "moving_object.h"
+#include "pulse_object.h"
 #include "game_source_priv.h"
 #include "game_source.h"
 

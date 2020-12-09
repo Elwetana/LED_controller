@@ -166,7 +166,7 @@ static void calculate_height()
     }
 }
 
-static void XmasSource_read_geometry()
+static int XmasSource_read_geometry()
 {
     geometry.neighbors = malloc(xmas_source.basic_source.n_leds * sizeof(*geometry.neighbors));
     FILE* fgeom = fopen("geometry", "r");
@@ -177,11 +177,16 @@ static void XmasSource_read_geometry()
     int row = 0;
     while (row < xmas_source.basic_source.n_leds)
     {
-        fscanf(fgeom, "%d\t%d\t%d\t%d\t%d\t%d\t%d\t%d\n",
+        int n = fscanf(fgeom, "%d\t%d\t%d\t%d\t%d\t%d\t%d\t%d\n",
             &geometry.neighbors[row][UP], &geometry.neighbors[row][UP + 1],
             &geometry.neighbors[row][RIGHT], &geometry.neighbors[row][RIGHT + 1],
             &geometry.neighbors[row][DOWN], &geometry.neighbors[row][DOWN + 1],
             &geometry.neighbors[row][LEFT], &geometry.neighbors[row][LEFT + 1]);
+        if (n != 8)
+        {
+            printf("Error reading geometry\n");
+            return 0;
+        }
         geometry.neighbors[row][FORWARD] = row + 1;
         geometry.neighbors[row][FORWARD + 1] = 1;
         geometry.neighbors[row][BACKWARD] = row - 1;
@@ -199,6 +204,7 @@ static void XmasSource_read_geometry()
     */
     calculate_height();
     find_heads_and_springs();
+    return 1;
 }
 
 #pragma endregion
@@ -249,7 +255,7 @@ void MovingLed_move(moving_led_t* moving_led)
     if (moving_led->is_moving == 0)
         return;
     double time_seconds = (xmas_source.basic_source.time_delta / (long)1e3) / (double)1e6;
-    moving_led->distance += moving_led->speed * time_seconds;
+    moving_led->distance += moving_led->speed * (float)time_seconds;
     if (moving_led->distance >= 1.0f)
     {
         moving_led->distance -= 1;
@@ -299,6 +305,11 @@ void Snowflakes_init()
     snowflakes = malloc(sizeof(moving_led_t) * config.n_snowflakes);
     diff_data = malloc(sizeof(period_data_t) * config.n_snowflakes);
     spec_data = malloc(sizeof(period_data_t) * config.n_snowflakes);
+    if (!snowflakes || !diff_data || !spec_data)
+    {
+        printf("Cannot allocate memory for snowflakes\n");
+        return;
+    }
     int d = (int)(xmas_source.basic_source.n_leds / config.n_snowflakes);
     unsigned long cur_time = current_time_in_ms();
     for (int flake = 0; flake < config.n_snowflakes; ++flake)
@@ -415,7 +426,7 @@ static int update_leds_snowflake(ws2811_t* ledstrip)
         double l = config.k_diff * cos(diff_alpha) + config.k_spec * pow(cos(spec_alpha), config.spec);
 
         hsl_t centre_col = snowflake_colors[2];
-        centre_col.l += l;
+        centre_col.l += (float)l;
         if (centre_col.l + l > 1.f) centre_col.l = 1.f;
         hsl_t edge_col = snowflake_colors[1];
         edge_col.l += (float)pow(l, 2);
@@ -463,6 +474,11 @@ static void Glitter_init_common()
 {
     glitter_periods = malloc(sizeof(period_data_t) * xmas_source.basic_source.n_leds);
     glitter_colors = malloc(sizeof(ws2811_led_t) * xmas_source.basic_source.n_leds);
+    if (!glitter_periods || !glitter_colors)
+    {
+        printf("Cannot allocate memory for glitter.\n");
+        return;
+    }
     unsigned long cur_time = current_time_in_ms();
     for (int led = 0; led < xmas_source.basic_source.n_leds; ++led)
     {
@@ -511,7 +527,7 @@ static int update_leds_glitter(ws2811_t* ledstrip)
     }
     for (int led = 0; led < xmas_source.basic_source.n_leds; ++led)
     {
-        float angle = get_angle(&glitter_periods[led]);
+        double angle = get_angle(&glitter_periods[led]);
         double t = glitter_config->amp_add + glitter_config->amp_mul * cos(angle);
         ledstrip->channel[0].leds[led] = multiply_rgb_color(glitter_colors[led], t);
         //printf("%f  ", t);
@@ -532,6 +548,11 @@ static void Icicles_init()
 {
     icicle_colors = malloc(sizeof(hsl_t) * (config.n_icicle_leds + 2));
     icicles = malloc(sizeof(moving_led_t) * geometry.n_heads);
+    if (!icicle_colors || !icicles)
+    {
+        printf("Cannot allocate memory for icicles.\n");
+        return;
+    }
     for (int i = 0; i < geometry.n_heads; ++i)
     {
         icicles[i].origin = geometry.heads[i];
@@ -634,19 +655,19 @@ int XmasSource_process_config(const char* name, const char* value)
         return 1;
     }
     if (strcasecmp(name, "k_diff") == 0) {
-        config.k_diff = atof(value);
+        config.k_diff = strtof(value, NULL);
         return 1;
     }
     if (strcasecmp(name, "k_spec") == 0) {
-        config.k_spec = atof(value);
+        config.k_spec = strtof(value, NULL);
         return 1;
     }
     if (strcasecmp(name, "spec_phase") == 0) {
-        config.spec_phase = atof(value);
+        config.spec_phase = strtof(value, NULL);
         return 1;
     }
     if (strcasecmp(name, "spec") == 0) {
-        config.spec = atof(value);
+        config.spec = strtof(value, NULL);
         return 1;
     }
     if (strcasecmp(name, "snowflake_color") == 0) {
@@ -654,7 +675,7 @@ int XmasSource_process_config(const char* name, const char* value)
         return 1;
     }
     if (strcasecmp(name, "move_chance") == 0) {
-        config.move_chance = atof(value);
+        config.move_chance = strtof(value, NULL);
         return 1;
     }
     if (strcasecmp(name, "diff_base_period") == 0) {
@@ -674,16 +695,16 @@ int XmasSource_process_config(const char* name, const char* value)
         return 1;
     }
     if (strcasecmp(name, "down_chance") == 0) {
-        config.down_chance = atof(value);
+        config.down_chance = strtof(value, NULL);
         return 1;
     }
     if (strcasecmp(name, "left_chance") == 0) {
-        config.left_chance = atof(value);
+        config.left_chance = strtof(value, NULL);
         return 1;
     }
     //glitter1
     if (strcasecmp(name, "glt1_chance") == 0) {
-        glt1_config.glitter_chance = atof(value);
+        glt1_config.glitter_chance = strtof(value, NULL);
         return 1;
     }
     if (strcasecmp(name, "glt1_color") == 0) {
@@ -691,43 +712,43 @@ int XmasSource_process_config(const char* name, const char* value)
         return 1;
     }
     if (strcasecmp(name, "glt_green") == 0) {
-        glt1_config.prob1 = atof(value);
+        glt1_config.prob1 = strtof(value, NULL);
         return 1;
     }
     if (strcasecmp(name, "glt_red") == 0) {
-        glt1_config.prob2 = atof(value);
+        glt1_config.prob2 = strtof(value, NULL);
         return 1;
     }
     if (strcasecmp(name, "glt_orange") == 0) {
-        glt1_config.prob3 = atof(value);
+        glt1_config.prob3 = strtof(value, NULL);
         return 1;
     }
     if (strcasecmp(name, "glt_purple") == 0) {
-        glt1_config.prob4 = atof(value);
+        glt1_config.prob4 = strtof(value, NULL);
         return 1;
     }
     if (strcasecmp(name, "glt_blue") == 0) {
-        glt1_config.prob5 = atof(value);
+        glt1_config.prob5 = strtof(value, NULL);
         return 1;
     }
     if (strcasecmp(name, "glt1_phase_position") == 0) {
-        glt1_config.phase_position = atof(value);
+        glt1_config.phase_position = strtof(value, NULL);
         return 1;
     }
     if (strcasecmp(name, "glt1_phase_constant") == 0) {
-        glt1_config.phase_constant = atof(value);
+        glt1_config.phase_constant = strtof(value, NULL);
         return 1;
     }
     if (strcasecmp(name, "glt1_phase_random") == 0) {
-        glt1_config.phase_random = atof(value);
+        glt1_config.phase_random = strtof(value, NULL);
         return 1;
     }
     if (strcasecmp(name, "glt1_amp_add") == 0) {
-        glt1_config.amp_add = atof(value);
+        glt1_config.amp_add = strtof(value, NULL);
         return 1;
     }
     if (strcasecmp(name, "glt1_amp_mul") == 0) {
-        glt1_config.amp_mul = atof(value);
+        glt1_config.amp_mul = strtof(value, NULL);
         return 1;
     }
     if (strcasecmp(name, "glt1_base_period") == 0) {
@@ -740,43 +761,43 @@ int XmasSource_process_config(const char* name, const char* value)
     }
     //glitter2
     if (strcasecmp(name, "glt2_phase_position") == 0) {
-        glt2_config.phase_position = atof(value);
+        glt2_config.phase_position = strtof(value, NULL);
         return 1;
     }
     if (strcasecmp(name, "glt2_phase_constant") == 0) {
-        glt2_config.phase_constant = atof(value);
+        glt2_config.phase_constant = strtof(value, NULL);
         return 1;
     }
     if (strcasecmp(name, "glt2_phase_random") == 0) {
-        glt2_config.phase_random = atof(value);
+        glt2_config.phase_random = strtof(value, NULL);
         return 1;
     }
     if (strcasecmp(name, "glt2_amp_add") == 0) {
-        glt2_config.amp_add = atof(value);
+        glt2_config.amp_add = strtof(value, NULL);
         return 1;
     }
     if (strcasecmp(name, "glt2_amp_mul") == 0) {
-        glt2_config.amp_mul = atof(value);
+        glt2_config.amp_mul = strtof(value, NULL);
         return 1;
     }
     if (strcasecmp(name, "glt2_color") == 0) {
-        glt2_config.color = atof(value);
+        glt2_config.color = atoi(value);
         return 1;
     }
 
     if (strcasecmp(name, "glt_sky") == 0) {
-        glt2_config.prob1 = atof(value);
+        glt2_config.prob1 = strtof(value, NULL);
         return 1;
     }
     if (strcasecmp(name, "glt_star") == 0) {
-        glt2_config.prob2 = atof(value);
+        glt2_config.prob2 = strtof(value, NULL);
         glt2_config.prob3 = 1.f;
         glt2_config.prob4 = 1.f;
         glt2_config.prob5 = 1.f;
         return 1;
     }
     if (strcasecmp(name, "glt2_chance") == 0) {
-        glt2_config.glitter_chance = atof(value);
+        glt2_config.glitter_chance = strtof(value, NULL);
         return 1;
     }
     if (strcasecmp(name, "glt2_base_period") == 0) {
@@ -793,7 +814,7 @@ int XmasSource_process_config(const char* name, const char* value)
         return 1;
     }
     if (strcasecmp(name, "icicle_speed") == 0) {
-        config.icicle_speed = atof(value);
+        config.icicle_speed = strtof(value, NULL);
         return 1;
     }
     printf("Unknown config option %s with value %s\n", name, value);
@@ -901,6 +922,7 @@ void XmasSource_process_message(const char* msg)
     strncpy(target, msg, sep - msg);
     strncpy(payload, sep + 1, 64);
     target[sep - msg] = 0x0;
+    payload[63] = 0x0;
     if (!strncasecmp(target, "MODE", 4))
     {
         XMAS_MODE_t mode = string_to_xmas_mode(payload);

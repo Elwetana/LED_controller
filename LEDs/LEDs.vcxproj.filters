@@ -69,13 +69,19 @@
     <ClCompile Include="..\game_source.c">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="..\controller.c">
+    <ClCompile Include="..\game\controller.c">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="..\moving_object.c">
+    <ClCompile Include="..\game\moving_object.c">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="..\input_handler.c">
+    <ClCompile Include="..\game\input_handler.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="..\game\player_object.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="..\game\stencil_handler.c">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>
@@ -158,6 +164,15 @@
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="..\include\game_source_priv.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\include\player_object.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\include\stencil_handler.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\include\pulse_object.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>

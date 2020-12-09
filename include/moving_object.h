@@ -36,6 +36,7 @@ struct MoveResults
     int trail_start;
     double trail_offset; //!< number from <0,1>
     int body_start;
+    int body_end;        //!< this is the last led, inclusive
     double body_offset;
     int target_reached;  //!< 0 - target not reached, 1 target was reached, -1 target was already reached without moving
     double end_position;
@@ -72,14 +73,12 @@ void MovingObject_set_facing(moving_object_t* object, enum MovingObjectFacing fa
 
 int MovingObject_get_move_results(moving_object_t* object, struct MoveResults* move_results);
 
-int MovingObject_render(moving_object_t* object, struct MoveResults* move_results, ws2811_led_t* leds, int render_trail);
-
 /*!
-* Move and render the object
-* \param render_path    1 -- all intermediate leds will be lit, 0 -- only the end position will be rendered
+* Render the object
+* \param render_trail    1 -- all intermediate leds will be lit, 0 -- only the end position will be rendered
 * \return               0 when the object arrives at _target_, 1 otherwise
 */
-int MovingObject_update(moving_object_t* object, struct MoveResults* move_results);
+int MovingObject_render(moving_object_t* object, struct MoveResults* move_results, ws2811_led_t* leds, int render_trail);
 
 
 int unit_tests();

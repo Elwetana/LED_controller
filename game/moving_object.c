@@ -15,6 +15,7 @@
 #include "common_source.h"
 #include "colours.h"
 #include "moving_object.h"
+#include "pulse_object.h"
 #include "game_source_priv.h"
 #include "game_source.h"
 
@@ -146,10 +147,12 @@ int MovingObject_get_move_results(moving_object_t* object, struct MoveResults* m
     mr->end_position = object->position + dir * distance;
     mr->body_start = (int)mr->end_position + (dir < 0) * (object->length);
     mr->body_offset = dir * (mr->end_position - (int)mr->end_position - (dir < 0));
+    mr->body_end = mr->body_start + dir * (object->length);
     mr->target_reached = target_reached;
     assert(mr->body_start >= 0. && mr->body_start < game_source.basic_source.n_leds);
     assert(mr->body_offset >= 0. && mr->body_offset <= 1.);
     assert(dir * (mr->trail_start - mr->body_start) <= 0); 
+    assert(dir * (mr->body_start - mr->body_end) <= 0);
     assert(dir * (mr->body_start - mr->end_position) <= 0);
     return 1;
 }
@@ -177,21 +180,22 @@ int MovingObject_render(moving_object_t* object, struct MoveResults* mr, ws2811_
         render_with_z_test(trailing_color, 1. - mr->body_offset, leds, mr->body_start, object->zdepth);
     }
 
-    //render body
-    //now render the body, from trailing led to leading led
-    //if facing and direction are aligned, we are rendering color from 1 to length-1, if they are opposite, we must render from length - 2 to 0
-    for (uint32_t i = 1, color_index = mr->df_not_aligned * (object->length - 3) + 1; i < object->length; i++, color_index += object->facing * mr->dir)
+    // Now render the body, from trailing led to leading led
+    // If facing and direction are aligned, we are rendering color from 1 to length-1, if they are opposite, we must render from length - 2 to 0
+    // First and last led are rendered with alpha, the rest with color mixing
+    int body_led = mr->body_start + mr->dir;
+    int color_index = mr->df_not_aligned * (object->length - 3) + 1;
+    while (mr->dir * (mr->body_end - body_led) > 0)
+    //for (uint32_t i = 1, color_index = mr->df_not_aligned * (object->length - 3) + 1; i < object->length; i++, color_index += object->facing * mr->dir)
     {
-        int body_led = mr->body_start + mr->dir * i;
         ws2811_led_t color = mix_rgb_color(trailing_color, object->color[color_index], (float)mr->body_offset);
         render_with_z_test(color, 1.0, leds, body_led, object->zdepth);
         trailing_color = object->color[color_index];
+        color_index += object->facing * mr->dir;
+        body_led += mr->dir;
     }
-    if ((mr->body_offset > C_PRECIS) && object->length > 0)
-    {
-        int leading_led = mr->body_start + mr->dir * object->length;
-        render_with_z_test(trailing_color, (float)mr->body_offset, leds, leading_led, object->zdepth);
-    }
+    int leading_led = mr->body_end;
+    render_with_z_test(trailing_color, (float)mr->body_offset, leds, leading_led, object->zdepth);
     return 1;
 }
 
@@ -252,8 +256,7 @@ struct TestParams
 
 int run_test(struct TestParams tp, double expected_position, int expected_colors[10])
 {
-    ws2811_led_t leds[10];
-    for (int i = 0; i < 10; i++) leds[i] = 0;
+    ws2811_led_t leds[200]; //this must be the same as n_leds
     Canvas_clear(leds);
 
     moving_object_t o;
@@ -279,9 +282,9 @@ int unit_tests()
 {
 	//begin tests
 	//static facing forward
-	run_test((struct TestParams) {
-		.position = 1, .facing = MO_FORWARD, .target = 9, .speed = 0., .trail = 1
-	}, 1, (int[10]) { 0, 60, 100, 200, 0, 0, 0, 0, 0, 0 });
+	run_test((struct TestParams) { 
+       .position = 1, .facing = MO_FORWARD, .target = 9, .speed = 0., .trail = 1 
+    }, 1, (int[10]) { 0, 60, 100, 200, 0, 0, 0, 0, 0, 0 });
 
 	//moving right, facing forward
 	run_test((struct TestParams) {

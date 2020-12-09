@@ -20,7 +20,11 @@ srcs = Split('''
     listener.c
     ini.c
     game_source.c
-    controller.c
+    game/controller.c
+    game/moving_object.c
+    game/player_object.c
+    game/stencil_handler.c
+    game/input_handler.c
 ''')
 
 
