@@ -24,16 +24,6 @@
 #include "game_source_priv.h"
 #include "game_source.h"
 
-enum StencilFlags
-{
-    SF_Background,
-    SF_Player,
-    SF_PlayerProjectile,
-    SF_Enemy,
-    SF_EnemyProjectile,
-    SF_N_FLAGS
-};
-
 /*!
  * @brief Handlers are indexed in_stencil_object_index * SF_N_FLAGS + object_being_checked_index
  * All handlers take pointers in this order and
@@ -42,7 +32,6 @@ enum StencilFlags
  *          0 - keep the use already written index
  */
 static int (*stencil_handlers[SF_N_FLAGS * SF_N_FLAGS])(game_object_t*, game_object_t*);
-
 
 
 static int StencilHandler_impossible(game_object_t* obj1, game_object_t* obj2)
@@ -59,8 +48,8 @@ static int StencilHandler_player_is_hit(game_object_t* projectile, game_object_t
     struct MoveResults* mr1 = &projectile->mr;
     struct MoveResults* mr2 = &player->mr;
     //find where is the collision
-    //   s1 . . . . . e1
-    //        e1 . . e2
+    //   l1 . . . . . r1
+    //       l2 . . r2
     int l1 = (mr1->dir > 0) ? mr1->trail_start : mr1->body_end;
     int r1 = (mr1->dir < 0) ? mr1->trail_start : mr1->body_end;
     int l2 = (mr2->dir > 0) ? mr2->trail_start : mr2->body_end;
@@ -75,6 +64,8 @@ static int StencilHandler_player_is_hit(game_object_t* projectile, game_object_t
     mr1->target_reached = 1;
 
     //set some animations on projectile and player
+    PulseObject_init_player_lost_health();
+    PulseObject_init_projectile_explosion(projectile);
     return 1;
 }
 
@@ -92,6 +83,12 @@ static void Stencil_erase_object(int start_led, int dir)
 
 static void MovingObject_stencil_test(int object_index)
 {
+    assert(object_index < MAX_N_OBJECTS);
+    if (object_index >= MAX_N_OBJECTS)
+    {
+        printf("Invalid index passed to stencil_test\n");
+        return;
+    }
     struct MoveResults* mr = &game_objects[object_index].mr;
     int led_start = mr->trail_start;
     int led_end = mr->body_start + mr->dir * (game_objects[object_index].body.length - 1);
@@ -172,6 +169,7 @@ void Stencil_init()
     {
         stencil_handlers[i] = NULL;
     }
-
+    stencil_handlers[SF_Player * SF_N_FLAGS + SF_Player] = StencilHandler_impossible;
+    stencil_handlers[SF_EnemyProjectile * SF_N_FLAGS + SF_Player] = StencilHandler_player_is_hit;
 }
 

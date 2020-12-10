@@ -22,8 +22,16 @@ typedef struct PulseObject
 	double spec_exponent;   //!< k
 	hsl_t colors_0[MAX_OBJECT_LENGTH];
 	hsl_t colors_1[MAX_OBJECT_LENGTH];
+	ws2811_led_t next_color[MAX_OBJECT_LENGTH];
 	void (*callback)(game_object_t*);
 } pulse_object_t;
 
+void PulseObject_update(game_object_t* object);
 
-#endif
+void PulseObject_init_steady(pulse_object_t* po);
+
+void PulseObject_init_player_lost_health();
+
+void PulseObject_init_projectile_explosion(game_object_t* go);
+
+#endif  /* __PULSE_OBJECT_H__ */

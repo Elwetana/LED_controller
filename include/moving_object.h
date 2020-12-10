@@ -17,9 +17,9 @@ enum MovingObjectFacing
  *  the object is rendered from position in the direction, i.e. it's pushed */
 typedef struct MovingObject
 {
-    double position;  //!< index of the leftmost LED, `position` + `length` - 1 is the index of the rightmost LED
+    double position;    //!< index of the leftmost LED, `position` + `length` - 1 is the index of the rightmost LED
     uint32_t length;
-    double speed;
+    double speed;       //<! in leds per second
     uint32_t target;
     enum MovingObjectFacing facing;
     int zdepth;
@@ -80,6 +80,7 @@ int MovingObject_get_move_results(moving_object_t* object, struct MoveResults* m
 */
 int MovingObject_render(moving_object_t* object, struct MoveResults* move_results, ws2811_led_t* leds, int render_trail);
 
+int MovingObject_update(moving_object_t* object, struct MoveResults* mr);
 
 int unit_tests();
 #endif /* __MOVING_OBJECT_H__ */

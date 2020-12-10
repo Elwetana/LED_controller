@@ -20,6 +20,7 @@
 #include "colours.h"
 #include "moving_object.h"
 #include "pulse_object.h"
+#include "player_object.h"
 #include "input_handler.h"
 #include "stencil_handler.h"
 #include "game_source_priv.h"
@@ -27,111 +28,51 @@
 
 #define GAME_DEBUG
 
-const int C_BKGRND_OBJ_INDEX =   0;
-const int C_OBJECT_OBJ_INDEX =  32; //ships and asteroids
+const int C_BKGRND_OBJ_INDEX = 0;
+const int C_OBJECT_OBJ_INDEX = 32; //ships and asteroids
 const int C_PROJCT_OBJ_INDEX = 128; //projectiles
 
-
-enum PulseModes
+void GameObject_spawn_enemy_projectile()
 {
-    PM_STEADY,  //!< no blinking, copy source_color to moving_object.color
-    PM_REPEAT,  //!< keep pulsing with the same parameter
-    PM_ONCE,    //!< switch to normal steady light after repetions cycles switch to steady and execute callback
-    PM_FADE     //!< decrease amplitude at end, after repetions cycles switch to steady and execute callback
-};
-
-void PulseObject_update_steady(game_object_t* o)
-{
-    for (int i = 0; i < o->body.length; ++i)
+    int i = C_PROJCT_OBJ_INDEX;
+    while (game_objects[i].body.deleted && ++i < MAX_N_OBJECTS);
+    if (i >= MAX_N_OBJECTS)
     {
-        o->body.color[i] = o->source_color[i];
-    }
-    o->pulse.repetitions = -1;
-}
-
-void PulseObject_check_pulse_end(pulse_object_t* po, uint64_t cur_time, game_object_t* go)
-{
-    assert(po->pulse_mode == PM_FADE || po->pulse_mode == PM_ONCE || po->pulse_mode == PM_REPEAT);
-    if (cur_time < po->end_time)
-    {
+        printf("Failed to create projectile\n");
         return;
     }
-    if (po->pulse_mode == PM_ONCE || po->pulse_mode == PM_FADE)
-    {
-        if (!--po->repetitions)
-        {
-            po->callback(go);
-            return;
-        }
-    }
-    if (po->pulse_mode == PM_FADE)
-    {
-        po->amplitude /= 1.5;
-    }
-    //f = 2*pi/t_period => t_period = 2 * pi / f
-    po->start_time = cur_time;
-    po->end_time = cur_time + (uint64_t)(2. * M_PI / po->frequency);
+    MovingObject_init_stopped(&game_objects[i], 5, MO_FORWARD, 1, 2, config.color_index_R);
+    game_objects[i].body.speed = 40;
+    game_objects[i].body.target = 150;
+    game_objects[i].body.on_arrival = MovingObject_arrive_delete;
+    game_objects[i].stencil_flag = SF_EnemyProjectile;
 }
 
-static double PulseObject_get_t(pulse_object_t* po, uint64_t time_ms, int led)
+
+/*!
+ * @brief Determine if event with rate `r` happened or not
+ * see https://en.wikipedia.org/wiki/Poisson_distribution
+ * We calculate the probablity of 0 events happening, i.e. k = 0. This probability is exp(-r * t).
+ * We then get uniform roll from <0,1) and if it is higher than the calculated probability, the event will happen
+ * @param r average number of events that happen during 1 second, i.e time rate
+ * @return  1 when event happened, 0 otherwise
+ */
+int roll_dice_poisson(double r)
 {
-    return po->amplitude * pow((1. + cos(po->frequency * (time_ms - po->start_time) + po->phase * po->led_phase * led)) / 2., po->spec_exponent);
+    double time_seconds = (game_source.basic_source.time_delta / (long)1e3) / (double)1e6;
+    double prob = exp(-r * time_seconds);
+    return (random_01() > prob);
 }
 
-void PulseObject_update_pulse(game_object_t* o)
+void GameSource_update_objects()
 {
-    uint64_t time_ms = game_source.basic_source.current_time / (long)1e3;
-    double t = PulseObject_get_t(&o->pulse, time_ms, 0);
-    for (int i = 0; i < o->body.length; ++i)
+    if (roll_dice_poisson(config.enemy_spawn_chance))
     {
-        hsl_t res;
-        lerp_hsl(&o->pulse.colors_0[i], &o->pulse.colors_1[i], t, &res);
-        o->body.color[i] = hsl2rgb(&res);
-    }
-    PulseObject_check_pulse_end(&o->pulse, time_ms, o);
-}
-
-void PulseObject_update_pulse_per_led(game_object_t* o)
-{
-    uint64_t time_ms = game_source.basic_source.current_time / (long)1e3;
-    for (int i = 0; i < o->body.length; ++i)
-    {
-        double t = PulseObject_get_t(&o->pulse, time_ms, i);
-        hsl_t res;
-        lerp_hsl(&o->pulse.colors_0[i], &o->pulse.colors_1[i], t, &res);
-        o->body.color[i] = hsl2rgb(&res);
+        GameObject_spawn_enemy_projectile();
     }
 }
 
-PulseObject_update(game_object_t* object)
-{
-    switch (object->pulse.pulse_mode)
-    {
-    case PM_STEADY:
-        if (object->pulse.repetitions != -1)
-        {
-            PulseObject_update_steady(object);
-        }
-        break;
-    case PM_REPEAT:
-    case PM_ONCE:
-    case PM_FADE:
-        if (object->pulse.led_phase != 0)
-        {
-            PulseObject_update_pulse_per_led(object);
-        }
-        else
-        {
-            PulseObject_update_pulse(object);
-        }
-        break;
-    }
-}
 
-void PulseObject_init_steady(pulse_object_t* po)
-{
-    po->pulse_mode = PM_STEADY;
-}
 
 /*! The sequence of actions during one loop:
 *   - process inputs - this may include timers?
@@ -150,19 +91,22 @@ int GameSource_update_leds(int frame, ws2811_t* ledstrip)
     Canvas_clear(ledstrip->channel[0].leds);
     InputHandler_process_input();
     Stencil_check_movement();
-
-    //"AI"
-    //Colors
-
+    GameSource_update_objects();
     for (int p = 0; p < MAX_N_OBJECTS; ++p)
     {
         if (!game_objects[p].body.deleted)
         {
+            PulseObject_update(&game_objects[p]);
             MovingObject_render(&game_objects[p].body, &game_objects[p].mr, ledstrip->channel[0].leds, 1);
             MovingObject_update(&game_objects[p].body, &game_objects[p].mr);
         }
     }
     return 1;
+}
+
+void GameSource_set_mode_player_lost()
+{
+    printf("player lost\n");
 }
 
 GameObjects_init()
@@ -186,8 +130,10 @@ Game_source_init_objects()
     config.color_index_M = 4;
     config.color_index_Y = 5;
     config.color_index_W = 6;
-    config.color_index_player = 7;
-    config.player_health_levels = 6; //i.e 7 - 12 is index of player health levels
+    config.color_index_K = 7;
+    config.color_index_player = 8;
+    config.player_health_levels = 6; //i.e 8 - 13 is index of player health levels
+    config.enemy_spawn_chance = 0.2; //number of enemies to spawn per second on average
 
     InputHandler_init();
     GameObjects_init();

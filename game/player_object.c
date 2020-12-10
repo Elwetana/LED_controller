@@ -28,10 +28,34 @@
 
 const int C_PLAYER_OBJ_INDEX = MAX_N_OBJECTS - 1;
 
-PlayerObject_init()
+void PlayerObject_init()
 {
     player_object = &game_objects[C_PLAYER_OBJ_INDEX];
     MovingObject_init_stopped(&player_object->body, config.player_start_position, MO_BACKWARD, config.player_ship_size, 1, config.color_index_player);
     player_object->health = config.player_health_levels;
     player_object->body.on_arrival = MovingObject_arrive_stop;
+    PulseObject_init_steady(&player_object->pulse);
+}
+
+int PlayerObject_get_health()
+{
+    return player_object->health;
+}
+
+int PlayerObject_get_length()
+{
+    return player_object->body.length;
+}
+
+void PlayerObject_take_hit()
+{
+    if (!--player_object->health)
+    {
+        //game over
+        GameSource_set_mode_player_lost();
+    }
+    else
+    {
+        //something we should do when the player was hit and flashing animation ended
+    }
 }

@@ -39,8 +39,8 @@ typedef struct BasicSource
     int n_leds;
     int time_speed;
     SourceGradient gradient;
-    uint64_t current_time; //in ns
-    uint64_t time_delta;
+    uint64_t current_time; //!< in ns
+    uint64_t time_delta;   //!< in ns
     void(*construct)();
     void(*init)(int, int, uint64_t);
     int(*update)(int, ws2811_t*);

@@ -84,6 +84,9 @@
     <ClCompile Include="..\game\stencil_handler.c">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="..\game\pulse_object.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <None Include="packages.config" />

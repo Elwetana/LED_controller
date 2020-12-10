@@ -158,6 +158,7 @@
     <ClCompile Include="..\game\input_handler.c" />
     <ClCompile Include="..\game\moving_object.c" />
     <ClCompile Include="..\game\player_object.c" />
+    <ClCompile Include="..\game\pulse_object.c" />
     <ClCompile Include="..\game\stencil_handler.c" />
     <ClCompile Include="..\game_source.c" />
     <ClCompile Include="..\getopt.c" />
