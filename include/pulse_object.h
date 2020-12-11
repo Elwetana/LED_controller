@@ -37,7 +37,7 @@ typedef struct PulseObject
 
 void PulseObject_update(game_object_t* object);
 
-void PulseObject_init_steady(pulse_object_t* po);
+void PulseObject_init_steady(pulse_object_t* po, int color_index, int length);
 
 void PulseObject_init_player_lost_health();
 

@@ -139,9 +139,13 @@ static void PulseObject_init_color(pulse_object_t* po, int color_index_0, int co
     }
 }
 
-void PulseObject_init_steady(pulse_object_t* po)
+void PulseObject_init_steady(pulse_object_t* po, int color_index, int length)
 {
     po->pulse_mode = PM_STEADY;
+    for (int i = 0; i < length; ++i)
+    {
+        po->next_color[i] = game_source.basic_source.gradient.colors[color_index];
+    }
 }
 
 void PulseObject_mark_deleted(game_object_t* go)

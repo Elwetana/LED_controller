@@ -31,10 +31,10 @@ const int C_PLAYER_OBJ_INDEX = MAX_N_OBJECTS - 1;
 void PlayerObject_init()
 {
     player_object = &game_objects[C_PLAYER_OBJ_INDEX];
-    MovingObject_init_stopped(&player_object->body, config.player_start_position, MO_BACKWARD, config.player_ship_size, 1, config.color_index_player);
+    MovingObject_init_stopped(&player_object->body, config.player_start_position, MO_BACKWARD, config.player_ship_size, 1);
     player_object->health = config.player_health_levels;
     player_object->body.on_arrival = MovingObject_arrive_stop;
-    PulseObject_init_steady(&player_object->pulse);
+    PulseObject_init_steady(&player_object->pulse, config.color_index_player, config.player_ship_size);
 }
 
 int PlayerObject_get_health()

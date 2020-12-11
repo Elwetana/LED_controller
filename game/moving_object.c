@@ -32,7 +32,7 @@ void Canvas_clear(ws2811_led_t* leds)
     }
 }
 
-void MovingObject_init_stopped(moving_object_t* object, double position, enum MovingObjectFacing facing, uint32_t length, int zdepth, uint32_t color_index)
+void MovingObject_init_stopped(moving_object_t* object, double position, enum MovingObjectFacing facing, uint32_t length, int zdepth)
 {
     object->position = position;
     object->facing = facing;
@@ -40,10 +40,6 @@ void MovingObject_init_stopped(moving_object_t* object, double position, enum Mo
     object->speed = 0.;
     object->target = (int)position;
     object->zdepth = zdepth;
-    for (uint32_t i = 0; i < length; ++i)
-    {
-        object->color[i] = game_source.basic_source.gradient.colors[color_index];
-    }
     object->deleted = 0;
     object->on_arrival = NULL;
 }
@@ -162,6 +158,7 @@ int MovingObject_render(moving_object_t* object, struct MoveResults* mr, ws2811_
 {
     if (object->length == 0)
         return 0;
+    printf("Rendering object at positions from %i to %i with color in led 0 %x\n", mr->body_start, mr->body_end, object->color[0]);
     //render trail
     ws2811_led_t trailing_color = object->color[mr->df_not_aligned * (object->length - 1)];
     if (render_trail)
@@ -260,7 +257,7 @@ int run_test(struct TestParams tp, double expected_position, int expected_colors
     Canvas_clear(leds);
 
     moving_object_t o;
-    MovingObject_init_stopped(&o, tp.position, tp.facing, 3, 1, 0);
+    MovingObject_init_stopped(&o, tp.position, tp.facing, 3, 1);
     o.color[0] = 60;
     o.color[1] = 100;
     o.color[2] = 200;

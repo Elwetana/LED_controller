@@ -56,7 +56,7 @@ pixel_t* canvas;
 void Canvas_clear(ws2811_led_t* leds);
 
 /*! Init MovingObject with basic values and single colour */
-void MovingObject_init_stopped(moving_object_t* object, double position, enum MovingObjectFacing facing, uint32_t length, int zdepth, uint32_t color_index);
+void MovingObject_init_stopped(moving_object_t* object, double position, enum MovingObjectFacing facing, uint32_t length, int zdepth);
 
 /*! Arrival method for moving_object_t, mark as deleted on arrival */
 void MovingObject_arrive_delete(moving_object_t* object);

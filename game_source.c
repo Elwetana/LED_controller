@@ -35,13 +35,17 @@ const int C_PROJCT_OBJ_INDEX = 128; //projectiles
 void GameObject_spawn_enemy_projectile()
 {
     int i = C_PROJCT_OBJ_INDEX;
-    while (game_objects[i].body.deleted && ++i < MAX_N_OBJECTS);
+    while (!game_objects[i].body.deleted && i < MAX_N_OBJECTS)
+    {
+        i++;
+    }
     if (i >= MAX_N_OBJECTS)
     {
         printf("Failed to create projectile\n");
         return;
     }
-    MovingObject_init_stopped(&game_objects[i].body, 5, MO_FORWARD, 1, 2, config.color_index_R);
+    MovingObject_init_stopped(&game_objects[i].body, 5, MO_FORWARD, 1, 2);
+    PulseObject_init_steady(&game_objects[i].pulse, config.color_index_R, 1);
     game_objects[i].body.speed = 40;
     game_objects[i].body.target = 150;
     game_objects[i].body.on_arrival = MovingObject_arrive_delete;
@@ -86,12 +90,17 @@ void GameSource_update_objects()
 */
 int GameSource_update_leds(int frame, ws2811_t* ledstrip)
 {
+#ifdef GAME_DEBUG
+    printf("Frame: %i\n", frame);
+#else
     (void)frame;
+#endif // GAME_DEBUG
+
     //unit_tests();
     Canvas_clear(ledstrip->channel[0].leds);
     InputHandler_process_input();
-    Stencil_check_movement();
     GameSource_update_objects();
+    Stencil_check_movement();
     for (int p = 0; p < MAX_N_OBJECTS; ++p)
     {
         if (!game_objects[p].body.deleted)
