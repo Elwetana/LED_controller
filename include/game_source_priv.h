@@ -24,6 +24,17 @@ struct
 
 extern const int C_PLAYER_OBJ_INDEX;
 
+
+enum StencilFlags
+{
+    SF_Background,
+    SF_Player,
+    SF_PlayerProjectile,
+    SF_Enemy,
+    SF_EnemyProjectile,
+    SF_N_FLAGS
+};
+
 typedef struct GameObject
 {
 	moving_object_t body;

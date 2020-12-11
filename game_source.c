@@ -41,7 +41,7 @@ void GameObject_spawn_enemy_projectile()
         printf("Failed to create projectile\n");
         return;
     }
-    MovingObject_init_stopped(&game_objects[i], 5, MO_FORWARD, 1, 2, config.color_index_R);
+    MovingObject_init_stopped(&game_objects[i].body, 5, MO_FORWARD, 1, 2, config.color_index_R);
     game_objects[i].body.speed = 40;
     game_objects[i].body.target = 150;
     game_objects[i].body.on_arrival = MovingObject_arrive_delete;
@@ -109,7 +109,7 @@ void GameSource_set_mode_player_lost()
     printf("player lost\n");
 }
 
-GameObjects_init()
+void GameObjects_init()
 {
     for (int i = 0; i < MAX_N_OBJECTS; ++i)
         game_objects[i].body.deleted = 1;
@@ -117,7 +117,7 @@ GameObjects_init()
 }
 
 /*! Init all game objects and modes */
-Game_source_init_objects()
+void Game_source_init_objects()
 {
     //placeholder -- config will be read from file
     config.player_start_position = 180;

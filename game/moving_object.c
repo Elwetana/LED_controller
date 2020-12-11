@@ -42,7 +42,7 @@ void MovingObject_init_stopped(moving_object_t* object, double position, enum Mo
     object->zdepth = zdepth;
     for (uint32_t i = 0; i < length; ++i)
     {
-        object->color[i] = game_source.basic_source.gradient.colors[config.color_index_player];
+        object->color[i] = game_source.basic_source.gradient.colors[color_index];
     }
     object->deleted = 0;
     object->on_arrival = NULL;
@@ -224,7 +224,7 @@ int MovingObject_update(moving_object_t* object, struct MoveResults* mr)
  * @param render_trail   1 -- all intermediate leds will be lit, 0 -- only the end position will be rendered
  * @return               0 when the object arrives at `target`, 1 otherwise
 */
-static int MovingObject_process(moving_object_t* object, int stencil_index, ws2811_led_t* leds, int render_trail)
+static int MovingObject_process(moving_object_t* object, ws2811_led_t* leds, int render_trail)
 {
     /*
     Simple summary of steps:
@@ -269,11 +269,11 @@ int run_test(struct TestParams tp, double expected_position, int expected_colors
     o.speed = tp.speed;
     game_source.basic_source.time_delta = (uint64_t)1e9 * 1;
 
-    MovingObject_process(&o, 0, leds, tp.trail);
+    MovingObject_process(&o, leds, tp.trail);
     assert(o.position == expected_position);
     for (int i = 0; i < 10; i++)
     {
-        assert(leds[i] == expected_colors[i]);
+        assert(leds[i] == (uint32_t)expected_colors[i]);
     }
     return 1;
 }

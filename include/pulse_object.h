@@ -4,6 +4,15 @@
 
 typedef struct GameObject game_object_t;
 
+
+enum PulseModes
+{
+    PM_STEADY,  //!< no blinking, copy next_color to moving_object.color
+    PM_REPEAT,  //!< keep pulsing with the same parameter
+    PM_ONCE,    //!< switch to normal steady light after repetions cycles switch to steady and execute callback
+    PM_FADE     //!< decrease amplitude at end, after repetions cycles switch to steady and execute callback
+};
+
 /*!
  * @brief Generate blinking, pulsing and so on
  * Use equation: t =  A * ((1. + cos(f * (t - t0) + phi + led * phi_led)) / 2.) ^ k;

@@ -21,17 +21,10 @@
 #include "game_source.h"
 
 
-enum PulseModes
-{
-    PM_STEADY,  //!< no blinking, copy next_color to moving_object.color
-    PM_REPEAT,  //!< keep pulsing with the same parameter
-    PM_ONCE,    //!< switch to normal steady light after repetions cycles switch to steady and execute callback
-    PM_FADE     //!< decrease amplitude at end, after repetions cycles switch to steady and execute callback
-};
 
 void PulseObject_update_steady(game_object_t* o)
 {
-    for (int i = 0; i < o->body.length; ++i)
+    for (int i = 0; i < (int)o->body.length; ++i)
     {
         o->body.color[i] = o->pulse.next_color[i];
     }
@@ -73,7 +66,7 @@ void PulseObject_update_pulse(game_object_t* o)
 {
     uint64_t time_ms = game_source.basic_source.current_time / (long)1e3;
     double t = PulseObject_get_t(&o->pulse, time_ms, 0);
-    for (int i = 0; i < o->body.length; ++i)
+    for (int i = 0; i < (int)o->body.length; ++i)
     {
         hsl_t res;
         lerp_hsl(&o->pulse.colors_0[i], &o->pulse.colors_1[i], t, &res);
@@ -84,7 +77,7 @@ void PulseObject_update_pulse(game_object_t* o)
 void PulseObject_update_pulse_per_led(game_object_t* o)
 {
     uint64_t time_ms = game_source.basic_source.current_time / (long)1e3;
-    for (int i = 0; i < o->body.length; ++i)
+    for (int i = 0; i < (int)o->body.length; ++i)
     {
         double t = PulseObject_get_t(&o->pulse, time_ms, i);
         hsl_t res;
@@ -119,7 +112,7 @@ void PulseObject_update(game_object_t* object)
     }
 }
 
-static void PulseObject_init(pulse_object_t* po, double amp, enum PulseMode pm, int repetitions, int period, double phase, double led_phase, double spec)
+static void PulseObject_init(pulse_object_t* po, double amp, enum PulseModes pm, int repetitions, int period, double phase, double led_phase, double spec)
 {
     po->amplitude = amp;
     po->pulse_mode = pm;
@@ -153,7 +146,7 @@ void PulseObject_init_steady(pulse_object_t* po)
 
 void PulseObject_mark_deleted(game_object_t* go)
 {
-    go->body.deleted == 1;
+    go->body.deleted = 1;
 }
 
 void PulseObject_init_player_lost_health()

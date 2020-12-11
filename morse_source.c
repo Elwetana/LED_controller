@@ -49,7 +49,7 @@ static void MorseSource_convert_morse()
         char* m = morse_source.cmorse[mi];
         struct MorseChar* mc = &morse_source.morse[mi];
         mc->len = 0;
-        size_t ml = strlen(m);
+        int ml = strlen(m);
         for (int i = 0; i < ml; ++i)
         {
             if (m[i] == '-') {
@@ -141,7 +141,7 @@ void MorseSource_update_leds_morse(int frame, ws2811_t* ledstrip)
         }
         int letter_color = (index % 6) + 2; //<- 6 = number of letter colors, color 0 and 1 are reserved
         char* code = morse_source.cmorse[(int)c - 65];
-        size_t code_length = strlen(code);
+        int code_length = strlen(code);
         for (int ddi = 0; ddi < code_length; ++ddi)
         {
             char dd = code[ddi];
