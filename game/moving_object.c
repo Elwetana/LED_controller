@@ -155,7 +155,7 @@ int MovingObject_render(moving_object_t* object, struct MoveResults* mr, ws2811_
 {
     if (object->length == 0)
         return 0;
-    printf("Rendering object at positions from %i to %i with color in led 0 %x\n", mr->body_start, mr->body_end, object->color[0]);
+    //printf("Rendering object at positions from %i to %i with color in led 0 %x\n", mr->body_start, mr->body_end, object->color[0]);
     //render trail
     ws2811_led_t trailing_color = object->color[mr->df_not_aligned * (object->length - 1)];
     if (render_trail)

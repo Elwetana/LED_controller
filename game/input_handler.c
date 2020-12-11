@@ -22,6 +22,7 @@
 #include "game_source_priv.h"
 #include "game_source.h"
 
+#define GAME_DEBUG
 
 //handlers of the button events, the lower half is on_release
 static void(*button_handlers[2 * C_MAX_XBTN])();
@@ -45,8 +46,10 @@ static void ButtonHandler_move_player_left()
 {
     if (player_object->body.position < player_object->body.length)
         return;
+    printf("pos %f\n", player_object->body.position);
     player_object->body.target = (uint32_t)player_object->body.position - 1;
     player_object->body.speed = config.player_ship_speed;
+    printf("moving left\n");
 }
 
 static void ButtonHandler_move_player_right()
@@ -57,6 +60,17 @@ static void ButtonHandler_move_player_right()
     player_object->body.speed = config.player_ship_speed;
 }
 
+
+static void ButtonHandler_debug_pulse()
+{
+    PulseObject_init_player_lost_health();
+}
+
+static void ButtonHandler_debug_heal()
+{
+    player_object->health++;
+}
+
 void InputHandler_init()
 {
     Controller_init(); //TODO: this needs/should be called only once
@@ -65,6 +79,8 @@ void InputHandler_init()
     button_handlers[C_MAX_XBTN + XBTN_RB] = ButtonHandler_face_player_forward;
     button_handlers[C_MAX_XBTN + DPAD_L] = ButtonHandler_move_player_left;
     button_handlers[C_MAX_XBTN + DPAD_R] = ButtonHandler_move_player_right;
+    button_handlers[C_MAX_XBTN + XBTN_X] = ButtonHandler_debug_pulse;
+    button_handlers[C_MAX_XBTN + XBTN_A] = ButtonHandler_debug_heal;
 }
 
 
@@ -80,7 +96,7 @@ int InputHandler_process_input()
     {
         return 1;
     }
-    int button_index = BT_pressed * C_MAX_XBTN + button;
+    int button_index = state * C_MAX_XBTN + button;
     if (button_handlers[button_index])
     {
         button_handlers[button_index]();

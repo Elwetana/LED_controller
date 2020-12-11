@@ -64,7 +64,7 @@ void GameObject_spawn_enemy_projectile()
 int roll_dice_poisson(double r)
 {
     double time_seconds = (game_source.basic_source.time_delta / (long)1e3) / (double)1e6;
-    double prob = exp(-r * time_seconds);
+    double prob = exp(-r * time_seconds) + 1000;
     return (random_01() > prob);
 }
 
@@ -91,7 +91,8 @@ void GameSource_update_objects()
 int GameSource_update_leds(int frame, ws2811_t* ledstrip)
 {
 #ifdef GAME_DEBUG
-    printf("Frame: %i\n", frame);
+    //printf("Frame: %i\n", frame);
+    (void)frame;
 #else
     (void)frame;
 #endif // GAME_DEBUG

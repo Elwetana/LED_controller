@@ -21,6 +21,11 @@
 #include "game_source.h"
 
 
+static double get_time_ms()
+{
+    return game_source.basic_source.current_time / (long)1e3 / (double)1e3;
+}
+
 
 void PulseObject_update_steady(game_object_t* o)
 {
@@ -34,7 +39,7 @@ void PulseObject_update_steady(game_object_t* o)
 void PulseObject_check_pulse_end(pulse_object_t* po, game_object_t* go)
 {
     assert(po->pulse_mode == PM_FADE || po->pulse_mode == PM_ONCE || po->pulse_mode == PM_REPEAT);
-    uint64_t cur_time = game_source.basic_source.current_time / (long)1e3;
+    uint64_t cur_time = get_time_ms();
     if (cur_time < po->end_time)
     {
         return;
@@ -64,8 +69,9 @@ static double PulseObject_get_t(pulse_object_t* po, uint64_t time_ms, int led)
 
 void PulseObject_update_pulse(game_object_t* o)
 {
-    uint64_t time_ms = game_source.basic_source.current_time / (long)1e3;
+    uint64_t time_ms = get_time_ms();
     double t = PulseObject_get_t(&o->pulse, time_ms, 0);
+    printf("t: %f\n", t);
     for (int i = 0; i < (int)o->body.length; ++i)
     {
         hsl_t res;
@@ -76,7 +82,7 @@ void PulseObject_update_pulse(game_object_t* o)
 
 void PulseObject_update_pulse_per_led(game_object_t* o)
 {
-    uint64_t time_ms = game_source.basic_source.current_time / (long)1e3;
+    uint64_t time_ms = get_time_ms();
     for (int i = 0; i < (int)o->body.length; ++i)
     {
         double t = PulseObject_get_t(&o->pulse, time_ms, i);
@@ -122,7 +128,7 @@ static void PulseObject_init(pulse_object_t* po, double amp, enum PulseModes pm,
     po->led_phase = led_phase;
     po->spec_exponent = spec;
 
-    po->start_time = game_source.basic_source.current_time / (long)1e3;
+    po->start_time = get_time_ms();
     po->end_time = po->start_time + period;
 }
 
@@ -160,7 +166,7 @@ void PulseObject_init_player_lost_health()
     int player_health = config.player_health_levels - PlayerObject_get_health();
     int health_color = config.color_index_player + player_health;
 
-    PulseObject_init(po, 1, PM_ONCE, 3, 500, M_PI / 2, 0, 1);
+    PulseObject_init(po, 1, PM_ONCE, 3, 5000, M_PI / 2, 0, 1);
     PulseObject_init_color(po, health_color, health_color + 1, health_color + 1, length);
     po->callback = PlayerObject_take_hit;
 }

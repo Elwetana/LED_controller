@@ -12,3 +12,4 @@ led_main
 controller_test
 AubioTest/x64/
 geometry.xlsx
+*.swp
