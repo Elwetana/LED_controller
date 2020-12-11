@@ -130,15 +130,12 @@ int MovingObject_get_move_results(moving_object_t* object, struct MoveResults* m
     mr->trail_start = trailing_led;
     mr->trail_offset = offset;
 
-    if (dir * (leading_led + dir * (distance + offset) - (double)object->target) >= -C_PRECIS) //when moving right, condition is >=, when moving left it's <=
+    // p + d > t -> p + d = t -> d = t - p
+    if (dir * (object->position + dir * distance - (double)object->target) >= -C_PRECIS) //when moving right, condition is >=, when moving left it's <=
     {
         target_reached = 1;
-        distance = dir * ((double)object->target - leading_led - offset); // this will be > 0 if we haven't started behind the target already
-        if (distance < -C_PRECIS)
-        {
-            target_reached = -1; //we've already been to target, no need to call the arrival function again
-            distance = 0; //also, we don't update position
-        }
+        distance = dir * ((double)object->target - object->position); // this will be > 0 if we haven't started behind the target already
+        assert(distance > -C_PRECIS);
     }
     mr->end_position = object->position + dir * distance;
     mr->body_start = (int)mr->end_position + (dir < 0) * (object->length);
@@ -277,7 +274,12 @@ int run_test(struct TestParams tp, double expected_position, int expected_colors
 
 int unit_tests()
 {
-	//begin tests
+    run_test((struct TestParams) {
+        .position = 1, .facing = MO_FORWARD, .target = 2, .speed = 0.25, .trail = 1
+    }, 1.25, (int[10]) { 0, 60, 90, 175, 50, 0, 0, 0, 0, 0 });
+
+    
+    //begin tests
 	//static facing forward
 	run_test((struct TestParams) { 
        .position = 1, .facing = MO_FORWARD, .target = 9, .speed = 0., .trail = 1 
@@ -295,7 +297,7 @@ int unit_tests()
 
 	//movign right, facing forward, arriving at target
 	run_test((struct TestParams) {
-		.position = 0.5, .facing = MO_FORWARD, .target = 5, .speed = 3., .trail = 1
+		.position = 0.5, .facing = MO_FORWARD, .target = 3, .speed = 3., .trail = 1
 	}, 3., (int[10]) { 30, 60, 60, 60, 100, 200, 0, 0, 0, 0 });
 
 	//static, facing backward
@@ -308,10 +310,10 @@ int unit_tests()
 		.position = 1.5, .facing = MO_BACKWARD, .target = 9, .speed = 2.75, .trail = 1
 	}, 4.25, (int[10]) { /*0*/0, /*1*/100, /*2*/200, /*3*/200, /*4*/200, /*5*/125 /*0.75 * 100 + 0.25 * 200*/, /*6*/70 /*0.75 * 60 + 0.25 * 100*/, /*7*/15, /*8*/0, /*9*/0 });
 
-	//already after target
-	run_test((struct TestParams) {
-		.position = 3, .facing = MO_FORWARD, .target = 4, .speed = 2.75, .trail = 1
-	}, 3, (int[10]) { /*0*/0, /*1*/0, /*2*/0, /*3*/60, /*4*/100, /*5*/200, /*6*/0, /*7*/0, /*8*/0, /*9*/0 });
+	//already after target -- this is no longer possible
+	//run_test((struct TestParams) {
+	//	.position = 3, .facing = MO_FORWARD, .target = 4, .speed = 2.75, .trail = 1
+	//}, 3, (int[10]) { /*0*/0, /*1*/0, /*2*/0, /*3*/60, /*4*/100, /*5*/200, /*6*/0, /*7*/0, /*8*/0, /*9*/0 });
 
 	//moving left, facing backward
 	run_test((struct TestParams) {
@@ -341,7 +343,7 @@ int unit_tests()
 
     //movign right, facing forward, arriving at target
     run_test((struct TestParams) {
-        .position = 0.5, .facing = MO_FORWARD, .target = 5, .speed = 3., .trail = 0
+        .position = 0.5, .facing = MO_FORWARD, .target = 3, .speed = 3., .trail = 0
     }, 3., (int[10]) { 0, 0, 0, 60, 100, 200, 0, 0, 0, 0 });
 
     //static, facing backward
@@ -354,10 +356,10 @@ int unit_tests()
         .position = 1.5, .facing = MO_BACKWARD, .target = 9, .speed = 2.75, .trail = 0
     }, 4.25, (int[10]) { /*0*/0, /*1*/0, /*2*/0, /*3*/0, /*4*/150, /*5*/125 /*0.75 * 100 + 0.25 * 200*/, /*6*/70 /*0.75 * 60 + 0.25 * 100*/, /*7*/15, /*8*/0, /*9*/0 });
 
-    //already after target
-    run_test((struct TestParams) {
-        .position = 3, .facing = MO_FORWARD, .target = 4, .speed = 2.75, .trail = 0
-    }, 3, (int[10]) { /*0*/0, /*1*/0, /*2*/0, /*3*/60, /*4*/100, /*5*/200, /*6*/0, /*7*/0, /*8*/0, /*9*/0 });
+    //already after target -- this is no longer possible
+    //run_test((struct TestParams) {
+    //    .position = 3, .facing = MO_FORWARD, .target = 4, .speed = 2.75, .trail = 0
+    //}, 3, (int[10]) { /*0*/0, /*1*/0, /*2*/0, /*3*/60, /*4*/100, /*5*/200, /*6*/0, /*7*/0, /*8*/0, /*9*/0 });
 
     //moving left, facing backward
     run_test((struct TestParams) {

@@ -63,7 +63,7 @@ void Controller_init()
 
 char* Controller_get_button_name(enum EButtons button)
 {
-    return button_names[button - 300];
+    return button_names[button];
 }
 
 #ifndef __linux__
