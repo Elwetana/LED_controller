@@ -53,7 +53,7 @@ static void ButtonHandler_move_player_right()
 {
     if (player_object->body.position > game_source.basic_source.n_leds - (double)player_object->body.length)
         return;
-    player_object->body.target = (uint32_t)player_object->body.position - 1;
+    player_object->body.target = (uint32_t)player_object->body.position + 1;
     player_object->body.speed = config.player_ship_speed;
 }
 

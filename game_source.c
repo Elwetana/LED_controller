@@ -47,7 +47,7 @@ void GameObject_spawn_enemy_projectile()
     MovingObject_init_stopped(&game_objects[i].body, 5, MO_FORWARD, 1, 2);
     PulseObject_init_steady(&game_objects[i].pulse, config.color_index_R, 1);
     game_objects[i].body.speed = 40;
-    game_objects[i].body.target = 150;
+    game_objects[i].body.target = 190;
     game_objects[i].body.on_arrival = MovingObject_arrive_delete;
     game_objects[i].stencil_flag = SF_EnemyProjectile;
 }

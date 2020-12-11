@@ -89,12 +89,14 @@ static void MovingObject_stencil_test(int object_index)
         printf("Invalid index passed to stencil_test\n");
         return;
     }
+    
     struct MoveResults* mr = &game_objects[object_index].mr;
     int led_start = mr->trail_start;
-    int led_end = mr->body_start + mr->dir * (game_objects[object_index].body.length - 1);
+    int led_end = mr->body_end;
+    if (object_index == 128 && mr->body_start > 155)
+        printf(".\n");
     assert(led_start >= 0 && led_start < game_source.basic_source.n_leds - 1);
     assert(led_end >= 0 && led_end < game_source.basic_source.n_leds - 1);
-    if (mr->body_offset > 0) led_end++;
     int other_index = -1;
     int result_stencil = -1;
     int result_index = -1;
