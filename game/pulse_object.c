@@ -71,7 +71,6 @@ void PulseObject_update_pulse(game_object_t* o)
 {
     uint64_t time_ms = get_time_ms();
     double t = PulseObject_get_t(&o->pulse, time_ms, 0);
-    printf("t: %f\n", t);
     for (int i = 0; i < (int)o->body.length; ++i)
     {
         hsl_t res;
@@ -166,7 +165,7 @@ void PulseObject_init_player_lost_health()
     int player_health = config.player_health_levels - PlayerObject_get_health();
     int health_color = config.color_index_player + player_health;
 
-    PulseObject_init(po, 1, PM_ONCE, 3, 5000, M_PI / 2, 0, 1);
+    PulseObject_init(po, 1, PM_ONCE, 3, 500, M_PI / 2, 0, 1);
     PulseObject_init_color(po, health_color, health_color + 1, health_color + 1, length);
     po->callback = PlayerObject_take_hit;
 }

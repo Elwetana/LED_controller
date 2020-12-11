@@ -64,7 +64,7 @@ void GameObject_spawn_enemy_projectile()
 int roll_dice_poisson(double r)
 {
     double time_seconds = (game_source.basic_source.time_delta / (long)1e3) / (double)1e6;
-    double prob = exp(-r * time_seconds) + 1000;
+    double prob = exp(-r * time_seconds);
     return (random_01() > prob);
 }
 
