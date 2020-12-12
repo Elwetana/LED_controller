@@ -35,18 +35,15 @@ enum StencilFlags
     SF_N_FLAGS
 };
 
-typedef struct GameObject
-{
-	moving_object_t body;
-	struct MoveResults mr;
-	enum StencilFlags stencil_flag;
-	int health;
-	struct PulseObject pulse;
-} game_object_t;
 
-game_object_t* player_object;
-game_object_t game_objects[MAX_N_OBJECTS];
-
+void GameObjects_init();
+void GameObject_init(int gi, int health, int stencil_flag);
+int GameObject_update_leds(int frame, ws2811_t* ledstrip);
 void GameSource_set_mode_player_lost();
+void GameObject_delete_object(int gi);
+int GameObject_take_hit(int gi);
+int GameObject_heal(int gi);
+int GameObject_get_health(int gi);
+
 
 #endif /* __GAME_SOURCE_PRIV_H__ */

@@ -155,6 +155,7 @@
     <ClCompile Include="..\faketime.c" />
     <ClCompile Include="..\fire_source.c" />
     <ClCompile Include="..\game\controller.c" />
+    <ClCompile Include="..\game\game_object.c" />
     <ClCompile Include="..\game\input_handler.c" />
     <ClCompile Include="..\game\moving_object.c" />
     <ClCompile Include="..\game\player_object.c" />
@@ -200,7 +201,7 @@
     <ClInclude Include="..\include\faketime.h" />
     <ClInclude Include="..\include\fire_source.h" />
     <ClInclude Include="..\include\game_source.h" />
-    <ClInclude Include="..\include\game_source_priv.h" />
+    <ClInclude Include="..\include\game_object.h" />
     <ClInclude Include="..\include\getopt.h" />
     <ClInclude Include="..\include\ini.h" />
     <ClInclude Include="..\include\input_handler.h" />

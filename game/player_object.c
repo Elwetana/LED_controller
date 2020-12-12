@@ -21,36 +21,32 @@
 #include "moving_object.h"
 #include "stencil_handler.h"
 #include "pulse_object.h"
-#include "game_source_priv.h"
+#include "game_object.h"
 #include "game_source.h"
 #include "player_object.h"
-
 
 const int C_PLAYER_OBJ_INDEX = MAX_N_OBJECTS - 1;
 
 void PlayerObject_init()
 {
-    player_object = &game_objects[C_PLAYER_OBJ_INDEX];
-    MovingObject_init_stopped(&player_object->body, config.player_start_position, MO_BACKWARD, config.player_ship_size, 1);
-    PulseObject_init_steady(&player_object->pulse, config.color_index_player, config.player_ship_size);
-    player_object->health = config.player_health_levels;
-    player_object->body.on_arrival = MovingObject_arrive_stop;
-    player_object->stencil_flag = SF_Player;
+    //player_object = &game_objects[C_PLAYER_OBJ_INDEX];
+    MovingObject_init_stopped(C_PLAYER_OBJ_INDEX, config.player_start_position, MO_BACKWARD, config.player_ship_size, 1);
+    MovingObject_init_movement(C_PLAYER_OBJ_INDEX, 0, 0, MovingObject_arrive_stop);
+    PulseObject_init_steady(C_PLAYER_OBJ_INDEX, config.color_index_player, config.player_ship_size);
+    GameObject_init(C_PLAYER_OBJ_INDEX, config.player_health_levels, SF_Player);
 }
 
 int PlayerObject_get_health()
 {
-    return player_object->health;
+    return GameObject_get_health(C_PLAYER_OBJ_INDEX);
 }
 
-int PlayerObject_get_length()
-{
-    return player_object->body.length;
-}
 
-void PlayerObject_take_hit()
+void PlayerObject_take_hit(int i)
 {
-    if (!--player_object->health)
+    assert(i == C_PLAYER_OBJ_INDEX);
+    (void)i;
+    if (!GameObject_take_hit(C_PLAYER_OBJ_INDEX))
     {
         //game over
         GameSource_set_mode_player_lost();

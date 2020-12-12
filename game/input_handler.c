@@ -19,7 +19,7 @@
 #include "common_source.h"
 #include "moving_object.h"
 #include "pulse_object.h"
-#include "game_source_priv.h"
+#include "game_object.h"
 #include "game_source.h"
 
 #define GAME_DEBUG
@@ -33,31 +33,31 @@ static void(*button_handlers[2 * C_MAX_XBTN])();
 */
 static void ButtonHandler_face_player_backward()
 {
-    MovingObject_set_facing(&player_object->body, MO_BACKWARD);
+    MovingObject_set_facing(C_PLAYER_OBJ_INDEX, MO_BACKWARD);
 }
 
 static void ButtonHandler_face_player_forward()
 {
-    MovingObject_set_facing(&player_object->body, MO_FORWARD);
+    MovingObject_set_facing(C_PLAYER_OBJ_INDEX, MO_FORWARD);
 }
 
 //Actually, if facing forward, it would be able to move to position 0, but it seems like a sensible precaution to just disallow it
 static void ButtonHandler_move_player_left()
 {
-    if (player_object->body.position < player_object->body.length)
+    double pos = MovingObject_get_position(C_PLAYER_OBJ_INDEX);
+    if (pos < 1.)
         return;
-    printf("pos %f\n", player_object->body.position);
-    player_object->body.target = (uint32_t)player_object->body.position - 1;
-    player_object->body.speed = config.player_ship_speed;
+    printf("pos %f\n", pos);
+    MovingObject_init_movement(C_PLAYER_OBJ_INDEX, config.player_ship_speed, (uint32_t)pos - 1, MovingObject_arrive_stop);
     printf("moving left\n");
 }
 
 static void ButtonHandler_move_player_right()
 {
-    if (player_object->body.position > game_source.basic_source.n_leds - (double)player_object->body.length)
+    double pos = MovingObject_get_position(C_PLAYER_OBJ_INDEX);
+    if (pos > game_source.basic_source.n_leds - config.player_ship_size - 2)
         return;
-    player_object->body.target = (uint32_t)player_object->body.position + 1;
-    player_object->body.speed = config.player_ship_speed;
+    MovingObject_init_movement(C_PLAYER_OBJ_INDEX, config.player_ship_speed, (uint32_t)pos + 1, MovingObject_arrive_stop);
 }
 
 
@@ -68,7 +68,7 @@ static void ButtonHandler_debug_pulse()
 
 static void ButtonHandler_debug_heal()
 {
-    player_object->health++;
+    GameObject_heal(C_PLAYER_OBJ_INDEX);
 }
 
 void InputHandler_init()

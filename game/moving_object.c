@@ -15,11 +15,45 @@
 #include "common_source.h"
 #include "colours.h"
 #include "moving_object.h"
-#include "pulse_object.h"
-#include "game_source_priv.h"
+#include "game_object.h"
 #include "game_source.h"
 
+
 #define C_PRECIS 0.0001
+
+/*! Basic object that has position, length and speed
+ *  the object is rendered from position in the direction, i.e. it's pushed */
+typedef struct MovingObject
+{
+    int index;
+    double position;    //!< index of the leftmost LED, `position` + `length` - 1 is the index of the rightmost LED
+    uint32_t length;
+    double speed;       //<! in leds per second
+    uint32_t target;
+    enum MovingObjectFacing facing;
+    int zdepth;
+    ws2811_led_t color[MAX_OBJECT_LENGTH];  //!< must be initialized with `length` colors, color[0] is tail, color[length-1] is head, regardless of `facing`
+    void(*on_arrival)(int);
+} moving_object_t;
+
+
+typedef struct MoveResults
+{
+    int updated;
+    int dir;             //!< -1 - moving left, +1 moving right
+    int df_not_aligned;  //!<  0 if facing == dir, +1 if facing != dir
+    int trail_start;
+    double trail_offset; //!< number from <0,1>
+    int body_start;
+    int body_end;        //!< this is the last led, inclusive
+    double body_offset;
+    int target_reached;  //!< 0 - target not reached, 1 target was reached, -1 target was already reached without moving
+    double end_position;
+} move_results_t;
+
+static moving_object_t moving_objects[MAX_N_OBJECTS];
+static move_results_t move_results[MAX_N_OBJECTS];
+
 
 void Canvas_clear(ws2811_led_t* leds)
 {
@@ -32,35 +66,63 @@ void Canvas_clear(ws2811_led_t* leds)
     }
 }
 
-void MovingObject_init_stopped(moving_object_t* object, double position, enum MovingObjectFacing facing, uint32_t length, int zdepth)
+void MovingObject_init_stopped(int mi, double position, enum MovingObjectFacing facing, uint32_t length, int zdepth)
 {
+    moving_object_t* object = &moving_objects[mi];
+    object->index = mi;
     object->position = position;
     object->facing = facing;
     object->length = length;
     object->speed = 0.;
     object->target = (int)position;
     object->zdepth = zdepth;
-    object->deleted = 0;
     object->on_arrival = NULL;
 }
 
-void MovingObject_set_facing(moving_object_t* object, enum MovingObjectFacing facing)
+void MovingObject_set_facing(int mi, enum MovingObjectFacing facing)
 {
+    moving_object_t* object = &moving_objects[mi];
     if (object->facing == facing)
         return;
     object->facing = facing;
     object->position -= facing * ((double)object->length - 1.);
 }
 
-//********* Arrival methods ***********
-void MovingObject_arrive_delete(moving_object_t* object)
+void MovingObject_init_movement(int mi, double speed, int target, void(*on_arrival)(int))
 {
-    object->deleted = 1;
+    moving_object_t* object = &moving_objects[mi];
+    object->speed = speed;
+    object->target = target;
+    object->on_arrival = on_arrival;
 }
 
-void MovingObject_arrive_stop(moving_object_t* object)
+void MovingObject_apply_colour(int mi, ws2811_led_t* colors)
 {
-    object->speed = 0.;
+    for (int i = 0; i < (int)moving_objects[mi].length; ++i)
+    {
+        moving_objects[mi].color[i] = colors[i];
+    }
+}
+
+int MovingObject_get_length(int mi)
+{
+    return moving_objects[mi].length;
+}
+
+double MovingObject_get_position(int mi)
+{
+    return moving_objects[mi].position;
+}
+
+//********* Arrival methods ***********
+void MovingObject_arrive_delete(int i)
+{
+    GameObject_delete_object(i);
+}
+
+void MovingObject_arrive_stop(int i)
+{
+    moving_objects[i].speed = 0.;
 }
 
 //******* Arrival methods end ***********
@@ -98,7 +160,7 @@ static void render_with_z_test(ws2811_led_t color, double alpha, ws2811_led_t* l
  * The length of trail is always (body_start - trail_start) * dir
  * @return  now returns always 1
  */
-int MovingObject_get_move_results(moving_object_t* object, struct MoveResults* mr)
+int MovingObject_calculate_move_results(int mi)
 /*
     If moving right, color trailing led with alpha = 1 - offset, if moving left, color trailing led + 1 with alpha = offset
        trailing is the at `position` if `dir == facing` and `postion + length - 1` otherwise
@@ -109,6 +171,9 @@ int MovingObject_get_move_results(moving_object_t* object, struct MoveResults* m
          back    & left  (-1,-1):   7, 0.3, 4
 */
 {
+    moving_object_t* object = &moving_objects[mi];
+    move_results_t* mr = &move_results[mi];
+    mr->updated = 1;
     double time_seconds = (game_source.basic_source.time_delta / (long)1e3) / (double)1e6;
     double distance = object->speed * time_seconds;
     int dir = SGN(object->target, object->position);
@@ -150,11 +215,32 @@ int MovingObject_get_move_results(moving_object_t* object, struct MoveResults* m
     return 1;
 }
 
-
-int MovingObject_render(moving_object_t* object, struct MoveResults* mr, ws2811_led_t* leds, int render_trail)
+void MovingObject_get_move_results(int mi, int* left_end, int* right_end, int* dir)
 {
+    *left_end = (move_results[mi].dir > 0) ? move_results[mi].trail_start : move_results[mi].body_end;
+    *right_end = (move_results[mi].dir < 0) ? move_results[mi].trail_start : move_results[mi].body_end;
+    *dir = move_results[mi].dir;
+}
+
+void MovingObject_adjust_position(int mi, int new_body_end)
+{
+    move_results_t* mr = &move_results[mi];
+    int length = mr->body_end - mr->body_start; //this will be < 0 when moving left
+    mr->body_end = new_body_end;
+    mr->body_start = new_body_end - length;
+    //if dir > 0: mr->trail_start <= mr->body_start and vice versa 
+    assert(mr->dir * (mr->body_start - mr->trail_start) >= 0);
+    mr->target_reached = 1;
+}
+
+
+int MovingObject_render(int mi, ws2811_led_t* leds, int render_trail)
+{
+    moving_object_t* object = &moving_objects[mi];
+    move_results_t* mr = &move_results[mi];
     if (object->length == 0)
         return 0;
+    assert(mr->updated == 1);
     //printf("Rendering object at positions from %i to %i with color in led 0 %x\n", mr->body_start, mr->body_end, object->color[0]);
     //render trail
     ws2811_led_t trailing_color = object->color[mr->df_not_aligned * (object->length - 1)];
@@ -194,14 +280,17 @@ int MovingObject_render(moving_object_t* object, struct MoveResults* mr, ws2811_
 }
 
 
-int MovingObject_update(moving_object_t* object, struct MoveResults* mr)
+int MovingObject_update(int mi)
 {
-    if (object->deleted)
-        return 0;
+    moving_object_t* object = &moving_objects[mi];
+    move_results_t* mr = &move_results[mi];
+
+    assert(mr->updated == 1);
+    mr->updated = 0;
     object->position = mr->end_position;
     if (mr->target_reached == 1)
     {
-        object->on_arrival(object);
+        object->on_arrival(object->index);
         return 0;
     }
     return 1;
@@ -218,7 +307,7 @@ int MovingObject_update(moving_object_t* object, struct MoveResults* mr)
  * @param render_trail   1 -- all intermediate leds will be lit, 0 -- only the end position will be rendered
  * @return               0 when the object arrives at `target`, 1 otherwise
 */
-static int MovingObject_process(moving_object_t* object, ws2811_led_t* leds, int render_trail)
+static int MovingObject_process(int mi, ws2811_led_t* leds, int render_trail)
 {
     /*
     Simple summary of steps:
@@ -228,10 +317,9 @@ static int MovingObject_process(moving_object_t* object, ws2811_led_t* leds, int
         2. if render_trail, render the trail from trailing edge to trailing edge + distance
         3. render the body
     */
-    struct MoveResults mr;
-    MovingObject_get_move_results(object, &mr);
-    MovingObject_render(object, &mr, leds, render_trail);
-    return MovingObject_update(object, &mr);
+    MovingObject_calculate_move_results(mi);
+    MovingObject_render(mi, leds, render_trail);
+    return MovingObject_update(mi);
 }
 
 
@@ -253,18 +341,16 @@ int run_test(struct TestParams tp, double expected_position, int expected_colors
     ws2811_led_t leds[200]; //this must be the same as n_leds
     Canvas_clear(leds);
 
-    moving_object_t o;
-    MovingObject_init_stopped(&o, tp.position, tp.facing, 3, 1);
-    o.color[0] = 60;
-    o.color[1] = 100;
-    o.color[2] = 200;
-    o.on_arrival = MovingObject_arrive_stop;
-    o.target = tp.target;
-    o.speed = tp.speed;
+    MovingObject_init_stopped(0, tp.position, tp.facing, 3, 1);
+    MovingObject_init_movement(0, tp.speed, tp.target, MovingObject_arrive_stop);
+    moving_object_t* o = &moving_objects[0];
+    o->color[0] = 60;
+    o->color[1] = 100;
+    o->color[2] = 200;
     game_source.basic_source.time_delta = (uint64_t)1e9 * 1;
 
-    MovingObject_process(&o, leds, tp.trail);
-    assert(o.position == expected_position);
+    MovingObject_process(0, leds, tp.trail);
+    assert(o->position == expected_position);
     for (int i = 0; i < 10; i++)
     {
         assert(leds[i] == (uint32_t)expected_colors[i]);
