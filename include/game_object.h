@@ -19,6 +19,8 @@ struct
 	uint32_t color_index_game_over;
 	double enemy_spawn_chance;
 	double enemy_speed;
+    uint32_t color_index_stargate;
+    double decoration_speed;
 } config;
 
 
