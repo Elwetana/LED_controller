@@ -61,6 +61,16 @@ static void ButtonHandler_move_player_right()
     MovingObject_init_movement(C_PLAYER_OBJ_INDEX, config.player_ship_speed, (uint32_t)pos + 1, MovingObject_stop);
 }
 
+static void ButtonHandler_move_player_above()
+{
+    PlayerObject_hide_above();
+}
+
+static void ButtonHandler_move_player_below()
+{
+    PlayerObject_hide_below();
+}
+
 static void ButtonHandler_restart_game()
 {
     GameObjects_init();
@@ -104,6 +114,8 @@ void InputHandler_init(enum GameModes game_mode)
         button_handlers[C_MAX_XBTN + XBTN_RB] = ButtonHandler_face_player_forward;
         button_handlers[C_MAX_XBTN + DPAD_L] = ButtonHandler_move_player_left;
         button_handlers[C_MAX_XBTN + DPAD_R] = ButtonHandler_move_player_right;
+        button_handlers[C_MAX_XBTN + DPAD_U] = ButtonHandler_move_player_above;
+        button_handlers[C_MAX_XBTN + DPAD_D] = ButtonHandler_move_player_below;
         button_handlers[C_MAX_XBTN + XBTN_X] = ButtonHandler_debug_pulse;
         button_handlers[C_MAX_XBTN + XBTN_A] = ButtonHandler_debug_heal;
         button_handlers[C_MAX_XBTN + XBTN_Y] = ButtonHandler_debug_projectile;

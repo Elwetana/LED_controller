@@ -182,6 +182,7 @@ void PulseObject_set_color_all(int pi, int color_index_0, int color_index_1, int
         po->colors_1[i] = res1;
         po->next_color[i] = game_source.basic_source.gradient.colors[next_color];
     }
+    if (po->repetitions == -1) po->repetitions = 0;
 }
 
 void PulseObject_set_color(int pi, int color0, int color1, int color_next, int led)
@@ -190,6 +191,7 @@ void PulseObject_set_color(int pi, int color0, int color1, int color_next, int l
     rgb2hsl(game_source.basic_source.gradient.colors[color0], po->colors_0 + led);
     rgb2hsl(game_source.basic_source.gradient.colors[color1], po->colors_1 + led);
     po->next_color[led] = game_source.basic_source.gradient.colors[color_next];
+    if (po->repetitions == -1) po->repetitions = 0;
 }
 
 void PulseObject_init_steady(int pi, int color_index, int length)
@@ -197,6 +199,7 @@ void PulseObject_init_steady(int pi, int color_index, int length)
     pulse_object_t* po = &pulse_objects[pi];
     po->index = pi;
     po->pulse_mode = PM_STEADY;
+    po->repetitions = 0;
     for (int i = 0; i < length; ++i)
     {
         po->next_color[i] = game_source.basic_source.gradient.colors[color_index];

@@ -17,9 +17,10 @@ struct
 	uint32_t color_index_W;
 	uint32_t color_index_K;
 	uint32_t color_index_game_over;
+	uint32_t color_index_stargate;
+	uint32_t color_index_health;
 	double enemy_spawn_chance;
 	double enemy_speed;
-    uint32_t color_index_stargate;
     double decoration_speed;
 } config;
 
@@ -44,6 +45,7 @@ int GameObjects_update_leds(int frame, ws2811_t* ledstrip);
 enum GameModes GameObjects_get_current_mode();
 void GameObjects_next_level();
 
+void GameObjects_player_reached_gate();
 void GameObjects_set_mode_player_lost();
 void GameObject_delete_object(int gi);
 void GameObject_mark(int gi, int mark);

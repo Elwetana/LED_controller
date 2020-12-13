@@ -97,6 +97,7 @@ static void update_objects_level1()
         MovingObject_init_stopped(0, cur_position + 1, MO_FORWARD, cur_length - 2, 9);
         printf("shrinking stargate\n");
     }
+    PlayerObject_update();
 }
 
 static void GameObject_update_objects()
@@ -223,6 +224,8 @@ static void GameObjects_init_objects()
         stargate_init();
         break;
     case GM_LEVEL1_WON:
+        //spawn victory message
+
         break;
     case GM_PLAYER_LOST:
         //spawn game over
@@ -245,6 +248,20 @@ void GameObjects_init()
 enum GameModes GameObjects_get_current_mode()
 {
     return current_mode;
+}
+
+void GameObjects_player_reached_gate()
+{
+    int sg_start = MovingObject_get_position(0);
+    int sg_length = MovingObject_get_length(0);
+    int player_start = MovingObject_get_position(C_PLAYER_OBJ_INDEX);
+    int player_length = MovingObject_get_length(C_PLAYER_OBJ_INDEX);
+    if (sg_start + sg_length > player_start + player_length)
+    {
+        printf("Player won level 1");
+        current_mode = GM_LEVEL1_WON;
+        GameObjects_init();
+    }
 }
 
 void GameObjects_set_mode_player_lost()

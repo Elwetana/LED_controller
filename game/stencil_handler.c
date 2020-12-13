@@ -48,10 +48,20 @@ static int StencilHandler_player_is_hit(int projectile, int player)
     assert(player == C_PLAYER_OBJ_INDEX);
     if (GameObject_get_mark(projectile) & 1) return 1; //this projectile was already processed
     //we notify the objects; objects have to handle all effects
-    GameObject_mark(projectile, 1);
-    MovingObject_target_hit(projectile, player, OnArrival_stop_and_explode);
-    PlayerObject_take_hit(player);
+    if (PlayerObject_is_hit(projectile))
+    {
+        GameObject_mark(projectile, 1);
+        MovingObject_target_hit(projectile, player, OnArrival_stop_and_explode);
+        PlayerObject_take_hit(player);
+    }
     return 1;
+}
+
+static int StencilHandler_player_reached_stargate(int gate, int player)
+{
+    assert(player == C_PLAYER_OBJ_INDEX);
+    assert(gate == 0);
+    GameObjects_player_reached_gate();
 }
 
 static void Stencil_erase_object(int start_led, int dir)
@@ -129,13 +139,25 @@ void Stencil_stencil_test(int object_index, int stencil_flag)
     }
 }
 
-void Stencil_init()
+void Stencil_init(enum GameModes current_mode)
 {
     for (int i = 0; i < SF_N_FLAGS * SF_N_FLAGS; ++i)
     {
         stencil_handlers[i] = NULL;
     }
-    stencil_handlers[SF_Player * SF_N_FLAGS + SF_Player] = StencilHandler_impossible;
-    stencil_handlers[SF_EnemyProjectile * SF_N_FLAGS + SF_Player] = StencilHandler_player_is_hit;
+    switch (current_mode)
+    {
+    case GM_LEVEL1:
+        stencil_handlers[SF_Player * SF_N_FLAGS + SF_Player] = StencilHandler_impossible;
+        stencil_handlers[SF_EnemyProjectile * SF_N_FLAGS + SF_Player] = StencilHandler_player_is_hit;
+        stencil_handlers[SF_Enemy * SF_N_FLAGS + SF_Player] = StencilHandler_player_reached_stargate;
+        break;
+    case GM_LEVEL1_WON:
+        break;
+    case GM_PLAYER_LOST:
+        break;
+    }
+
+
 }
 

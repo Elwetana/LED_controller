@@ -35,7 +35,12 @@ void Game_source_init_objects()
     config.player_start_position = 180;
     config.player_ship_speed = 2;
     config.player_ship_size = 6;
-    config.color_index_R = 0; 
+    config.player_health_levels = 5;
+    config.enemy_spawn_chance = 0.1; //number of enemies to spawn per second on average
+    config.enemy_speed = 40;
+    config.decoration_speed = 8;
+
+    config.color_index_R = 0;
     config.color_index_G = 1;
     config.color_index_B = 2;
     config.color_index_C = 3;
@@ -43,13 +48,10 @@ void Game_source_init_objects()
     config.color_index_Y = 5;
     config.color_index_W = 6;
     config.color_index_K = 7;
-    config.color_index_player = 8; //9 is player health, 10 is player sick
-    config.player_health_levels = 5;
-    config.enemy_spawn_chance = 0.02; //number of enemies to spawn per second on average
-    config.enemy_speed = 40;
-    config.color_index_game_over = 11;
-    config.color_index_stargate = 12;
-    config.decoration_speed = 8;
+    config.color_index_player = 9; //9 is normal level, 8 is below, 9 is above
+    config.color_index_health = 11; //11: healthy, 12: sick
+    config.color_index_game_over = 13;
+    config.color_index_stargate = 14; //15 is unused, 16, 17: decoration colors
 
     GameObjects_init();
 }

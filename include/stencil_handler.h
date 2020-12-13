@@ -12,7 +12,7 @@ enum StencilFlags
 };
 
 
-void Stencil_init();
+void Stencil_init(enum GameModes current_mode);
 void Stencil_stencil_test(int object_index, int stencil_flag);
 
 #endif /* __STENCIL_HANDLER_H__ */

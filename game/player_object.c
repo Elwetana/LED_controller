@@ -27,6 +27,12 @@
 
 const int C_PLAYER_OBJ_INDEX = MAX_N_OBJECTS - 1;
 
+static struct
+{
+    int level; //0: normal, 1: above, -1: below
+    uint64_t level_change_time;
+} player_object;
+
 void PlayerObject_init(enum GameModes current_mode)
 {
     switch(current_mode)
@@ -46,9 +52,43 @@ void PlayerObject_init(enum GameModes current_mode)
     }
 }
 
+void PlayerObject_update()
+{
+    uint64_t max_hidden_time = 2 * 1e9; //2s
+    if (player_object.level != 0 && game_source.basic_source.current_time - player_object.level_change_time > max_hidden_time)
+    {
+        player_object.level = 0;
+        PulseObject_set_color(C_PLAYER_OBJ_INDEX, config.color_index_player, config.color_index_player, config.color_index_player, config.player_ship_size - 1);
+    }
+}
+
 int PlayerObject_get_health()
 {
     return GameObject_get_health(C_PLAYER_OBJ_INDEX);
+}
+
+int PlayerObject_is_hit(int bullet)
+{
+    return player_object.level == 0;
+}
+
+static void set_level(int level)
+{
+    if (player_object.level == 0)
+    {
+        player_object.level = level;
+        player_object.level_change_time = game_source.basic_source.current_time;
+    }
+    PulseObject_set_color(C_PLAYER_OBJ_INDEX, config.color_index_player, config.color_index_player, config.color_index_player + level, config.player_ship_size - 1);
+}
+
+void PlayerObject_hide_above()
+{
+    set_level(1);
+}
+void PlayerObject_hide_below()
+{
+    set_level(-1);
 }
 
 
