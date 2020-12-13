@@ -62,7 +62,13 @@ int MovingObject_calculate_move_results(int mi);
 */
 void MovingObject_get_move_results(int mi, int* left_end, int* right_end, int* dir);
 
-void MovingObject_target_hit(int mi, int new_body_end, void(*new_callback)(int));
+/*!
+ * @brief Adjust projectile movement so that it is aligned with target, stop it and rewrite its callback function
+ * @param mi_bullet 
+ * @param mi_target 
+ * @param new_callback 
+*/
+void MovingObject_target_hit(int mi_bullet, int mi_target, void(*new_callback)(int));
 
 /*!
 * Render the object

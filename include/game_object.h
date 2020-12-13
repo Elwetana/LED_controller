@@ -42,6 +42,8 @@ void GameObject_init(int gi, int health, int stencil_flag);
 int GameObject_update_leds(int frame, ws2811_t* ledstrip);
 void GameSource_set_mode_player_lost();
 void GameObject_delete_object(int gi);
+void GameObject_mark(int gi, int mark);
+int GameObject_get_mark(int gi);
 int GameObject_take_hit(int gi);
 int GameObject_heal(int gi);
 int GameObject_get_health(int gi);

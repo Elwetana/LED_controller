@@ -170,15 +170,11 @@ int MovingObject_calculate_move_results(int mi)
     int df_not_aligned = (1 - dir * object->facing) / 2; //this is a useful quantity, 0 if facing == dir, +1 if facing != dir
 
     int trailing_led = (int)object->position + (dir < 0) * object->length;
-    int leading_led = (int)object->position + (dir > 0) * (object->length - 1);
-
     double offset = object->position - (int)object->position;
     if (dir < 0) offset = 1. - offset;
 
     assert(trailing_led >= 0. && trailing_led < game_source.basic_source.n_leds);
-    assert(leading_led >= 0. && leading_led < game_source.basic_source.n_leds);
     assert(offset >= 0. && offset <= 1.);
-    int target_reached = 0;
 
     mr->dir = dir;
     mr->df_not_aligned = df_not_aligned;
@@ -186,6 +182,7 @@ int MovingObject_calculate_move_results(int mi)
     mr->trail_offset = offset;
 
     // p + d > t -> p + d = t -> d = t - p
+    int target_reached = 0;
     if (dir * (object->position + dir * distance - (double)object->target) >= -C_PRECIS && object->speed > 0.) //when moving right, condition is >=, when moving left it's <=
     {
         target_reached = 1;
@@ -212,23 +209,52 @@ void MovingObject_get_move_results(int mi, int* left_end, int* right_end, int* d
     *dir = move_results[mi].dir;
 }
 
-void MovingObject_target_hit(int mi, int new_body_end, void(*new_callback)(int))
+/*! Adjust projectile movement so that it is aligned with target, stop it and rewrite its callback function */
+void MovingObject_target_hit(int mi_bullet, int mi_target, void(*new_callback)(int))
 {
+    // dir: -->  B B T T T : bullet_position = target_position - bullet_length, round down
+    // dir: <--  T T T B B : bullet position = target_position + target_length, round up
+    move_results_t* mr_bullet = &move_results[mi_bullet];
+    move_results_t* mr_target = &move_results[mi_target];
+    int new_bullet_position;
+    if (mr_bullet->dir > 0)
+    {
+        new_bullet_position = (int)(mr_target->end_position - moving_objects[mi_bullet].length) - 1;
+    }
+    else
+    {
+        new_bullet_position = (int)(mr_target->end_position + moving_objects[mi_target].length) + 1;
+    }
 #ifdef GAME_DEBUG
-    int player_pos = move_results[255].body_end;
-    printf("Player %i, projectile %i\n", player_pos, new_body_end);
+    printf("Target %f, projectile %i\n", mr_target->end_position, new_bullet_position);
 #endif
-    move_results_t* mr = &move_results[mi];
-    int length = moving_objects[mi].length;
-    mr->body_end = new_body_end;
-    mr->body_start = new_body_end - mr->dir * length;
-    //if dir > 0: mr->trail_start <= mr->body_start and vice versa 
-    assert(mr->dir * (mr->body_start - mr->trail_start) >= 0);
-    mr->target_reached = 1;
-    mr->end_position = mr->dir > 0 ? mr->body_start : mr->body_end;
-    mr->body_offset = 0;
-    moving_objects[mi].on_arrival = new_callback;
+    mr_bullet->end_position = new_bullet_position;
+    if (mr_bullet->dir > 0)
+    {
+        mr_bullet->body_start = new_bullet_position;
+        mr_bullet->body_end = new_bullet_position + moving_objects[mi_bullet].length;
+        mr_bullet->body_offset = 0;
+        if (mr_bullet->trail_start > mr_bullet->body_start)
+        {
+            mr_bullet->trail_start = mr_bullet->body_start;
+            mr_bullet->trail_offset = 0;
+        }
+    }
+    else
+    {
+        mr_bullet->body_start = new_bullet_position + moving_objects[mi_bullet].length;
+        mr_bullet->body_end = new_bullet_position;
+        mr_bullet->body_offset = 1;
+        if (mr_bullet->trail_start < mr_bullet->body_start)
+        {
+            mr_bullet->trail_start = mr_bullet->body_start;
+            mr_bullet->trail_offset = 1;
+        }
+    }
+    mr_bullet->target_reached = 1;
+    moving_objects[mi_bullet].on_arrival = new_callback;
 }
+
 
 
 int MovingObject_render(int mi, ws2811_led_t* leds, int render_trail)

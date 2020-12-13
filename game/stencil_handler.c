@@ -46,19 +46,10 @@ static int StencilHandler_impossible(int obj1, int obj2)
 static int StencilHandler_player_is_hit(int projectile, int player)
 {
     assert(player == C_PLAYER_OBJ_INDEX);
-    //find where is the collision
-    //   l1 . . . . . r1
-    //       l2 . . r2
-    int l1, r1, dir1, l2, r2, dir2;
-    MovingObject_get_move_results(projectile, &l1, &r1, &dir1);
-    assert(l1 <= r1);
-    MovingObject_get_move_results(player, &l2, &r2, &dir2);
-    assert(l2 <= r2);
-
-    //if projectile is moving right, so the hit is from left
-    int hit_end = (dir1 > 0) ? l2 : r2;
+    if (GameObject_get_mark(projectile) & 1) return 1; //this projectile was already processed
     //we notify the objects; objects have to handle all effects
-    MovingObject_target_hit(projectile, hit_end - dir1, OnArrival_stop_and_explode);
+    GameObject_mark(projectile, 1);
+    MovingObject_target_hit(projectile, player, OnArrival_stop_and_explode);
     PlayerObject_take_hit(player);
     return 1;
 }

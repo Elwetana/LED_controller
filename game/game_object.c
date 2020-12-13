@@ -38,6 +38,7 @@ typedef struct GameObject
     enum StencilFlags stencil_flag;
     int health;
     int deleted;
+    int mark;
 } game_object_t;
 
 static game_object_t game_objects[MAX_N_OBJECTS];
@@ -99,6 +100,7 @@ void GameObject_init(int gi, int health, int stencil_flag)
     game_objects[gi].deleted = 0;
     game_objects[gi].health = health;
     game_objects[gi].stencil_flag = stencil_flag;
+    game_objects[gi].mark = 0;
 }
 
 int GameObject_take_hit(int gi)
@@ -114,6 +116,16 @@ int GameObject_heal(int gi)
 int GameObject_get_health(int gi)
 {
     return game_objects[gi].health;
+}
+
+void GameObject_mark(int gi, int mark)
+{
+    game_objects[gi].mark |= mark;
+}
+
+int GameObject_get_mark(int gi)
+{
+    return game_objects[gi].mark;
 }
 
 void GameObjects_init()
