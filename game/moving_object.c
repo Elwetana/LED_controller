@@ -69,6 +69,7 @@ void Canvas_clear(ws2811_led_t* leds)
 
 void MovingObject_init_stopped(int mi, double position, enum MovingObjectFacing facing, uint32_t length, int zdepth)
 {
+    assert(length <= MAX_OBJECT_LENGTH);
     moving_object_t* object = &moving_objects[mi];
     object->index = mi;
     object->position = position;

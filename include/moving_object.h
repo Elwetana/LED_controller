@@ -5,7 +5,7 @@
 //returns +1 if a >= b, -1 if a < b
 #define SGN(a,b) 1 - 2 * ((a) - (b) < 0.0001)    
 
-#define MAX_OBJECT_LENGTH  16
+#define MAX_OBJECT_LENGTH  216
 
 enum MovingObjectFacing
 {

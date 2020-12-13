@@ -17,13 +17,13 @@
 #endif // __linux__
 
 #include "common_source.h"
+#include "game_source.h"
+#include "game_object.h"
 #include "moving_object.h"
 #include "stencil_handler.h"
 #include "pulse_object.h"
 #include "callbacks.h"
 #include "player_object.h"
-#include "game_object.h"
-#include "game_source.h"
 
 /*!
  * @brief Handlers are indexed in_stencil_object_index * SF_N_FLAGS + object_being_checked_index

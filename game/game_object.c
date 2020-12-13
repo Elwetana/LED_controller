@@ -18,14 +18,14 @@
 
 #include "common_source.h"
 #include "colours.h"
+#include "game_source.h"
+#include "game_object.h"
 #include "moving_object.h"
 #include "pulse_object.h"
 #include "player_object.h"
 #include "input_handler.h"
 #include "stencil_handler.h"
 #include "callbacks.h"
-#include "game_object.h"
-#include "game_source.h"
 
 
 const int C_BKGRND_OBJ_INDEX = 0;
@@ -42,7 +42,7 @@ typedef struct GameObject
 } game_object_t;
 
 static game_object_t game_objects[MAX_N_OBJECTS];
-static enum GameModes current_mode;
+static enum GameModes current_mode = GM_LEVEL1;
 
 static void GameObject_spawn_enemy_projectile()
 {
@@ -133,9 +133,10 @@ int GameObject_get_mark(int gi)
 static void game_over_init()
 {
     int l = game_source.basic_source.n_leds / 2;
+    printf("--%i-\n", l);
     GameObject_init(0, 0, SF_Background);
     MovingObject_init_stopped(0, 0, MO_FORWARD, l, 0);
-    PulseObject_init(0, 1, PM_REPEAT, 2, 250, 0, M_PI / l, 1, NULL);
+    PulseObject_init(0, 1, PM_REPEAT, 2, 5000, 0, M_PI / l, 1, NULL);
     PulseObject_set_color_all(0, config.color_index_game_over, config.color_index_W, 0, l);
 }
 
@@ -151,6 +152,7 @@ static void GameObjects_init_objects()
         break;
     case GM_PLAYER_LOST:
         //spawn game over
+        game_over_init();
         break;
     }
 }
@@ -159,7 +161,6 @@ void GameObjects_init()
 {
     for (int i = 0; i < MAX_N_OBJECTS; ++i)
         game_objects[i].deleted = 1;
-    current_mode = GM_LEVEL1;
 
     PlayerObject_init(current_mode);
     InputHandler_init(current_mode);

@@ -14,11 +14,11 @@
 
 #include "common_source.h"
 #include "colours.h"
+#include "game_source.h"
+#include "game_object.h"
 #include "moving_object.h"
 #include "player_object.h"
 #include "pulse_object.h"
-#include "game_object.h"
-#include "game_source.h"
 
 
 /*!
@@ -90,7 +90,7 @@ static void PulseObject_check_pulse_end(pulse_object_t* po)
 static double PulseObject_get_t(pulse_object_t* po, uint64_t time_ms, int led)
 {
     int odd = po->cur_cycle % 2;
-    return po->amplitude * pow((1. - cos(M_PI * (odd - 1) + po->frequency * (time_ms - po->start_time) + po->phase * po->led_phase * led)) / 2., po->spec_exponent);
+    return po->amplitude * pow((1. - cos(M_PI * (odd - 1) + po->frequency * (time_ms - po->start_time) + po->phase + po->led_phase * led)) / 2., po->spec_exponent);
 }
 
 static void PulseObject_update_pulse(pulse_object_t* po)
@@ -117,6 +117,7 @@ static void PulseObject_update_pulse_per_led(pulse_object_t* po)
     for (int i = 0; i < length; ++i)
     {
         double t = PulseObject_get_t(po, time_ms, i);
+        printf("t: %f, time: %lli\n", t, time_ms);
         hsl_t res;
         lerp_hsl(&po->colors_0[i], &po->colors_1[i], t, &res);
         result[i] = hsl2rgb(&res);
@@ -170,6 +171,7 @@ void PulseObject_init(int pi, double amp, enum PulseModes pm, int repetitions, i
 
 void PulseObject_set_color_all(int pi, int color_index_0, int color_index_1, int next_color, int length)
 {
+    assert(length <= MAX_OBJECT_LENGTH);
     pulse_object_t* po = &pulse_objects[pi];
     hsl_t res0, res1;
     rgb2hsl(game_source.basic_source.gradient.colors[color_index_0], &res0);

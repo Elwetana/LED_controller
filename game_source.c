@@ -18,13 +18,13 @@
 
 #include "common_source.h"
 #include "colours.h"
+#include "game_source.h"
+#include "game_object.h"
 #include "moving_object.h"
 #include "pulse_object.h"
 #include "player_object.h"
 #include "input_handler.h"
 #include "stencil_handler.h"
-#include "game_object.h"
-#include "game_source.h"
 
 #define GAME_DEBUG
 

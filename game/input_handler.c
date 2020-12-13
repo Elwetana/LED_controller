@@ -94,9 +94,9 @@ static void ButtonHandler_debug_game_over()
 void InputHandler_init(enum GameModes game_mode)
 {
     Controller_init(); //TODO: this needs/should be called only once
-    button_handlers[C_MAX_XBTN + XBTN_Back] = ButtonHandler_debug_game_over;
 
     for (int i = 0; i < 2 * C_MAX_XBTN; ++i) button_handlers[i] = NULL;
+
     switch (game_mode)
     {
     case GM_LEVEL1:
@@ -117,6 +117,7 @@ void InputHandler_init(enum GameModes game_mode)
         button_handlers[C_MAX_XBTN + XBTN_A] = ButtonHandler_next_level;
         button_handlers[C_MAX_XBTN + XBTN_B] = ButtonHandler_next_level;
     }
+    button_handlers[C_MAX_XBTN + XBTN_Back] = ButtonHandler_debug_game_over;
 }
 
 
