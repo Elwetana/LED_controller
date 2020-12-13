@@ -39,7 +39,9 @@ typedef struct PulseObject
     int index;
     uint64_t start_time;    //!< in ms
     uint64_t end_time;      //!< also in ms, end_time > start_time
-    int repetitions;		//!< for ONCE and FADE modes how many times to repeat the animation. For STEADY if -1, it means the colors have been set;
+    int repetitions;		//!< for ONCE and FADE modes how many times to repeat the animation. For STEADY if -1, 
+                            //   it means the colors have been set; interpolation goes from 0 to 1 in odd cycles, from 1 to 0 in even
+    int cur_cycle;          //!< current repetion cycle
     enum PulseModes pulse_mode;
     double amplitude;		//!< this should be <0, 1>
     double frequency;       //!< f = 2*pi/t_period
@@ -76,10 +78,10 @@ static void PulseObject_check_pulse_end(pulse_object_t* po)
     }
     if (po->pulse_mode == PM_ONCE || po->pulse_mode == PM_FADE)
     {
-        if (!--po->repetitions)
+        if (++po->cur_cycle > po->repetitions)
         {
             po->pulse_mode = PM_STEADY;
-            po->on_end(po->index);
+            if (po->on_end) po->on_end(po->index);
             return;
         }
     }
@@ -87,20 +89,22 @@ static void PulseObject_check_pulse_end(pulse_object_t* po)
     {
         po->amplitude /= 1.5;
     }
-    //f = 2*pi/t_period => t_period = 2 * pi / f
+    //f = 2*pi/t_period => t_period = 2 * pi / f -- out frequence is 2x slower, odd + even repetition is the whole range
     po->start_time = cur_time;
-    po->end_time = cur_time + (uint64_t)(2. * M_PI / po->frequency);
+    po->end_time = cur_time + (uint64_t)(M_PI / po->frequency);
 }
 
 static double PulseObject_get_t(pulse_object_t* po, uint64_t time_ms, int led)
 {
-    return po->amplitude * pow((1. + cos(po->frequency * (time_ms - po->start_time) + po->phase * po->led_phase * led)) / 2., po->spec_exponent);
+    int odd = po->cur_cycle % 2;
+    return po->amplitude * pow((1. - cos(M_PI * (odd - 1) + po->frequency * (time_ms - po->start_time) + po->phase * po->led_phase * led)) / 2., po->spec_exponent);
 }
 
 static void PulseObject_update_pulse(pulse_object_t* po)
 {
     uint64_t time_ms = get_time_ms();
     double t = PulseObject_get_t(po, time_ms, 0);
+    //printf("t %f, n %i\n", t, po->repetitions);
     int length = MovingObject_get_length(po->index);
     ws2811_led_t result[MAX_OBJECT_LENGTH];
     for (int i = 0; i < length; ++i)
@@ -159,7 +163,8 @@ static void PulseObject_init(pulse_object_t* po, double amp, enum PulseModes pm,
     po->amplitude = amp;
     po->pulse_mode = pm;
     po->repetitions = repetitions;
-    po->frequency = 2. * M_PI / (double)period;
+    po->cur_cycle = 1;
+    po->frequency =  M_PI / (double)period;
     po->phase = phase;
     po->led_phase = led_phase;
     po->spec_exponent = spec;
@@ -199,8 +204,9 @@ void PulseObject_init_player_lost_health()
     int length = MovingObject_get_length(C_PLAYER_OBJ_INDEX);
     int player_health = config.player_health_levels - PlayerObject_get_health();
     int health_color = config.color_index_player + player_health;
+    printf("Col 0: %i = %x, Col 1: %i = %x\n", health_color, game_source.basic_source.gradient.colors[health_color], health_color + 1, game_source.basic_source.gradient.colors[health_color + 1]);
 
-    PulseObject_init(po, 1, PM_ONCE, 3, 500, M_PI / 2, 0, 1);
+    PulseObject_init(po, 1, PM_ONCE, 3, 500, 0, 0, 1);
     PulseObject_init_color(po, health_color, health_color + 1, health_color + 1, length);
     po->on_end = PlayerObject_take_hit;
 }
@@ -211,8 +217,8 @@ void PulseObject_init_projectile_explosion(int pi)
     po->index = pi;
     int length = MovingObject_get_length(pi);
 
-    PulseObject_init(po, 1, PM_ONCE, 1, 100, 0, 0, 10);
-    PulseObject_init_color(po, config.color_index_K, config.color_index_W, config.color_index_K, length);
+    PulseObject_init(po, 1, PM_ONCE, 1, 500, 0, 0, 10);
+    PulseObject_init_color(po, config.color_index_R, config.color_index_W, config.color_index_K, length);
     po->on_end = GameObject_delete_object;
 
 }

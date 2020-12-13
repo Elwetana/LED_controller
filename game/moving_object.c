@@ -18,6 +18,7 @@
 #include "game_object.h"
 #include "game_source.h"
 
+#define GAME_DEBUG
 
 #define C_PRECIS 0.0001
 
@@ -224,6 +225,10 @@ void MovingObject_get_move_results(int mi, int* left_end, int* right_end, int* d
 
 void MovingObject_adjust_position(int mi, int new_body_end)
 {
+#ifdef GAME_DEBUG
+    int player_pos = move_results[255].body_end;
+    printf("Player %i, projectile %i\n", player_pos, new_body_end);
+#endif
     move_results_t* mr = &move_results[mi];
     int length = mr->body_end - mr->body_start; //this will be < 0 when moving left
     mr->body_end = new_body_end;

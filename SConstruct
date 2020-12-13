@@ -21,6 +21,7 @@ srcs = Split('''
     ini.c
     game_source.c
     game/controller.c
+    game/game_object.c
     game/moving_object.c
     game/player_object.c
     game/stencil_handler.c

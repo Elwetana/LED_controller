@@ -22,7 +22,7 @@
 #include "game_object.h"
 #include "game_source.h"
 
-#define GAME_DEBUG
+//#define GAME_DEBUG
 
 //handlers of the button events, the lower half is on_release
 static void(*button_handlers[2 * C_MAX_XBTN])();
@@ -47,9 +47,9 @@ static void ButtonHandler_move_player_left()
     double pos = MovingObject_get_position(C_PLAYER_OBJ_INDEX);
     if (pos < 1.)
         return;
-    printf("pos %f\n", pos);
+    //printf("pos %f\n", pos);
     MovingObject_init_movement(C_PLAYER_OBJ_INDEX, config.player_ship_speed, (uint32_t)pos - 1, MovingObject_arrive_stop);
-    printf("moving left\n");
+    //printf("moving left\n");
 }
 
 static void ButtonHandler_move_player_right()
@@ -71,6 +71,11 @@ static void ButtonHandler_debug_heal()
     GameObject_heal(C_PLAYER_OBJ_INDEX);
 }
 
+static void ButtonHandler_debug_projectile()
+{
+    GameObject_debug_projectile();
+}
+
 void InputHandler_init()
 {
     Controller_init(); //TODO: this needs/should be called only once
@@ -81,6 +86,7 @@ void InputHandler_init()
     button_handlers[C_MAX_XBTN + DPAD_R] = ButtonHandler_move_player_right;
     button_handlers[C_MAX_XBTN + XBTN_X] = ButtonHandler_debug_pulse;
     button_handlers[C_MAX_XBTN + XBTN_A] = ButtonHandler_debug_heal;
+    button_handlers[C_MAX_XBTN + XBTN_Y] = ButtonHandler_debug_projectile;
 }
 
 

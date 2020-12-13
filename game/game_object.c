@@ -60,6 +60,10 @@ static void GameObject_spawn_enemy_projectile()
     GameObject_init(i, 1, SF_EnemyProjectile);
 }
 
+void GameObject_debug_projectile()
+{
+    GameObject_spawn_enemy_projectile();
+}
 
 /*!
  * @brief Determine if event with rate `r` happened or not
@@ -72,7 +76,7 @@ static void GameObject_spawn_enemy_projectile()
 static int roll_dice_poisson(double r)
 {
     double time_seconds = (game_source.basic_source.time_delta / (long)1e3) / (double)1e6;
-    double prob = exp(-r * time_seconds);
+    double prob = exp(-r * time_seconds) + 1;
     return (random_01() > prob);
 }
 
