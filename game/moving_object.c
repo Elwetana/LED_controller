@@ -190,7 +190,7 @@ int MovingObject_calculate_move_results(int mi)
     mr->trail_offset = offset;
 
     // p + d > t -> p + d = t -> d = t - p
-    if (dir * (object->position + dir * distance - (double)object->target) >= -C_PRECIS) //when moving right, condition is >=, when moving left it's <=
+    if (dir * (object->position + dir * distance - (double)object->target) >= -C_PRECIS && object->speed > 0.) //when moving right, condition is >=, when moving left it's <=
     {
         target_reached = 1;
         distance = dir * ((double)object->target - object->position); // this will be > 0 if we haven't started behind the target already
@@ -223,12 +223,14 @@ void MovingObject_target_hit(int mi, int new_body_end, void(*new_callback)(int))
     printf("Player %i, projectile %i\n", player_pos, new_body_end);
 #endif
     move_results_t* mr = &move_results[mi];
-    int length = mr->body_end - mr->body_start; //this will be < 0 when moving left
+    int length = moving_objects[mi].length;
     mr->body_end = new_body_end;
-    mr->body_start = new_body_end - length;
+    mr->body_start = new_body_end - mr->dir * length;
     //if dir > 0: mr->trail_start <= mr->body_start and vice versa 
     assert(mr->dir * (mr->body_start - mr->trail_start) >= 0);
     mr->target_reached = 1;
+    mr->end_position = mr->dir > 0 ? mr->body_start : mr->body_end;
+    mr->body_offset = 0;
     moving_objects[mi].on_arrival = new_callback;
 }
 
