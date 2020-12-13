@@ -33,7 +33,7 @@ void PlayerObject_init()
     MovingObject_init_stopped(C_PLAYER_OBJ_INDEX, config.player_start_position, MO_BACKWARD, config.player_ship_size, 1);
     MovingObject_init_movement(C_PLAYER_OBJ_INDEX, 0, 0, MovingObject_stop);
     PulseObject_init_steady(C_PLAYER_OBJ_INDEX, config.color_index_G, config.player_ship_size);
-    PulseObject_set_color(C_PLAYER_OBJ_INDEX, 0, 0, config.color_index_player, config.player_ship_size - 1);
+    PulseObject_set_color(C_PLAYER_OBJ_INDEX, config.color_index_player, config.color_index_player, config.color_index_player, config.player_ship_size - 1);
     GameObject_init(C_PLAYER_OBJ_INDEX, config.player_health_levels, SF_Player);
 }
 
@@ -60,15 +60,17 @@ void PlayerObject_take_hit(int i)
     {
         callback = NULL;
     }
-    PulseObject_init(C_PLAYER_OBJ_INDEX, 1, PM_ONCE, 3, 500, 0, 0, 1, callback);
+    PulseObject_init(C_PLAYER_OBJ_INDEX, 1, PM_ONCE, 5, 500, 0, 0, 1, callback);
     //player body with health = 3 and size = 6:
     // R R G G G H
     // 0 1 2 3 4 5
-    for (int i = 0; i < ((int)config.player_health_levels - health); ++i)
+    int dmg = (int)config.player_health_levels - health;
+    for (int i = 0; i < dmg; ++i)
     {
-        PulseObject_set_color(C_PLAYER_OBJ_INDEX, 
-            game_source.basic_source.gradient.colors[config.color_index_G],
-            game_source.basic_source.gradient.colors[config.color_index_R],
-            game_source.basic_source.gradient.colors[config.color_index_R], i);
+        PulseObject_set_color(C_PLAYER_OBJ_INDEX, config.color_index_G, config.color_index_R, config.color_index_R, i);
+    }
+    for (int i = dmg; i < (int)config.player_health_levels; ++i)
+    {
+        PulseObject_set_color(C_PLAYER_OBJ_INDEX, config.color_index_G, config.color_index_G, config.color_index_G, i);
     }
 }

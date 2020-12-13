@@ -181,12 +181,12 @@ void PulseObject_set_color_all(int pi, int color_index_0, int color_index_1, int
     }
 }
 
-void PulseObject_set_color(int pi, ws2811_led_t color0, ws2811_led_t color1, ws2811_led_t color_next, int led)
+void PulseObject_set_color(int pi, int color0, int color1, int color_next, int led)
 {
     pulse_object_t* po = &pulse_objects[pi];
-    rgb2hsl(color0, po->colors_0 + led);
-    rgb2hsl(color1, po->colors_1 + led);
-    po->next_color[led] = color_next;
+    rgb2hsl(game_source.basic_source.gradient.colors[color0], po->colors_0 + led);
+    rgb2hsl(game_source.basic_source.gradient.colors[color1], po->colors_1 + led);
+    po->next_color[led] = game_source.basic_source.gradient.colors[color_next];
 }
 
 void PulseObject_init_steady(int pi, int color_index, int length)

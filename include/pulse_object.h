@@ -13,7 +13,7 @@ void PulseObject_update(int pi);
 
 void PulseObject_init(int pi, double amp, enum PulseModes pm, int repetitions, int period, double phase, double led_phase, double spec, void(*on_end)(int));
 void PulseObject_set_color_all(int pi, int color_index_0, int color_index_1, int next_color, int length);
-void PulseObject_set_color(int pi, ws2811_led_t color0, ws2811_led_t color1, ws2811_led_t color_next, int led);
+void PulseObject_set_color(int pi, int color0, int color1, int color_next, int led);
 
 void PulseObject_init_steady(int pi, int color_index, int length);
 

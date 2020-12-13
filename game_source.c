@@ -38,7 +38,7 @@ void Game_source_init_objects()
 {
     //placeholder -- config will be read from file
     config.player_start_position = 180;
-    config.player_ship_speed = 1;
+    config.player_ship_speed = 2;
     config.player_ship_size = 6;
     config.color_index_R = 0;
     config.color_index_G = 1;

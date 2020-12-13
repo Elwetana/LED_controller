@@ -38,6 +38,6 @@ void OnArrival_stop_and_explode(int i)
     //moving_objects[i].speed = 0.;
     MovingObject_stop(i);
     int length = MovingObject_get_length(i);
-    PulseObject_init(i, 1, PM_ONCE, 1, 500, 0, 0, 10, GameObject_delete_object);
+    PulseObject_init(i, 1, PM_ONCE, 5, 500, 0, 0, 10, GameObject_delete_object);
     PulseObject_set_color_all(i, config.color_index_R, config.color_index_W, config.color_index_K, length);
 }
