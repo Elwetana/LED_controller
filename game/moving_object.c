@@ -369,10 +369,15 @@ int unit_tests()
     //begin tests
 	//static facing forward
 	run_test((struct TestParams) { 
-       .position = 1, .facing = MO_FORWARD, .target = 9, .speed = 0., .trail = 1 
-    }, 1, (int[10]) { 0, 60, 100, 200, 0, 0, 0, 0, 0, 0 });
+       .position = 2, .facing = MO_FORWARD, .target = 9, .speed = 0., .trail = 1 
+    }, 2, (int[10]) { 0, 0, 60, 100, 200, 0, 0, 0, 0, 0 });
 
-	//moving right, facing forward
+    //static, facing backward
+    run_test((struct TestParams) {
+        .position = 2., .facing = MO_BACKWARD, .target = 9, .speed = 0., .trail = 0
+    }, 2., (int[10]) { 0, 0, 200, 100, 60, 0, 0, 0, 0, 0 });
+
+    //moving right, facing forward
 	run_test((struct TestParams) {
         .position = 0.25, .facing = MO_FORWARD, .target = 9, .speed = 3.5, .trail = 1 
     }, 3.75, (int[10]) { 45 /*60 * 0.75*/, 60, 60, 60, 70, 125, 150, 0, 0, 0 });
@@ -432,11 +437,6 @@ int unit_tests()
     run_test((struct TestParams) {
         .position = 0.5, .facing = MO_FORWARD, .target = 3, .speed = 3., .trail = 0
     }, 3., (int[10]) { 0, 0, 0, 60, 100, 200, 0, 0, 0, 0 });
-
-    //static, facing backward
-    run_test((struct TestParams) {
-        .position = 2., .facing = MO_BACKWARD, .target = 9, .speed = 0., .trail = 0
-    }, 2., (int[10]) { 0, 0, 200, 100, 60, 0, 0, 0, 0, 0 });
 
     //moving right, facing backward
     run_test((struct TestParams) {
