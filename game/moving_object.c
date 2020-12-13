@@ -82,11 +82,7 @@ void MovingObject_init_stopped(int mi, double position, enum MovingObjectFacing 
 
 void MovingObject_set_facing(int mi, enum MovingObjectFacing facing)
 {
-    moving_object_t* object = &moving_objects[mi];
-    if (object->facing == facing)
-        return;
-    object->facing = facing;
-    object->position -= facing * ((double)object->length - 1.);
+    moving_objects[mi].facing = facing;
 }
 
 void MovingObject_init_movement(int mi, double speed, int target, void(*on_arrival)(int))

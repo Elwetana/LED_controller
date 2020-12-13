@@ -142,7 +142,7 @@ int GameObject_update_leds(int frame, ws2811_t* ledstrip)
     (void)frame;
 #endif // GAME_DEBUG
 
-    unit_tests();
+    //unit_tests();
     Canvas_clear(ledstrip->channel[0].leds);
     InputHandler_process_input();
     GameObject_update_objects();
