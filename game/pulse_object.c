@@ -68,9 +68,10 @@ static void PulseObject_check_pulse_end(pulse_object_t* po)
     {
         return;
     }
+    ++po->cur_cycle;
     if (po->pulse_mode == PM_ONCE || po->pulse_mode == PM_FADE)
     {
-        if (++po->cur_cycle > po->repetitions)
+        if (po->cur_cycle > po->repetitions)
         {
             po->pulse_mode = PM_STEADY;
             if (po->on_end) po->on_end(po->index);

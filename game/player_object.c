@@ -18,23 +18,32 @@
 
 #include "common_source.h"
 #include "colours.h"
+#include "game_object.h"
 #include "moving_object.h"
 #include "stencil_handler.h"
 #include "pulse_object.h"
-#include "game_object.h"
 #include "game_source.h"
 #include "player_object.h"
 
 const int C_PLAYER_OBJ_INDEX = MAX_N_OBJECTS - 1;
 
-void PlayerObject_init()
+void PlayerObject_init(enum GameModes current_mode)
 {
-    assert(config.player_health_levels + 1 == config.player_ship_size);
-    MovingObject_init_stopped(C_PLAYER_OBJ_INDEX, config.player_start_position, MO_BACKWARD, config.player_ship_size, 1);
-    MovingObject_init_movement(C_PLAYER_OBJ_INDEX, 0, 0, MovingObject_stop);
-    PulseObject_init_steady(C_PLAYER_OBJ_INDEX, config.color_index_player+1, config.player_ship_size);
-    PulseObject_set_color(C_PLAYER_OBJ_INDEX, config.color_index_player, config.color_index_player, config.color_index_player, config.player_ship_size - 1);
-    GameObject_init(C_PLAYER_OBJ_INDEX, config.player_health_levels, SF_Player);
+    switch(current_mode)
+    {
+    case GM_LEVEL1:
+        assert(config.player_health_levels + 1 == config.player_ship_size);
+        MovingObject_init_stopped(C_PLAYER_OBJ_INDEX, config.player_start_position, MO_BACKWARD, config.player_ship_size, 1);
+        MovingObject_init_movement(C_PLAYER_OBJ_INDEX, 0, 0, MovingObject_stop);
+        PulseObject_init_steady(C_PLAYER_OBJ_INDEX, config.color_index_player + 1, config.player_ship_size);
+        PulseObject_set_color(C_PLAYER_OBJ_INDEX, config.color_index_player, config.color_index_player, config.color_index_player, config.player_ship_size - 1);
+        GameObject_init(C_PLAYER_OBJ_INDEX, config.player_health_levels, SF_Player);
+        break;
+    case GM_LEVEL1_WON:
+    case GM_PLAYER_LOST:
+        GameObject_delete_object(C_PLAYER_OBJ_INDEX);
+        break;
+    }
 }
 
 int PlayerObject_get_health()
@@ -53,7 +62,7 @@ void PlayerObject_take_hit(int i)
     if (health <= 0)
     {
         //game over
-        callback = GameSource_set_mode_player_lost;
+        callback = GameObjects_set_mode_player_lost;
         health = 0;
     }
     else

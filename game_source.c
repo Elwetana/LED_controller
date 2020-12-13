@@ -28,11 +28,6 @@
 
 #define GAME_DEBUG
 
-void GameSource_set_mode_player_lost()
-{
-    printf("player lost\n");
-}
-
 /*! Init all game objects and modes */
 void Game_source_init_objects()
 {
@@ -52,10 +47,9 @@ void Game_source_init_objects()
     config.player_health_levels = 5;
     config.enemy_spawn_chance = 0.2; //number of enemies to spawn per second on average
     config.enemy_speed = 40;
+    config.color_index_game_over = 11;
 
-    InputHandler_init();
     GameObjects_init();
-    Stencil_init();
 }
 
 //msg = color?xxxxxx
@@ -112,7 +106,7 @@ void GameSource_destruct()
 void GameSource_construct()
 {
     BasicSource_construct(&game_source.basic_source);
-    game_source.basic_source.update = GameObject_update_leds;
+    game_source.basic_source.update = GameObjects_update_leds;
     game_source.basic_source.init = GameSource_init;
     game_source.basic_source.destruct = GameSource_destruct;
     game_source.basic_source.process_message = GameSource_process_message;

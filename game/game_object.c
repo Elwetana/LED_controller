@@ -42,7 +42,7 @@ typedef struct GameObject
 } game_object_t;
 
 static game_object_t game_objects[MAX_N_OBJECTS];
-
+static enum GameModes current_mode;
 
 static void GameObject_spawn_enemy_projectile()
 {
@@ -128,11 +128,61 @@ int GameObject_get_mark(int gi)
     return game_objects[gi].mark;
 }
 
+//******** GAME STATE FUNCTIONS ********
+
+static void game_over_init()
+{
+    int l = game_source.basic_source.n_leds / 2;
+    GameObject_init(0, 0, SF_Background);
+    MovingObject_init_stopped(0, 0, MO_FORWARD, l, 0);
+    PulseObject_init(0, 1, PM_REPEAT, 2, 250, 0, M_PI / l, 1, NULL);
+    PulseObject_set_color_all(0, config.color_index_game_over, config.color_index_W, 0, l);
+}
+
+
+static void GameObjects_init_objects()
+{
+    switch (current_mode)
+    {
+    case GM_LEVEL1:
+        //spawn stargate
+        break;
+    case GM_LEVEL1_WON:
+        break;
+    case GM_PLAYER_LOST:
+        //spawn game over
+        break;
+    }
+}
+
 void GameObjects_init()
 {
     for (int i = 0; i < MAX_N_OBJECTS; ++i)
         game_objects[i].deleted = 1;
-    PlayerObject_init();
+    current_mode = GM_LEVEL1;
+
+    PlayerObject_init(current_mode);
+    InputHandler_init(current_mode);
+    Stencil_init(current_mode);
+    GameObjects_init_objects();
+}
+
+enum GameModes GameObjects_get_current_mode()
+{
+    return current_mode;
+}
+
+void GameObjects_set_mode_player_lost()
+{
+    current_mode = GM_PLAYER_LOST;
+    GameObjects_init();
+    printf("player lost\n");
+}
+
+
+void GameObjects_next_level()
+{
+    printf("advancing to next level\n");
 }
 
 /*! The sequence of actions during one loop:
@@ -145,7 +195,7 @@ void GameObjects_init()
 * \param ledstrip   pointer to rendering device
 * \returns          1 when render is required, i.e. always
 */
-int GameObject_update_leds(int frame, ws2811_t* ledstrip)
+int GameObjects_update_leds(int frame, ws2811_t* ledstrip)
 {
 #ifdef GAME_DEBUG
     //printf("Frame: %i\n", frame);

@@ -16,6 +16,7 @@ struct
 	uint32_t color_index_Y;
 	uint32_t color_index_W;
 	uint32_t color_index_K;
+	uint32_t color_index_game_over;
 	double enemy_spawn_chance;
 	double enemy_speed;
 } config;
@@ -25,22 +26,23 @@ struct
 
 extern const int C_PLAYER_OBJ_INDEX;
 
-
-enum StencilFlags
+enum GameModes
 {
-    SF_Background,
-    SF_Player,
-    SF_PlayerProjectile,
-    SF_Enemy,
-    SF_EnemyProjectile,
-    SF_N_FLAGS
+	GM_LEVEL1,
+	GM_LEVEL1_WON,
+	GM_PLAYER_LOST
 };
+
 
 
 void GameObjects_init();
 void GameObject_init(int gi, int health, int stencil_flag);
-int GameObject_update_leds(int frame, ws2811_t* ledstrip);
-void GameSource_set_mode_player_lost();
+int GameObjects_update_leds(int frame, ws2811_t* ledstrip);
+
+enum GameModes GameObjects_get_current_mode();
+void GameObjects_next_level();
+
+void GameObjects_set_mode_player_lost();
 void GameObject_delete_object(int gi);
 void GameObject_mark(int gi, int mark);
 int GameObject_get_mark(int gi);

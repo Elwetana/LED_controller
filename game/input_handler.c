@@ -17,11 +17,11 @@
 #include "controller.h"
 #include "colours.h"
 #include "common_source.h"
+#include "game_source.h"
+#include "game_object.h"
 #include "moving_object.h"
 #include "pulse_object.h"
 #include "player_object.h"
-#include "game_object.h"
-#include "game_source.h"
 
 //#define GAME_DEBUG
 
@@ -61,6 +61,15 @@ static void ButtonHandler_move_player_right()
     MovingObject_init_movement(C_PLAYER_OBJ_INDEX, config.player_ship_speed, (uint32_t)pos + 1, MovingObject_stop);
 }
 
+static void ButtonHandler_restart_game()
+{
+    GameObjects_init();
+}
+
+static void ButtonHandler_next_level()
+{
+    GameObjects_next_level();
+}
 
 static void ButtonHandler_debug_pulse()
 {
@@ -77,17 +86,37 @@ static void ButtonHandler_debug_projectile()
     GameObject_debug_projectile();
 }
 
-void InputHandler_init()
+static void ButtonHandler_debug_game_over()
+{
+    GameObjects_set_mode_player_lost();
+}
+
+void InputHandler_init(enum GameModes game_mode)
 {
     Controller_init(); //TODO: this needs/should be called only once
+    button_handlers[C_MAX_XBTN + XBTN_Back] = ButtonHandler_debug_game_over;
+
     for (int i = 0; i < 2 * C_MAX_XBTN; ++i) button_handlers[i] = NULL;
-    button_handlers[C_MAX_XBTN + XBTN_LB] = ButtonHandler_face_player_backward;
-    button_handlers[C_MAX_XBTN + XBTN_RB] = ButtonHandler_face_player_forward;
-    button_handlers[C_MAX_XBTN + DPAD_L] = ButtonHandler_move_player_left;
-    button_handlers[C_MAX_XBTN + DPAD_R] = ButtonHandler_move_player_right;
-    button_handlers[C_MAX_XBTN + XBTN_X] = ButtonHandler_debug_pulse;
-    button_handlers[C_MAX_XBTN + XBTN_A] = ButtonHandler_debug_heal;
-    button_handlers[C_MAX_XBTN + XBTN_Y] = ButtonHandler_debug_projectile;
+    switch (game_mode)
+    {
+    case GM_LEVEL1:
+        button_handlers[C_MAX_XBTN + XBTN_LB] = ButtonHandler_face_player_backward;
+        button_handlers[C_MAX_XBTN + XBTN_RB] = ButtonHandler_face_player_forward;
+        button_handlers[C_MAX_XBTN + DPAD_L] = ButtonHandler_move_player_left;
+        button_handlers[C_MAX_XBTN + DPAD_R] = ButtonHandler_move_player_right;
+        button_handlers[C_MAX_XBTN + XBTN_X] = ButtonHandler_debug_pulse;
+        button_handlers[C_MAX_XBTN + XBTN_A] = ButtonHandler_debug_heal;
+        button_handlers[C_MAX_XBTN + XBTN_Y] = ButtonHandler_debug_projectile;
+        break;
+    case GM_PLAYER_LOST:
+        button_handlers[C_MAX_XBTN + XBTN_Start] = ButtonHandler_restart_game;
+        break;
+    case GM_LEVEL1_WON:
+        button_handlers[C_MAX_XBTN + XBTN_X] = ButtonHandler_next_level;
+        button_handlers[C_MAX_XBTN + XBTN_Y] = ButtonHandler_next_level;
+        button_handlers[C_MAX_XBTN + XBTN_A] = ButtonHandler_next_level;
+        button_handlers[C_MAX_XBTN + XBTN_B] = ButtonHandler_next_level;
+    }
 }
 
 

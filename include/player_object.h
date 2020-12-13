@@ -3,9 +3,8 @@
 
 extern const int C_PLAYER_OBJ_INDEX;;
 
-void PlayerObject_init();
+void PlayerObject_init(enum GameModes current_mode);
 int PlayerObject_get_health();
-int PlayerObject_get_length();
 void PlayerObject_take_hit(int i);
 
 #endif /* __PLAYER_OBJECT_H__ */
