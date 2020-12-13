@@ -59,6 +59,7 @@ void PlayerObject_update()
     {
         player_object.level = 0;
         PulseObject_set_color(C_PLAYER_OBJ_INDEX, config.color_index_player, config.color_index_player, config.color_index_player, config.player_ship_size - 1);
+        //printf("Dropping back\n");
     }
 }
 
@@ -75,15 +76,16 @@ int PlayerObject_is_hit(int bullet)
 void PlayerObject_move_left()
 {
     double pos = MovingObject_get_position(C_PLAYER_OBJ_INDEX);
-    if (pos < 1. && player_object.level == 0)
+    if (pos < 1. || player_object.level != 0)
         return;
     MovingObject_init_movement(C_PLAYER_OBJ_INDEX, config.player_ship_speed, (uint32_t)pos - 1, MovingObject_stop);
+    //printf("moving\n");
 }
 
 void PlayerObject_move_right()
 {
     double pos = MovingObject_get_position(C_PLAYER_OBJ_INDEX);
-    if (pos > game_source.basic_source.n_leds - config.player_ship_size - 2 && player_object.level == 0)
+    if (pos > game_source.basic_source.n_leds - config.player_ship_size - 2 || player_object.level != 0)
         return;
     MovingObject_init_movement(C_PLAYER_OBJ_INDEX, config.player_ship_speed, (uint32_t)pos + 1, MovingObject_stop);
 }
@@ -95,6 +97,7 @@ static void set_level(int level)
     {
         player_object.level = level;
         player_object.level_change_time = game_source.basic_source.current_time;
+        //printf("hiding\n");
     }
     PulseObject_set_color(C_PLAYER_OBJ_INDEX, config.color_index_player, config.color_index_player, config.color_index_player + level, config.player_ship_size - 1);
 }
