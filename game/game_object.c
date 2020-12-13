@@ -89,6 +89,13 @@ static void GameObject_update_objects()
     {
         GameObject_spawn_enemy_projectile();
     }
+    double stargate_shrink_chance = 0.1; //one shrink on average every ten seconds
+    if (roll_dice_poisson(stargate_shrink_chance))
+    {
+        double cur_position = MovingObject_get_position(0);
+        double cur_length = MovingObject_get_length(0);
+        MovingObject_init_stopped(0, cur_position + 1, MO_FORWARD, cur_length - 2, 9);
+    }
 }
 
 void GameObject_delete_object(int gi)
@@ -191,6 +198,7 @@ static void GameObjects_init_objects()
     {
     case GM_LEVEL1:
         //spawn stargate
+        stargate_init();
         break;
     case GM_LEVEL1_WON:
         break;
