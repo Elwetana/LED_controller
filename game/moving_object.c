@@ -219,7 +219,7 @@ void MovingObject_target_hit(int mi_bullet, int mi_target, void(*new_callback)(i
     int new_bullet_position;
     if (mr_bullet->dir > 0)
     {
-        new_bullet_position = (int)(mr_target->end_position - moving_objects[mi_bullet].length) - 1;
+        new_bullet_position = (int)(mr_target->end_position - moving_objects[mi_bullet].length);
     }
     else
     {

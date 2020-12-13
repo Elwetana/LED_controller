@@ -96,7 +96,7 @@ static void PulseObject_update_pulse(pulse_object_t* po)
 {
     uint64_t time_ms = get_time_ms();
     double t = PulseObject_get_t(po, time_ms, 0);
-    //printf("t %f, n %i\n", t, po->repetitions);
+    //printf("t %f, n %lli\n", t, time_ms);
     int length = MovingObject_get_length(po->index);
     ws2811_led_t result[MAX_OBJECT_LENGTH];
     for (int i = 0; i < length; ++i)

@@ -32,7 +32,7 @@ void PlayerObject_init()
     assert(config.player_health_levels + 1 == config.player_ship_size);
     MovingObject_init_stopped(C_PLAYER_OBJ_INDEX, config.player_start_position, MO_BACKWARD, config.player_ship_size, 1);
     MovingObject_init_movement(C_PLAYER_OBJ_INDEX, 0, 0, MovingObject_stop);
-    PulseObject_init_steady(C_PLAYER_OBJ_INDEX, config.color_index_G, config.player_ship_size);
+    PulseObject_init_steady(C_PLAYER_OBJ_INDEX, config.color_index_player+1, config.player_ship_size);
     PulseObject_set_color(C_PLAYER_OBJ_INDEX, config.color_index_player, config.color_index_player, config.color_index_player, config.player_ship_size - 1);
     GameObject_init(C_PLAYER_OBJ_INDEX, config.player_health_levels, SF_Player);
 }
@@ -67,10 +67,10 @@ void PlayerObject_take_hit(int i)
     int dmg = (int)config.player_health_levels - health;
     for (int i = 0; i < dmg; ++i)
     {
-        PulseObject_set_color(C_PLAYER_OBJ_INDEX, config.color_index_G, config.color_index_R, config.color_index_R, i);
+        PulseObject_set_color(C_PLAYER_OBJ_INDEX, config.color_index_player+1, config.color_index_player+2, config.color_index_player+2, i);
     }
     for (int i = dmg; i < (int)config.player_health_levels; ++i)
     {
-        PulseObject_set_color(C_PLAYER_OBJ_INDEX, config.color_index_G, config.color_index_G, config.color_index_G, i);
+        PulseObject_set_color(C_PLAYER_OBJ_INDEX, config.color_index_player+1, config.color_index_player+1, config.color_index_player+1, i);
     }
 }
