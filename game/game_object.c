@@ -79,11 +79,11 @@ void GameObject_debug_projectile()
 static int roll_dice_poisson(double r)
 {
     double time_seconds = (game_source.basic_source.time_delta / (long)1e3) / (double)1e6;
-    double prob = exp(-r * time_seconds) + 1;
+    double prob = exp(-r * time_seconds);
     return (random_01() > prob);
 }
 
-static void GameObject_update_objects()
+static void update_objects_level1()
 {
     if (roll_dice_poisson(config.enemy_spawn_chance))
     {
@@ -95,6 +95,23 @@ static void GameObject_update_objects()
         double cur_position = MovingObject_get_position(0);
         double cur_length = MovingObject_get_length(0);
         MovingObject_init_stopped(0, cur_position + 1, MO_FORWARD, cur_length - 2, 9);
+        printf("shrinking stargate\n");
+    }
+}
+
+static void GameObject_update_objects()
+{
+    switch (current_mode)
+    {
+    case GM_LEVEL1:
+        update_objects_level1();
+        break;
+    case GM_LEVEL1_WON:
+        break;
+    case GM_PLAYER_LOST:
+        break;
+    default:
+        break;
     }
 }
 
@@ -141,14 +158,17 @@ int GameObject_get_mark(int gi)
 void OnArrival_stargate_decoration(int i)
 {
     int sg_start = MovingObject_get_position(0);
-    int sg_len = MovingObject_get_length(0);
+    int sg_width = MovingObject_get_length(0);
+    int dec_length = MovingObject_get_length(i);
     if (i == 1 || i == 2)
     {
-        MovingObject_init_stopped(i, sg_start, MO_FORWARD, 5, 8);
+        MovingObject_init_stopped(i, sg_start, MO_FORWARD, dec_length, 8);
+        MovingObject_init_movement(i, 6, sg_start + sg_width / 2 - dec_length, OnArrival_stargate_decoration);
     }
     else
     {
-        MovingObject_init_stopped(i, sg_start + sg_len, MO_BACKWARD, 5, 8);
+        MovingObject_init_stopped(i, sg_start + sg_width, MO_BACKWARD, dec_length, 8);
+        MovingObject_init_movement(i, 6, sg_start + sg_width / 2, OnArrival_stargate_decoration);
     }
 }
 
@@ -164,14 +184,15 @@ static void stargate_init()
     PulseObject_init_steady(0, config.color_index_B, stargate_width);
 
     //decorations
-    int dec_length = 5;
+    int dec_length = 4;
     //1 -> 0, 2 -> 1, 3 -> 3, 4 -> 4
     for (int dec = 1; dec < 5; ++dec)
     {
+        int dir = (dec < 3) ? +1 : -1;
         GameObject_init(dec, 1, SF_Background);
-        MovingObject_init_stopped(1, stargate_start + (dec - 1 + ((dec > 2) ? 1 : 0)) * stargate_width / 4,
-            (dec < 3) ? MO_FORWARD : MO_BACKWARD, dec_length, 8);
-        MovingObject_init_movement(dec, 8, stargate_start + stargate_width / 2, OnArrival_stargate_decoration);
+        MovingObject_init_stopped(dec, stargate_start + (dec - dir - (dir < 0)) * stargate_width / 4,
+            dir, dec_length, 8);
+        MovingObject_init_movement(dec, 6, stargate_start + stargate_width / 2 - (dir > 0) * dec_length, OnArrival_stargate_decoration);
         PulseObject_init_steady(dec, 0, dec_length);
         for (int led = 0; led < dec_length; ++led)
         {
