@@ -21,14 +21,6 @@
 #include "game_source.h"
 
 
-enum PulseModes
-{
-    PM_STEADY,  //!< no blinking, copy next_color to moving_object.color
-    PM_REPEAT,  //!< keep pulsing with the same parameter
-    PM_ONCE,    //!< switch to normal steady light after repetions cycles switch to steady and execute callback
-    PM_FADE     //!< decrease amplitude at end, after repetions cycles switch to steady and execute callback
-};
-
 /*!
  * @brief Generate blinking, pulsing and so on
  * Use equation: t =  A * ((1. + cos(f * (t - t0) + phi + led * phi_led)) / 2.) ^ k;
@@ -158,8 +150,9 @@ void PulseObject_update(int pi)
     }
 }
 
-static void PulseObject_init(pulse_object_t* po, double amp, enum PulseModes pm, int repetitions, int period, double phase, double led_phase, double spec)
+void PulseObject_init(int pi, double amp, enum PulseModes pm, int repetitions, int period, double phase, double led_phase, double spec, void(*on_end)(int))
 {
+    pulse_object_t* po = &pulse_objects[pi];
     po->amplitude = amp;
     po->pulse_mode = pm;
     po->repetitions = repetitions;
@@ -171,10 +164,12 @@ static void PulseObject_init(pulse_object_t* po, double amp, enum PulseModes pm,
 
     po->start_time = get_time_ms();
     po->end_time = po->start_time + period;
+    po->on_end = on_end;
 }
 
-static void PulseObject_init_color(pulse_object_t* po, int color_index_0, int color_index_1, int next_color, int length)
+void PulseObject_set_color_all(int pi, int color_index_0, int color_index_1, int next_color, int length)
 {
+    pulse_object_t* po = &pulse_objects[pi];
     hsl_t res0, res1;
     rgb2hsl(game_source.basic_source.gradient.colors[color_index_0], &res0);
     rgb2hsl(game_source.basic_source.gradient.colors[color_index_1], &res1);
@@ -186,6 +181,14 @@ static void PulseObject_init_color(pulse_object_t* po, int color_index_0, int co
     }
 }
 
+void PulseObject_set_color(int pi, ws2811_led_t color0, ws2811_led_t color1, ws2811_led_t color_next, int led)
+{
+    pulse_object_t* po = &pulse_objects[pi];
+    rgb2hsl(color0, po->colors_0 + led);
+    rgb2hsl(color1, po->colors_1 + led);
+    po->next_color[led] = color_next;
+}
+
 void PulseObject_init_steady(int pi, int color_index, int length)
 {
     pulse_object_t* po = &pulse_objects[pi];
@@ -195,31 +198,5 @@ void PulseObject_init_steady(int pi, int color_index, int length)
     {
         po->next_color[i] = game_source.basic_source.gradient.colors[color_index];
     }
+    po->on_end = NULL;
 }
-
-void PulseObject_init_player_lost_health()
-{
-    pulse_object_t* po = &pulse_objects[C_PLAYER_OBJ_INDEX];
-    po->index = C_PLAYER_OBJ_INDEX;
-    int length = MovingObject_get_length(C_PLAYER_OBJ_INDEX);
-    int player_health = config.player_health_levels - PlayerObject_get_health();
-    int health_color = config.color_index_player + player_health;
-    printf("Col 0: %i = %x, Col 1: %i = %x\n", health_color, game_source.basic_source.gradient.colors[health_color], health_color + 1, game_source.basic_source.gradient.colors[health_color + 1]);
-
-    PulseObject_init(po, 1, PM_ONCE, 3, 500, 0, 0, 1);
-    PulseObject_init_color(po, health_color, health_color + 1, health_color + 1, length);
-    po->on_end = PlayerObject_take_hit;
-}
-
-void PulseObject_init_projectile_explosion(int pi)
-{
-    pulse_object_t* po = &pulse_objects[pi];
-    po->index = pi;
-    int length = MovingObject_get_length(pi);
-
-    PulseObject_init(po, 1, PM_ONCE, 1, 500, 0, 0, 10);
-    PulseObject_init_color(po, config.color_index_R, config.color_index_W, config.color_index_K, length);
-    po->on_end = GameObject_delete_object;
-
-}
-

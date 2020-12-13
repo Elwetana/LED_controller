@@ -23,6 +23,7 @@
 #include "player_object.h"
 #include "input_handler.h"
 #include "stencil_handler.h"
+#include "callbacks.h"
 #include "game_object.h"
 #include "game_source.h"
 
@@ -56,7 +57,7 @@ static void GameObject_spawn_enemy_projectile()
     }
     MovingObject_init_stopped(i, 5, MO_FORWARD, 1, 2);
     PulseObject_init_steady(i, config.color_index_R, 1);
-    MovingObject_init_movement(i, 40, 190, MovingObject_arrive_delete);
+    MovingObject_init_movement(i, config.enemy_speed, 190, GameObject_delete_object);
     GameObject_init(i, 1, SF_EnemyProjectile);
 }
 

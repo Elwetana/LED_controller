@@ -19,6 +19,7 @@
 #include "common_source.h"
 #include "moving_object.h"
 #include "pulse_object.h"
+#include "player_object.h"
 #include "game_object.h"
 #include "game_source.h"
 
@@ -48,7 +49,7 @@ static void ButtonHandler_move_player_left()
     if (pos < 1.)
         return;
     //printf("pos %f\n", pos);
-    MovingObject_init_movement(C_PLAYER_OBJ_INDEX, config.player_ship_speed, (uint32_t)pos - 1, MovingObject_arrive_stop);
+    MovingObject_init_movement(C_PLAYER_OBJ_INDEX, config.player_ship_speed, (uint32_t)pos - 1, MovingObject_stop);
     //printf("moving left\n");
 }
 
@@ -57,13 +58,13 @@ static void ButtonHandler_move_player_right()
     double pos = MovingObject_get_position(C_PLAYER_OBJ_INDEX);
     if (pos > game_source.basic_source.n_leds - config.player_ship_size - 2)
         return;
-    MovingObject_init_movement(C_PLAYER_OBJ_INDEX, config.player_ship_speed, (uint32_t)pos + 1, MovingObject_arrive_stop);
+    MovingObject_init_movement(C_PLAYER_OBJ_INDEX, config.player_ship_speed, (uint32_t)pos + 1, MovingObject_stop);
 }
 
 
 static void ButtonHandler_debug_pulse()
 {
-    PulseObject_init_player_lost_health();
+    PlayerObject_take_hit(C_PLAYER_OBJ_INDEX);
 }
 
 static void ButtonHandler_debug_heal()

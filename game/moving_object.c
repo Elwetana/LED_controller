@@ -115,18 +115,11 @@ double MovingObject_get_position(int mi)
     return moving_objects[mi].position;
 }
 
-//********* Arrival methods ***********
-void MovingObject_arrive_delete(int i)
+void MovingObject_stop(int mi)
 {
-    GameObject_delete_object(i);
+    moving_objects[mi].speed = 0;
+    assert(moving_objects[mi].position - (int)moving_objects[mi].position < C_PRECIS);
 }
-
-void MovingObject_arrive_stop(int i)
-{
-    moving_objects[i].speed = 0.;
-}
-
-//******* Arrival methods end ***********
 
 /*!
 * \param color  RGB color to render
@@ -223,7 +216,7 @@ void MovingObject_get_move_results(int mi, int* left_end, int* right_end, int* d
     *dir = move_results[mi].dir;
 }
 
-void MovingObject_adjust_position(int mi, int new_body_end)
+void MovingObject_target_hit(int mi, int new_body_end, void(*new_callback)(int))
 {
 #ifdef GAME_DEBUG
     int player_pos = move_results[255].body_end;
@@ -236,6 +229,7 @@ void MovingObject_adjust_position(int mi, int new_body_end)
     //if dir > 0: mr->trail_start <= mr->body_start and vice versa 
     assert(mr->dir * (mr->body_start - mr->trail_start) >= 0);
     mr->target_reached = 1;
+    moving_objects[mi].on_arrival = new_callback;
 }
 
 
@@ -347,7 +341,7 @@ int run_test(struct TestParams tp, double expected_position, int expected_colors
     Canvas_clear(leds);
 
     MovingObject_init_stopped(0, tp.position, tp.facing, 3, 1);
-    MovingObject_init_movement(0, tp.speed, tp.target, MovingObject_arrive_stop);
+    MovingObject_init_movement(0, tp.speed, tp.target, MovingObject_stop);
     moving_object_t* o = &moving_objects[0];
     o->color[0] = 60;
     o->color[1] = 100;

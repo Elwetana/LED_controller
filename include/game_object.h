@@ -17,6 +17,7 @@ struct
 	uint32_t color_index_W;
 	uint32_t color_index_K;
 	double enemy_spawn_chance;
+	double enemy_speed;
 } config;
 
 

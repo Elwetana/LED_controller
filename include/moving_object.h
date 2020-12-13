@@ -38,22 +38,17 @@ void MovingObject_init_movement(int mi, double speed, int target, void(*on_arriv
  * @param colors    array of colours, it must be initialized with moving_object.length colours
 */
 void MovingObject_apply_colour(int mi, ws2811_led_t* colors);
+void MovingObject_stop(int mi);
 
 int MovingObject_get_length(int mi);
 double MovingObject_get_position(int mi);
 
-/*! Arrival method for moving_object_t, mark as deleted on arrival */
-void MovingObject_arrive_delete(int index);
-
-/*! Arrival method for moving_object_t, set speed to 0 on arrival */
-void MovingObject_arrive_stop(int index);
 
 /*!
  * @brief Set the facing, if the facing is changed, we have to adjust the position
  * @param facing    desired facing
 */
 void MovingObject_set_facing(int mi, enum MovingObjectFacing facing);
-
 
 int MovingObject_calculate_move_results(int mi);
 
@@ -67,7 +62,7 @@ int MovingObject_calculate_move_results(int mi);
 */
 void MovingObject_get_move_results(int mi, int* left_end, int* right_end, int* dir);
 
-void MovingObject_adjust_position(int mi, int new_body_end);
+void MovingObject_target_hit(int mi, int new_body_end, void(*new_callback)(int));
 
 /*!
 * Render the object

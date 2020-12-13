@@ -39,7 +39,7 @@ void Game_source_init_objects()
     //placeholder -- config will be read from file
     config.player_start_position = 180;
     config.player_ship_speed = 1;
-    config.player_ship_size = 5;
+    config.player_ship_size = 6;
     config.color_index_R = 0;
     config.color_index_G = 1;
     config.color_index_B = 2;
@@ -49,8 +49,9 @@ void Game_source_init_objects()
     config.color_index_W = 6;
     config.color_index_K = 7;
     config.color_index_player = 8;
-    config.player_health_levels = 6; //i.e 8 - 13 is index of player health levels
+    config.player_health_levels = 5;
     config.enemy_spawn_chance = 0.2; //number of enemies to spawn per second on average
+    config.enemy_speed = 40;
 
     InputHandler_init();
     GameObjects_init();

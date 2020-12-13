@@ -20,6 +20,7 @@
 #include "moving_object.h"
 #include "stencil_handler.h"
 #include "pulse_object.h"
+#include "callbacks.h"
 #include "game_object.h"
 #include "game_source.h"
 
@@ -55,11 +56,9 @@ static int StencilHandler_player_is_hit(int projectile, int player)
 
     //if projectile is moving right, so the hit is from left
     int hit_end = (dir1 > 0) ? l2 : r2;
-    MovingObject_adjust_position(projectile, hit_end - dir1);
-
-    //set some animations on projectile and player
-    PulseObject_init_player_lost_health();
-    PulseObject_init_projectile_explosion(projectile);
+    //we notify the objects; objects have to handle all effects
+    MovingObject_target_hit(projectile, hit_end - dir1, OnArrival_stop_and_explode);
+    PlayerObject_take_hit();
     return 1;
 }
 
