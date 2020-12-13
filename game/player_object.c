@@ -64,7 +64,7 @@ void PlayerObject_take_hit(int i)
     //player body with health = 3 and size = 6:
     // R R G G G H
     // 0 1 2 3 4 5
-    for (int i = 0; i < (config.player_health_levels - health); ++i)
+    for (int i = 0; i < ((int)config.player_health_levels - health); ++i)
     {
         PulseObject_set_color(C_PLAYER_OBJ_INDEX, 
             game_source.basic_source.gradient.colors[config.color_index_G],
