@@ -44,6 +44,7 @@ typedef struct GameObject
 static game_object_t game_objects[MAX_N_OBJECTS];
 static enum GameModes current_mode = GM_LEVEL1;
 
+
 static void GameObject_spawn_enemy_projectile()
 {
     int i = C_PROJCT_OBJ_INDEX;
@@ -129,6 +130,49 @@ int GameObject_get_mark(int gi)
 }
 
 //******** GAME STATE FUNCTIONS ********
+
+void OnArrival_stargate_decoration(int i)
+{
+    int sg_start = MovingObject_get_position(0);
+    int sg_len = MovingObject_get_length(0);
+    if (i == 1 || i == 2)
+    {
+        MovingObject_init_stopped(i, sg_start, MO_FORWARD, 5, 8);
+    }
+    else
+    {
+        MovingObject_init_stopped(i, sg_start + sg_len, MO_BACKWARD, 5, 8);
+    }
+}
+
+static void stargate_init()
+/* Stargate is one long dark blue object that is used for collision detection with player 
+* on it we have number of lighter objects running toward the center. Over time, stargate 
+* grows narrower */
+{
+    int stargate_width = 32;
+    int stargate_start = 10;
+    GameObject_init(0, 1, SF_Enemy);
+    MovingObject_init_stopped(0, stargate_start, MO_FORWARD, stargate_width, 9);
+    PulseObject_init_steady(0, config.color_index_B, stargate_width);
+
+    //decorations
+    int dec_length = 5;
+    //1 -> 0, 2 -> 1, 3 -> 3, 4 -> 4
+    for (int dec = 1; dec < 5; ++dec)
+    {
+        GameObject_init(dec, 1, SF_Background);
+        MovingObject_init_stopped(1, stargate_start + (dec - 1 + ((dec > 2) ? 1 : 0)) * stargate_width / 4,
+            (dec < 3) ? MO_FORWARD : MO_BACKWARD, dec_length, 8);
+        MovingObject_init_movement(dec, 8, stargate_start + stargate_width / 2, OnArrival_stargate_decoration);
+        PulseObject_init_steady(dec, 0, dec_length);
+        for (int led = 0; led < dec_length; ++led)
+        {
+            PulseObject_set_color(dec, led + 3, led + 3, led + 3, led);
+        }
+    }
+}
+
 
 static void game_over_init()
 {
