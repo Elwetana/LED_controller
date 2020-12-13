@@ -42,35 +42,6 @@ static void ButtonHandler_face_player_forward()
     MovingObject_set_facing(C_PLAYER_OBJ_INDEX, MO_FORWARD);
 }
 
-//Actually, if facing forward, it would be able to move to position 0, but it seems like a sensible precaution to just disallow it
-static void ButtonHandler_move_player_left()
-{
-    double pos = MovingObject_get_position(C_PLAYER_OBJ_INDEX);
-    if (pos < 1.)
-        return;
-    //printf("pos %f\n", pos);
-    MovingObject_init_movement(C_PLAYER_OBJ_INDEX, config.player_ship_speed, (uint32_t)pos - 1, MovingObject_stop);
-    //printf("moving left\n");
-}
-
-static void ButtonHandler_move_player_right()
-{
-    double pos = MovingObject_get_position(C_PLAYER_OBJ_INDEX);
-    if (pos > game_source.basic_source.n_leds - config.player_ship_size - 2)
-        return;
-    MovingObject_init_movement(C_PLAYER_OBJ_INDEX, config.player_ship_speed, (uint32_t)pos + 1, MovingObject_stop);
-}
-
-static void ButtonHandler_move_player_above()
-{
-    PlayerObject_hide_above();
-}
-
-static void ButtonHandler_move_player_below()
-{
-    PlayerObject_hide_below();
-}
-
 static void ButtonHandler_restart_game()
 {
     GameObjects_init();
@@ -112,10 +83,10 @@ void InputHandler_init(enum GameModes game_mode)
     case GM_LEVEL1:
         button_handlers[C_MAX_XBTN + XBTN_LB] = ButtonHandler_face_player_backward;
         button_handlers[C_MAX_XBTN + XBTN_RB] = ButtonHandler_face_player_forward;
-        button_handlers[C_MAX_XBTN + DPAD_L] = ButtonHandler_move_player_left;
-        button_handlers[C_MAX_XBTN + DPAD_R] = ButtonHandler_move_player_right;
-        button_handlers[C_MAX_XBTN + DPAD_U] = ButtonHandler_move_player_above;
-        button_handlers[C_MAX_XBTN + DPAD_D] = ButtonHandler_move_player_below;
+        button_handlers[C_MAX_XBTN + DPAD_L] = PlayerObject_move_left;
+        button_handlers[C_MAX_XBTN + DPAD_R] = PlayerObject_move_right;
+        button_handlers[C_MAX_XBTN + DPAD_U] = PlayerObject_hide_above;
+        button_handlers[C_MAX_XBTN + DPAD_D] = PlayerObject_hide_below;
         button_handlers[C_MAX_XBTN + XBTN_X] = ButtonHandler_debug_pulse;
         button_handlers[C_MAX_XBTN + XBTN_A] = ButtonHandler_debug_heal;
         button_handlers[C_MAX_XBTN + XBTN_Y] = ButtonHandler_debug_projectile;
