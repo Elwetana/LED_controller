@@ -32,6 +32,13 @@ const int C_BKGRND_OBJ_INDEX = 0;
 const int C_OBJECT_OBJ_INDEX = 32; //ships and asteroids
 const int C_PROJCT_OBJ_INDEX = 128; //projectiles
 
+char win_messages[GM_PLAYER_LOST][16] = {
+    "",
+    "~~ ~~",
+    "  ~  ",
+    "level 2"
+};
+
 
 typedef struct GameObject
 {
@@ -46,7 +53,7 @@ static game_object_t game_objects[MAX_N_OBJECTS];
 static enum GameModes current_mode = GM_LEVEL1;
 
 
-static void GameObject_spawn_enemy_projectile()
+static int GameObject_spawn_enemy_projectile(int color_index)
 {
     int i = C_PROJCT_OBJ_INDEX;
     while (i < MAX_N_OBJECTS && !game_objects[i].deleted)
@@ -58,15 +65,16 @@ static void GameObject_spawn_enemy_projectile()
         printf("Failed to create projectile\n");
         return;
     }
-    MovingObject_init_stopped(i, 5, MO_FORWARD, 1, 2);
-    PulseObject_init_steady(i, config.color_index_R, 1);
-    MovingObject_init_movement(i, config.enemy_speed, 190, GameObject_delete_object);
+    MovingObject_init_stopped(i, 2, MO_FORWARD, 1, 2);
+    PulseObject_init_steady(i, color_index, 1);
+    MovingObject_init_movement(i, config.enemy_speed, game_source.basic_source.n_leds - 3, GameObject_delete_object);
     GameObject_init(i, 1, SF_EnemyProjectile);
+    return i;
 }
 
 void GameObject_debug_projectile()
 {
-    GameObject_spawn_enemy_projectile();
+    GameObject_spawn_enemy_projectile(config.color_index_W);
 }
 
 /*!
@@ -84,20 +92,43 @@ static int roll_dice_poisson(double r)
     return (random_01() > prob);
 }
 
-static void update_objects_level1()
+static void update_stargate(double stargate_shrink_chance)
 {
-    if (roll_dice_poisson(config.enemy_spawn_chance))
-    {
-        GameObject_spawn_enemy_projectile();
-    }
-    double stargate_shrink_chance = 0.1; //one shrink on average every ten seconds
     if (roll_dice_poisson(stargate_shrink_chance))
     {
         double cur_position = MovingObject_get_position(0);
         double cur_length = MovingObject_get_length(0);
+        if (cur_length - config.player_ship_size - 4 < 0)
+        {
+            printf("Stargate is too small\n");
+            GameObjects_set_mode_player_lost(C_PLAYER_OBJ_INDEX);
+        }
         MovingObject_init_stopped(0, cur_position + 1, MO_FORWARD, cur_length - 2, 9);
         printf("shrinking stargate\n");
     }
+}
+
+static void update_objects_level1()
+{
+    if (roll_dice_poisson(config.enemy_spawn_chance))
+    {
+        int bullet = GameObject_spawn_enemy_projectile(config.color_index_G);
+        game_objects[bullet].mark = 4;
+    }
+    update_stargate(0.1);  //one shrink on average every ten seconds
+    PlayerObject_update();
+}
+
+static void update_objects_level2()
+{
+    if (roll_dice_poisson(2 * config.enemy_spawn_chance))
+    {
+        int level = (int)(random_01() * 3); //0, 1 or 2 with the same probability
+        int color_index = (int[]){ config.color_index_R, config.color_index_G, config.color_index_B }[level];
+        int bullet = GameObject_spawn_enemy_projectile(color_index);
+        game_objects[bullet].mark = 1 << (level + 1); //bit 0 is used by stencil; this is really not a very good system
+    }
+    update_stargate(0.15);
     PlayerObject_update();
 }
 
@@ -108,7 +139,11 @@ static void GameObject_update_objects()
     case GM_LEVEL1:
         update_objects_level1();
         break;
+    case GM_LEVEL2:
+        update_objects_level2();
+        break;
     case GM_LEVEL1_WON:
+    case GM_LEVEL2_WON:
         break;
     case GM_PLAYER_LOST:
         break;
@@ -245,7 +280,7 @@ static void show_victory_message(char* message)
         char c = message[i];
         for (int bit = 0; bit < 8; ++bit)
         {
-            int color1 = (c & (1 << bit)) ? config.color_index_player : config.color_index_K;
+            int color1 = (c & (1 << (7 - bit))) ? config.color_index_player : config.color_index_K;
             PulseObject_set_color(0, config.color_index_K, color1, color1, 1 + 9 * i + bit);
         }
         PulseObject_set_color(0, config.color_index_R, config.color_index_R, config.color_index_R, 1 + 9 * i + 8);
@@ -257,12 +292,14 @@ static void GameObjects_init_objects()
     switch (current_mode)
     {
     case GM_LEVEL1:
+    case GM_LEVEL2:
         //spawn stargate
         stargate_init();
         break;
     case GM_LEVEL1_WON:
+    case GM_LEVEL2_WON:
         //spawn victory message
-        show_victory_message("Aa0 zZ");
+        show_victory_message(win_messages[current_mode]);
         break;
     case GM_PLAYER_LOST:
         //spawn game over
@@ -308,8 +345,9 @@ void GameObject_debug_win()
     GameObjects_init();
 }
 
-void GameObjects_set_mode_player_lost()
+void GameObjects_set_mode_player_lost(int i)
 {
+    assert(i == C_PLAYER_OBJ_INDEX);
     current_mode = GM_PLAYER_LOST;
     GameObjects_init();
     printf("player lost\n");

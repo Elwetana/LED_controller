@@ -73,7 +73,7 @@ int Controller_get_button_windows(enum EButtons* button, enum EState* state)
     DWORD dwUserIndex = 0;
     if (processed == 0)
     {
-        DWORD res = XInputGetState(dwUserIndex, &xstate);
+        XInputGetState(dwUserIndex, &xstate);
         current_state = xstate.Gamepad.wButtons;
     }
     WORD diff = current_state ^ last_state;

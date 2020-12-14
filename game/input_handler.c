@@ -54,7 +54,7 @@ static void ButtonHandler_next_level()
 
 static void ButtonHandler_debug_game_over()
 {
-    GameObjects_set_mode_player_lost();
+    GameObjects_set_mode_player_lost(C_PLAYER_OBJ_INDEX);
 }
 
 void InputHandler_init(enum GameModes game_mode)
@@ -66,6 +66,7 @@ void InputHandler_init(enum GameModes game_mode)
     switch (game_mode)
     {
     case GM_LEVEL1:
+    case GM_LEVEL2:
         button_handlers[C_MAX_XBTN + XBTN_LB] = ButtonHandler_face_player_backward;
         button_handlers[C_MAX_XBTN + XBTN_RB] = ButtonHandler_face_player_forward;
         button_handlers[C_MAX_XBTN + DPAD_L] = PlayerObject_move_left;
@@ -79,6 +80,7 @@ void InputHandler_init(enum GameModes game_mode)
         button_handlers[C_MAX_XBTN + XBTN_Start] = ButtonHandler_restart_game;
         break;
     case GM_LEVEL1_WON:
+    case GM_LEVEL2_WON:
         button_handlers[C_MAX_XBTN + XBTN_X] = ButtonHandler_next_level;
         button_handlers[C_MAX_XBTN + XBTN_Y] = ButtonHandler_next_level;
         button_handlers[C_MAX_XBTN + XBTN_A] = ButtonHandler_next_level;

@@ -38,6 +38,7 @@ void PlayerObject_init(enum GameModes current_mode)
     switch(current_mode)
     {
     case GM_LEVEL1:
+    case GM_LEVEL2:
         assert(config.player_health_levels + 1 == config.player_ship_size);
         MovingObject_init_stopped(C_PLAYER_OBJ_INDEX, config.player_start_position, MO_BACKWARD, config.player_ship_size, 1);
         MovingObject_init_movement(C_PLAYER_OBJ_INDEX, 0, 0, MovingObject_stop);
@@ -46,6 +47,7 @@ void PlayerObject_init(enum GameModes current_mode)
         GameObject_init(C_PLAYER_OBJ_INDEX, config.player_health_levels, SF_Player);
         break;
     case GM_LEVEL1_WON:
+    case GM_LEVEL2_WON:
     case GM_PLAYER_LOST:
         GameObject_delete_object(C_PLAYER_OBJ_INDEX);
         break;
@@ -70,8 +72,11 @@ int PlayerObject_get_health()
 
 int PlayerObject_is_hit(int bullet)
 {
-    (void)bullet;
-    return player_object.level == 0;
+    int mark = GameObject_get_mark(bullet);
+    int level = ((mark & 2) > 0) + ((mark & 4) > 0) + ((mark & 8) > 0); //this will be 1, 2 or 3
+    assert(level > 0);
+    level -= 2;
+    return player_object.level == level;
 }
 
 void PlayerObject_move_left()
@@ -113,10 +118,10 @@ void PlayerObject_hide_below()
 }
 
 
-void PlayerObject_take_hit(int i)
+void PlayerObject_take_hit(int pi)
 {
-    assert(i == C_PLAYER_OBJ_INDEX);
-    (void)i;
+    assert(pi == C_PLAYER_OBJ_INDEX);
+    (void)pi;
 
     void (*callback)(int);
     int health = GameObject_take_hit(C_PLAYER_OBJ_INDEX);

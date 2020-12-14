@@ -42,7 +42,7 @@ int snd_pcm_hw_params(snd_pcm_t* pcm, snd_pcm_hw_params_t* params) {
     return 0;
 }
 
-snd_pcm_format_width(snd_pcm_format_t format) {
+int snd_pcm_format_width(snd_pcm_format_t format) {
     (void)format;
     return 16;
 }

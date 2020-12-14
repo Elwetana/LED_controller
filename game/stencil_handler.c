@@ -149,12 +149,13 @@ void Stencil_init(enum GameModes current_mode)
     switch (current_mode)
     {
     case GM_LEVEL1:
+    case GM_LEVEL2:
         stencil_handlers[SF_Player * SF_N_FLAGS + SF_Player] = StencilHandler_impossible;
         stencil_handlers[SF_EnemyProjectile * SF_N_FLAGS + SF_Player] = StencilHandler_player_is_hit;
         stencil_handlers[SF_Enemy * SF_N_FLAGS + SF_Player] = StencilHandler_player_reached_stargate;
         break;
     case GM_LEVEL1_WON:
-        break;
+    case GM_LEVEL2_WON:
     case GM_PLAYER_LOST:
         break;
     }

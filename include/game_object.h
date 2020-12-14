@@ -33,10 +33,12 @@ enum GameModes
 {
 	GM_LEVEL1,
 	GM_LEVEL1_WON,
+	GM_LEVEL2,
+	GM_LEVEL2_WON,
 	GM_PLAYER_LOST
 };
 
-
+extern char win_messages[GM_PLAYER_LOST][16];
 
 void GameObjects_init();
 void GameObject_init(int gi, int health, int stencil_flag);
@@ -46,7 +48,7 @@ enum GameModes GameObjects_get_current_mode();
 void GameObjects_next_level();
 
 void GameObjects_player_reached_gate();
-void GameObjects_set_mode_player_lost();
+void GameObjects_set_mode_player_lost(int i);
 void GameObject_delete_object(int gi);
 void GameObject_mark(int gi, int mark);
 int GameObject_get_mark(int gi);

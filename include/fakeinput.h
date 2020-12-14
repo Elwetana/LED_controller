@@ -23,8 +23,11 @@ struct input_event {
 };
 
 struct input_event ie;
-int read(int input, struct input_event* ie, int size)
+int read(int input, struct input_event* inev, int size)
 {
+	(void)input;
+	(void)inev;
+	(void)size;
 	return 1;
 }
 
