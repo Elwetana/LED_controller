@@ -73,10 +73,12 @@ int PlayerObject_get_health()
 int PlayerObject_is_hit(int bullet)
 {
     int mark = GameObject_get_mark(bullet);
-    int level = ((mark & 2) > 0) + ((mark & 4) > 0) + ((mark & 8) > 0); //this will be 1, 2 or 3
-    assert(level > 0);
-    level -= 2;
-    return player_object.level == level;
+    //int level = (mark & 2) / 2 + 2 * (mark & 4) / 4 + 3 * (mark & 8) / 8 ; //this will be 1, 2 or 3
+    //assert(level > 0);
+    //level -= 2;
+    printf("mark %i, player %i\n", mark, player_object.level);
+    int level = 1 << (2 - player_object.level); //this is shift by 1, 2 or 3, i.e. 2, 4 or 8
+    return mark & level;
 }
 
 void PlayerObject_move_left()

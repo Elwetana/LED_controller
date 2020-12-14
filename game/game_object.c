@@ -63,7 +63,7 @@ static int GameObject_spawn_enemy_projectile(int color_index)
     if (i >= MAX_N_OBJECTS)
     {
         printf("Failed to create projectile\n");
-        return;
+        return -1;
     }
     MovingObject_init_stopped(i, 2, MO_FORWARD, 1, 2);
     PulseObject_init_steady(i, color_index, 1);
@@ -113,6 +113,7 @@ static void update_objects_level1()
     if (roll_dice_poisson(config.enemy_spawn_chance))
     {
         int bullet = GameObject_spawn_enemy_projectile(config.color_index_G);
+        assert(bullet >= 0);
         game_objects[bullet].mark = 4;
     }
     update_stargate(0.1);  //one shrink on average every ten seconds
@@ -126,6 +127,7 @@ static void update_objects_level2()
         int level = (int)(random_01() * 3); //0, 1 or 2 with the same probability
         int color_index = (int[]){ config.color_index_R, config.color_index_G, config.color_index_B }[level];
         int bullet = GameObject_spawn_enemy_projectile(color_index);
+        assert(bullet >= 0);
         game_objects[bullet].mark = 1 << (level + 1); //bit 0 is used by stencil; this is really not a very good system
     }
     update_stargate(0.15);
@@ -332,16 +334,16 @@ void GameObjects_player_reached_gate()
     int player_length = MovingObject_get_length(C_PLAYER_OBJ_INDEX);
     if (sg_start + sg_length > player_start + player_length)
     {
-        printf("Player won level 1\n");
-        current_mode = GM_LEVEL1_WON;
+        current_mode++;
+        printf("Player won level %i\n", current_mode);
         GameObjects_init();
     }
 }
 
 void GameObject_debug_win()
 {
-    printf("Player cheated to win level 1\n");
-    current_mode = GM_LEVEL1_WON;
+    current_mode++;
+    printf("Player cheated to win level %i\n", current_mode);
     GameObjects_init();
 }
 
@@ -360,6 +362,8 @@ void GameObjects_next_level()
     const uint64_t timeout = 2 * 1e9;
     if (game_source.basic_source.current_time - game_objects[0].time < timeout) return;
     printf("advancing to next level\n");
+    current_mode++;
+    GameObjects_init();
 }
 
 /*! The sequence of actions during one loop:
