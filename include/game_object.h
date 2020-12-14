@@ -55,5 +55,6 @@ int GameObject_heal(int gi);
 int GameObject_get_health(int gi);
 
 void GameObject_debug_projectile();
+void GameObject_debug_win();
 
 #endif /* __GAME_SOURCE_PRIV_H__ */

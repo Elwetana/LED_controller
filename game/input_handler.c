@@ -87,9 +87,8 @@ void InputHandler_init(enum GameModes game_mode)
         button_handlers[C_MAX_XBTN + DPAD_R] = PlayerObject_move_right;
         button_handlers[C_MAX_XBTN + DPAD_U] = PlayerObject_hide_above;
         button_handlers[C_MAX_XBTN + DPAD_D] = PlayerObject_hide_below;
-        button_handlers[C_MAX_XBTN + XBTN_X] = ButtonHandler_debug_pulse;
-        button_handlers[C_MAX_XBTN + XBTN_A] = ButtonHandler_debug_heal;
-        button_handlers[C_MAX_XBTN + XBTN_Y] = ButtonHandler_debug_projectile;
+        button_handlers[C_MAX_XBTN + XBTN_A] = GameObject_debug_win;
+        //button_handlers[C_MAX_XBTN + XBTN_X] = ButtonHandler_debug_heal;
         break;
     case GM_PLAYER_LOST:
         button_handlers[C_MAX_XBTN + XBTN_Start] = ButtonHandler_restart_game;

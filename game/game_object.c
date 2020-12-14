@@ -39,6 +39,7 @@ typedef struct GameObject
     int health;
     int deleted;
     int mark;
+    uint64_t time;
 } game_object_t;
 
 static game_object_t game_objects[MAX_N_OBJECTS];
@@ -203,17 +204,52 @@ static void stargate_init()
     }
 }
 
-
 static void game_over_init()
 {
     int l = game_source.basic_source.n_leds / 2;
     printf("--%i-\n", l);
     GameObject_init(0, 0, SF_Background);
     MovingObject_init_stopped(0, 0, MO_FORWARD, l, 0);
-    PulseObject_init(0, 1, PM_REPEAT, 2, 5000, 0, M_PI / l, 1, NULL);
+    PulseObject_init(0, 1, PM_REPEAT, 2, 5000, 0, M_PI / l, 10., NULL);
     PulseObject_set_color_all(0, config.color_index_game_over, config.color_index_W, 0, l);
 }
 
+void OnArrival_victory_message(int i)
+{
+    assert(i == 0);
+    int pos = MovingObject_get_position(0);
+    int len = MovingObject_get_length(0);
+    if (pos > 2)
+    {
+        MovingObject_init_movement(0, 0.1, 1, OnArrival_victory_message);
+    }
+    else
+    {
+        MovingObject_init_movement(0, 0.1, game_source.basic_source.n_leds - len - 1, OnArrival_victory_message);
+    }
+}
+
+static void show_victory_message(char* message)
+{
+    int msg_len = strlen(message);
+    assert(9 * msg_len < MAX_OBJECT_LENGTH);
+
+    GameObject_init(0, 1, SF_Background);
+    game_objects[0].time = game_source.basic_source.current_time;
+    MovingObject_init_stopped(0, 1, MO_FORWARD, 9 * msg_len, 0);
+    MovingObject_init_movement(0, 0.1, game_source.basic_source.n_leds - 9 * msg_len - 1, OnArrival_victory_message);
+    PulseObject_init(0, 1, PM_REPEAT, 0, 1000, 0, 0, 0.1, NULL);
+    for (int i = 0; i < msg_len; i++)
+    {
+        char c = message[i];
+        for (int bit = 0; bit < 8; ++bit)
+        {
+            int color1 = (c & (1 << bit)) ? config.color_index_player : config.color_index_K;
+            PulseObject_set_color(0, config.color_index_K, color1, color1, 9 * i + bit);
+        }
+        PulseObject_set_color(0, config.color_index_R, config.color_index_R, config.color_index_R, 9 * i + 8);
+    }
+}
 
 static void GameObjects_init_objects()
 {
@@ -225,7 +261,7 @@ static void GameObjects_init_objects()
         break;
     case GM_LEVEL1_WON:
         //spawn victory message
-
+        show_victory_message("Aa0 zZ");
         break;
     case GM_PLAYER_LOST:
         //spawn game over
@@ -258,10 +294,17 @@ void GameObjects_player_reached_gate()
     int player_length = MovingObject_get_length(C_PLAYER_OBJ_INDEX);
     if (sg_start + sg_length > player_start + player_length)
     {
-        printf("Player won level 1");
+        printf("Player won level 1\n");
         current_mode = GM_LEVEL1_WON;
         GameObjects_init();
     }
+}
+
+void GameObject_debug_win()
+{
+    printf("Player cheated to win level 1\n");
+    current_mode = GM_LEVEL1_WON;
+    GameObjects_init();
 }
 
 void GameObjects_set_mode_player_lost()
@@ -274,6 +317,9 @@ void GameObjects_set_mode_player_lost()
 
 void GameObjects_next_level()
 {
+    //there is a timeout after winning previous level during which we can proceed
+    const uint64_t timeout = 2 * 1e9;
+    if (game_source.basic_source.current_time - game_objects[0].time < timeout) return;
     printf("advancing to next level\n");
 }
 
