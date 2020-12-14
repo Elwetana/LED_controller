@@ -117,7 +117,7 @@ static void PulseObject_update_pulse_per_led(pulse_object_t* po)
     for (int i = 0; i < length; ++i)
     {
         double t = PulseObject_get_t(po, time_ms, i);
-        printf("t: %f, time: %lli\n", t, time_ms);
+        //printf("t: %f, time: %lli\n", t, time_ms);
         hsl_t res;
         lerp_hsl(&po->colors_0[i], &po->colors_1[i], t, &res);
         result[i] = hsl2rgb(&res);

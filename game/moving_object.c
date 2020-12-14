@@ -365,7 +365,7 @@ int MovingObject_update(int mi)
  * @param render_trail   1 -- all intermediate leds will be lit, 0 -- only the end position will be rendered
  * @return               0 when the object arrives at `target`, 1 otherwise
 */
-static int MovingObject_process(int mi, ws2811_led_t* leds, int render_trail)
+static int MovingObject_process(int mi, ws2811_led_t* leds)
 {
     /*
     Simple summary of steps:
@@ -376,7 +376,7 @@ static int MovingObject_process(int mi, ws2811_led_t* leds, int render_trail)
         3. render the body
     */
     MovingObject_calculate_move_results(mi);
-    MovingObject_render(mi, leds, render_trail);
+    MovingObject_render(mi, leds);
     return MovingObject_update(mi);
 }
 
@@ -407,7 +407,8 @@ int run_test(struct TestParams tp, double expected_position, int expected_colors
     o->color[2] = 200;
     game_source.basic_source.time_delta = (uint64_t)1e9 * 1;
 
-    MovingObject_process(0, leds, tp.trail);
+    MovingObject_set_render_mode(0, tp.trail);
+    MovingObject_process(0, leds);
     assert(o->position == expected_position);
     for (int i = 0; i < 10; i++)
     {

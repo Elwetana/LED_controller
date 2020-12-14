@@ -206,12 +206,11 @@ static void stargate_init()
 
 static void game_over_init()
 {
-    int l = game_source.basic_source.n_leds / 2;
-    printf("--%i-\n", l);
+    int l = game_source.basic_source.n_leds - 10;
     GameObject_init(0, 0, SF_Background);
-    MovingObject_init_stopped(0, 0, MO_FORWARD, l, 0);
-    PulseObject_init(0, 1, PM_REPEAT, 2, 5000, 0, M_PI / l, 10., NULL);
-    PulseObject_set_color_all(0, config.color_index_game_over, config.color_index_W, 0, l);
+    MovingObject_init_stopped(0, 5, MO_FORWARD, l, 0);
+    PulseObject_init(0, 1, PM_REPEAT, 2, 5000, 0, 3 * M_PI / l, 10., NULL);
+    PulseObject_set_color_all(0, config.color_index_game_over, config.color_index_K, 0, l);
 }
 
 void OnArrival_victory_message(int i)
@@ -236,19 +235,20 @@ static void show_victory_message(char* message)
 
     GameObject_init(0, 1, SF_Background);
     game_objects[0].time = game_source.basic_source.current_time;
-    MovingObject_init_stopped(0, 1, MO_FORWARD, 9 * msg_len, 0);
-    MovingObject_init_movement(0, 0.1, game_source.basic_source.n_leds - 9 * msg_len - 1, OnArrival_victory_message);
+    MovingObject_init_stopped(0, 1, MO_FORWARD, 9 * msg_len + 1, 0);
+    MovingObject_init_movement(0, 0.1, game_source.basic_source.n_leds - 9 * msg_len - 2, OnArrival_victory_message);
     MovingObject_set_render_mode(0, 2);
     PulseObject_init(0, 1, PM_REPEAT, 0, 1000, 0, 0, 0.5, NULL);
+    PulseObject_set_color(0, config.color_index_R, config.color_index_R, config.color_index_R, 0);
     for (int i = 0; i < msg_len; i++)
     {
         char c = message[i];
         for (int bit = 0; bit < 8; ++bit)
         {
             int color1 = (c & (1 << bit)) ? config.color_index_player : config.color_index_K;
-            PulseObject_set_color(0, config.color_index_K, color1, color1, 9 * i + bit);
+            PulseObject_set_color(0, config.color_index_K, color1, color1, 1 + 9 * i + bit);
         }
-        PulseObject_set_color(0, config.color_index_R, config.color_index_R, config.color_index_R, 9 * i + 8);
+        PulseObject_set_color(0, config.color_index_R, config.color_index_R, config.color_index_R, 1 + 9 * i + 8);
     }
 }
 
@@ -365,7 +365,7 @@ int GameObjects_update_leds(int frame, ws2811_t* ledstrip)
             continue;
         }
         PulseObject_update(gi);
-        MovingObject_render(gi, ledstrip->channel[0].leds, 1);
+        MovingObject_render(gi, ledstrip->channel[0].leds);
         MovingObject_update(gi);
     }
     return 1;
