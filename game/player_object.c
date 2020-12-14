@@ -70,6 +70,7 @@ int PlayerObject_get_health()
 
 int PlayerObject_is_hit(int bullet)
 {
+    (void)bullet;
     return player_object.level == 0;
 }
 

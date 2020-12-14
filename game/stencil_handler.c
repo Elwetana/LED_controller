@@ -62,6 +62,7 @@ static int StencilHandler_player_reached_stargate(int gate, int player)
     assert(player == C_PLAYER_OBJ_INDEX);
     assert(gate == 0);
     GameObjects_player_reached_gate();
+    return 1;
 }
 
 static void Stencil_erase_object(int start_led, int dir)

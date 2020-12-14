@@ -52,21 +52,6 @@ static void ButtonHandler_next_level()
     GameObjects_next_level();
 }
 
-static void ButtonHandler_debug_pulse()
-{
-    PlayerObject_take_hit(C_PLAYER_OBJ_INDEX);
-}
-
-static void ButtonHandler_debug_heal()
-{
-    GameObject_heal(C_PLAYER_OBJ_INDEX);
-}
-
-static void ButtonHandler_debug_projectile()
-{
-    GameObject_debug_projectile();
-}
-
 static void ButtonHandler_debug_game_over()
 {
     GameObjects_set_mode_player_lost();
