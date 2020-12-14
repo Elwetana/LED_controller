@@ -29,11 +29,12 @@ typedef struct MovingObject
     int index;
     double position;    //!< index of the leftmost LED, `position` + `length` - 1 is the index of the rightmost LED
     uint32_t length;
-    double speed;       //<! in leds per second
+    double speed;       //!< in leds per second
     uint32_t target;
     enum MovingObjectFacing facing;
     int zdepth;
     ws2811_led_t color[MAX_OBJECT_LENGTH];  //!< must be initialized with `length` colors, color[0] is tail, color[length-1] is head, regardless of `facing`
+    int render_type;    //!< 0: render antialiased, 1: render with trail (and antialiased), 2: render aligned
     void(*on_arrival)(int);
 } moving_object_t;
 
@@ -78,6 +79,7 @@ void MovingObject_init_stopped(int mi, double position, enum MovingObjectFacing 
     object->speed = 0.;
     object->target = (int)position;
     object->zdepth = zdepth;
+    object->render_type = 2;
     object->on_arrival = NULL;
 }
 
@@ -92,6 +94,12 @@ void MovingObject_init_movement(int mi, double speed, int target, void(*on_arriv
     object->speed = speed;
     object->target = target;
     object->on_arrival = on_arrival;
+    object->render_type = 1;
+}
+
+void MovingObject_set_render_mode(int mi, int mode)
+{
+    moving_objects[mi].render_type = mode;
 }
 
 void MovingObject_apply_colour(int mi, ws2811_led_t* colors)
@@ -258,17 +266,18 @@ void MovingObject_target_hit(int mi_bullet, int mi_target, void(*new_callback)(i
 
 
 
-int MovingObject_render(int mi, ws2811_led_t* leds, int render_trail)
+int MovingObject_render(int mi, ws2811_led_t* leds)
 {
     moving_object_t* object = &moving_objects[mi];
     move_results_t* mr = &move_results[mi];
+    int render_trail = object->render_type;
     if (object->length == 0)
         return 0;
     assert(mr->updated == 1);
     //printf("Rendering object at positions from %i to %i with color in led 0 %x\n", mr->body_start, mr->body_end, object->color[0]);
     //render trail
     ws2811_led_t trailing_color = object->color[mr->df_not_aligned * (object->length - 1)];
-    if (render_trail)
+    if (render_trail == 1)
     {
         int trailing_led = mr->trail_start;
         render_with_z_test(trailing_color, 1. - mr->trail_offset, leds, trailing_led, object->zdepth);
@@ -279,9 +288,16 @@ int MovingObject_render(int mi, ws2811_led_t* leds, int render_trail)
             trailing_led += mr->dir;
         }
     }
-    if (!render_trail)
+    else if (render_trail == 0)
     {
         render_with_z_test(trailing_color, 1. - mr->body_offset, leds, mr->body_start, object->zdepth);
+    }
+    else if (render_trail == 2)
+    {
+        if (mr->body_offset < 0.5)
+        {
+            render_with_z_test(trailing_color, 1, leds, mr->body_start, object->zdepth);
+        }
     }
 
     // Now render the body, from trailing led to leading led
@@ -292,14 +308,32 @@ int MovingObject_render(int mi, ws2811_led_t* leds, int render_trail)
     while (mr->dir * (mr->body_end - body_led) > 0)
     //for (uint32_t i = 1, color_index = mr->df_not_aligned * (object->length - 3) + 1; i < object->length; i++, color_index += object->facing * mr->dir)
     {
-        ws2811_led_t color = mix_rgb_color(trailing_color, object->color[color_index], (float)mr->body_offset);
+        ws2811_led_t color;
+        if (render_trail < 2)
+        {
+            color = mix_rgb_color(trailing_color, object->color[color_index], (float)mr->body_offset);
+        }
+        else
+        {
+            color = (mr->body_offset > 0.5) ? trailing_color : object->color[color_index];
+        }
         render_with_z_test(color, 1.0, leds, body_led, object->zdepth);
         trailing_color = object->color[color_index];
         color_index += object->facing * mr->dir;
         body_led += mr->dir;
     }
     int leading_led = mr->body_end;
-    render_with_z_test(trailing_color, (float)mr->body_offset, leds, leading_led, object->zdepth);
+    if (render_trail < 2)
+    {
+        render_with_z_test(trailing_color, (float)mr->body_offset, leds, leading_led, object->zdepth);
+    }
+    else
+    {
+        if (mr->body_offset > 0.5)
+        {
+            render_with_z_test(trailing_color, 1, leds, leading_led, object->zdepth);
+        }
+    }
     return 1;
 }
 

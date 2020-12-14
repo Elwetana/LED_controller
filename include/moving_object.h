@@ -33,6 +33,13 @@ void MovingObject_init_stopped(int mi, double position, enum MovingObjectFacing 
 void MovingObject_init_movement(int mi, double speed, int target, void(*on_arrival)(int));
 
 /*!
+ * @brief Set render mode
+ * @param mi    object index
+ * @param mode  0: render antialiased, 1: render with trail (and antialiased), 2: render aligned
+*/
+void MovingObject_set_render_mode(int mi, int mode);
+
+/*!
  * @brief Apply colours in `colors` to the moving_object.color
  * @param mi        index of moving object
  * @param colors    array of colours, it must be initialized with moving_object.length colours
@@ -72,10 +79,9 @@ void MovingObject_target_hit(int mi_bullet, int mi_target, void(*new_callback)(i
 
 /*!
 * Render the object
-* \param render_trail    1 -- all intermediate leds will be lit, 0 -- only the end position will be rendered
-* \return               0 when the object arrives at _target_, 1 otherwise
+* \return               always 1, if there's error, 0
 */
-int MovingObject_render(int mi, ws2811_led_t* leds, int render_trail);
+int MovingObject_render(int mi, ws2811_led_t* leds);
 
 int MovingObject_update(int mi);
 

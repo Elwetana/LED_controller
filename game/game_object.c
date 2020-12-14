@@ -237,7 +237,8 @@ static void show_victory_message(char* message)
     GameObject_init(0, 1, SF_Background);
     game_objects[0].time = game_source.basic_source.current_time;
     MovingObject_init_stopped(0, 1, MO_FORWARD, 9 * msg_len, 0);
-    //MovingObject_init_movement(0, 0.1, game_source.basic_source.n_leds - 9 * msg_len - 1, OnArrival_victory_message);
+    MovingObject_init_movement(0, 0.1, game_source.basic_source.n_leds - 9 * msg_len - 1, OnArrival_victory_message);
+    MovingObject_set_render_mode(0, 2);
     PulseObject_init(0, 1, PM_REPEAT, 0, 1000, 0, 0, 0.5, NULL);
     for (int i = 0; i < msg_len; i++)
     {
