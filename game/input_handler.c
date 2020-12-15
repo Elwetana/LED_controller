@@ -67,6 +67,7 @@ void InputHandler_init(enum GameModes game_mode)
     {
     case GM_LEVEL1:
     case GM_LEVEL2:
+    case GM_LEVEL3:
         button_handlers[C_MAX_XBTN + XBTN_LB] = ButtonHandler_face_player_backward;
         button_handlers[C_MAX_XBTN + XBTN_RB] = ButtonHandler_face_player_forward;
         button_handlers[C_MAX_XBTN + DPAD_L] = PlayerObject_move_left;
@@ -81,6 +82,7 @@ void InputHandler_init(enum GameModes game_mode)
         break;
     case GM_LEVEL1_WON:
     case GM_LEVEL2_WON:
+    case GM_LEVEL3_WON:
         button_handlers[C_MAX_XBTN + XBTN_X] = ButtonHandler_next_level;
         button_handlers[C_MAX_XBTN + XBTN_Y] = ButtonHandler_next_level;
         button_handlers[C_MAX_XBTN + XBTN_A] = ButtonHandler_next_level;

@@ -39,6 +39,7 @@ void PlayerObject_init(enum GameModes current_mode)
     {
     case GM_LEVEL1:
     case GM_LEVEL2:
+    case GM_LEVEL3:
         assert(config.player_health_levels + 1 == config.player_ship_size);
         MovingObject_init_stopped(C_PLAYER_OBJ_INDEX, config.player_start_position, MO_BACKWARD, config.player_ship_size, 1);
         MovingObject_init_movement(C_PLAYER_OBJ_INDEX, 0, 0, MovingObject_stop);
@@ -48,6 +49,7 @@ void PlayerObject_init(enum GameModes current_mode)
         break;
     case GM_LEVEL1_WON:
     case GM_LEVEL2_WON:
+    case GM_LEVEL3_WON:
     case GM_PLAYER_LOST:
         GameObject_delete_object(C_PLAYER_OBJ_INDEX);
         break;

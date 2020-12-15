@@ -33,10 +33,12 @@ const int C_OBJECT_OBJ_INDEX = 32; //ships and asteroids
 const int C_PROJCT_OBJ_INDEX = 128; //projectiles
 
 char win_messages[GM_PLAYER_LOST][16] = {
-    "",
-    "~~ ~~",
+    "     ",
+    "~   ~",
     "  ~  ",
-    "level 2"
+    "~~~~~",
+    "     ",
+    " ~~  "
 };
 
 
@@ -87,7 +89,7 @@ void GameObject_debug_projectile()
  */
 static int roll_dice_poisson(double r)
 {
-    double time_seconds = (game_source.basic_source.time_delta / (long)1e3) / (double)1e6;
+    double time_seconds = game_source.basic_source.time_delta / (double)1e9;
     double prob = exp(-r * time_seconds);
     return (random_01() > prob);
 }
@@ -128,9 +130,24 @@ static void update_objects_level2()
         int color_index = (int[]){ config.color_index_R, config.color_index_G, config.color_index_B }[level];
         int bullet = GameObject_spawn_enemy_projectile(color_index);
         assert(bullet >= 0);
-        game_objects[bullet].mark = 1 << (level + 1); //bit 0 is used by stencil; this is really not a very good system
+        game_objects[bullet].mark = 2 << level; //bit 0 is used by stencil; this is really not a very good system
     }
     update_stargate(0.15);
+    PlayerObject_update();
+}
+
+static void update_objects_level3()
+{
+    if (roll_dice_poisson(4 * config.enemy_spawn_chance))
+    {
+        int level = (int)(random_01() * 3); //0, 1 or 2 with the same probability
+        int color_index = (int[]){ config.color_index_C, config.color_index_M, config.color_index_Y }[level];
+        int bullet = GameObject_spawn_enemy_projectile(color_index);
+        assert(bullet >= 0);
+        //level 0 = C = 4 + 8; 1 = M = 2 + 8; 2 = Y = 2 + 4
+        game_objects[bullet].mark = 14 ^ (2 << level);
+    }
+    update_stargate(0.20);
     PlayerObject_update();
 }
 
@@ -295,11 +312,13 @@ static void GameObjects_init_objects()
     {
     case GM_LEVEL1:
     case GM_LEVEL2:
+    case GM_LEVEL3:
         //spawn stargate
         stargate_init();
         break;
     case GM_LEVEL1_WON:
     case GM_LEVEL2_WON:
+    case GM_LEVEL3_WON:
         //spawn victory message
         show_victory_message(win_messages[current_mode]);
         break;
