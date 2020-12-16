@@ -30,6 +30,7 @@ typedef struct MovingObject
     double position;    //!< index of the leftmost LED, `position` + `length` - 1 is the index of the rightmost LED
     uint32_t length;
     double speed;       //!< in leds per second
+    double old_speed;
     uint32_t target;
     enum MovingObjectFacing facing;
     int zdepth;
@@ -124,6 +125,17 @@ void MovingObject_stop(int mi)
 {
     moving_objects[mi].speed = 0;
     assert(moving_objects[mi].position - (int)moving_objects[mi].position < C_PRECIS);
+}
+
+void MovingObject_pause(int mi)
+{
+    moving_objects[mi].old_speed = moving_objects[mi].speed;
+    moving_objects[mi].speed = 0;
+}
+
+void MovingObject_resume(int mi)
+{
+    moving_objects[mi].speed = moving_objects[mi].old_speed;
 }
 
 /*!
@@ -263,7 +275,6 @@ void MovingObject_target_hit(int mi_bullet, int mi_target, void(*new_callback)(i
     mr_bullet->target_reached = 1;
     moving_objects[mi_bullet].on_arrival = new_callback;
 }
-
 
 
 int MovingObject_render(int mi, ws2811_led_t* leds)

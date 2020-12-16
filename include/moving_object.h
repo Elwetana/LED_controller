@@ -46,6 +46,8 @@ void MovingObject_set_render_mode(int mi, int mode);
 */
 void MovingObject_apply_colour(int mi, ws2811_led_t* colors);
 void MovingObject_stop(int mi);
+void MovingObject_pause(int mi);
+void MovingObject_resume(int mi);
 
 int MovingObject_get_length(int mi);
 double MovingObject_get_position(int mi);
