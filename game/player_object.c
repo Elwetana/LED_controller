@@ -40,6 +40,7 @@ void PlayerObject_init(enum GameModes current_mode)
     case GM_LEVEL1:
     case GM_LEVEL2:
     case GM_LEVEL3:
+    case GM_LEVEL_BOSS:
         assert(config.player_health_levels + 1 == config.player_ship_size);
         MovingObject_init_stopped(C_PLAYER_OBJ_INDEX, config.player_start_position, MO_BACKWARD, config.player_ship_size, 1);
         MovingObject_init_movement(C_PLAYER_OBJ_INDEX, 0, 0, MovingObject_stop);
@@ -50,6 +51,7 @@ void PlayerObject_init(enum GameModes current_mode)
     case GM_LEVEL1_WON:
     case GM_LEVEL2_WON:
     case GM_LEVEL3_WON:
+    case GM_LEVEL_BOSS_WON:
     case GM_PLAYER_LOST:
         GameObject_delete_object(C_PLAYER_OBJ_INDEX);
         break;
@@ -124,7 +126,7 @@ void PlayerObject_hide_below()
 static void PlayerObject_fire_bullet(int color)
 {
     int i = GameObject_new_projectile_index();
-    if (i == -1) return -1;
+    if (i == -1) return;
 
     enum MovingObjectFacing f = MovingObject_get_facing(C_PLAYER_OBJ_INDEX);
     double pos = MovingObject_get_position(C_PLAYER_OBJ_INDEX);
@@ -134,6 +136,7 @@ static void PlayerObject_fire_bullet(int color)
     int target = (f == MO_BACKWARD) ? 3 : game_source.basic_source.n_leds - 3;
     MovingObject_init_movement(i, config.enemy_speed, target, GameObject_delete_object);
     GameObject_init(i, 1, SF_PlayerProjectile);
+    printf("firing bullet %i\n", i);
 }
 
 void PlayerObject_fire_bullet_red()

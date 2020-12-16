@@ -54,7 +54,7 @@ typedef struct GameObject
 } game_object_t;
 
 static game_object_t game_objects[MAX_N_OBJECTS];
-static enum GameModes current_mode = GM_LEVEL1;
+static enum GameModes current_mode = GM_LEVEL_BOSS;
 
 
 int GameObject_new_projectile_index()
@@ -258,7 +258,7 @@ void GameObject_mark(int gi, int mark)
 
 void GameObject_clear_mark(int gi, int mark)
 {
-    game_objects[gi].mark &= (0xFFFFFF - 1);
+    game_objects[gi].mark &= (0xFFFFFF - mark);
 }
 
 int GameObject_get_mark(int gi)
