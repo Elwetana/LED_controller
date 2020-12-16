@@ -37,6 +37,8 @@ enum GameModes
 	GM_LEVEL2_WON,
 	GM_LEVEL3,
 	GM_LEVEL3_WON,
+	GM_LEVEL_BOSS,
+	GM_LEVEL_BOSS_WON,
 	GM_PLAYER_LOST
 };
 
@@ -45,18 +47,22 @@ extern char win_messages[GM_PLAYER_LOST][16];
 void GameObjects_init();
 void GameObject_init(int gi, int health, int stencil_flag);
 int GameObjects_update_leds(int frame, ws2811_t* ledstrip);
+int GameObject_new_projectile_index();
 
 enum GameModes GameObjects_get_current_mode();
 void GameObjects_next_level();
 
 void GameObjects_player_reached_gate();
+void GameObject_boss_hit(int i);
 void GameObjects_set_mode_player_lost(int i);
 void GameObject_delete_object(int gi);
 void GameObject_mark(int gi, int mark);
+void GameObject_clear_mark(int gi, int mark);
 int GameObject_get_mark(int gi);
 int GameObject_take_hit(int gi);
 int GameObject_heal(int gi);
 int GameObject_get_health(int gi);
+int GameObject_resolve_projectile_collision(int bullet1, int bullet2);
 
 void GameObject_debug_projectile();
 void GameObject_debug_win();

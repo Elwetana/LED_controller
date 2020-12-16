@@ -25,6 +25,7 @@
 #include "player_object.h"
 #include "input_handler.h"
 #include "stencil_handler.h"
+#include "callbacks.h"
 
 
 //********* Arrival methods ***********
@@ -40,4 +41,26 @@ void OnArrival_stop_and_explode(int i)
     int length = MovingObject_get_length(i);
     PulseObject_init(i, 1, PM_ONCE, 5, 500, 0, 0, 10, GameObject_delete_object);
     PulseObject_set_color_all(i, config.color_index_R, config.color_index_W, config.color_index_K, length);
+}
+
+void OnArrival_blink_and_continue(int i)
+{
+    MovingObject_pause(i);
+    int length = MovingObject_get_length(i);
+    PulseObject_init(i, 1, PM_ONCE, 5, 65, 0, 0, 1, OnEnd_resume);
+    PulseObject_set_color_all(i, config.color_index_W, config.color_index_K, config.color_index_K, length);
+}
+
+void OnArrival_blink_and_die(int i)
+{
+    MovingObject_stop(i);
+    int length = MovingObject_get_length(i);
+    PulseObject_init(i, 1, PM_ONCE, 5, 65, 0, 0, 1, GameObject_delete_object);
+    PulseObject_set_color_all(i, config.color_index_W, config.color_index_K, config.color_index_K, length);
+}
+
+void OnEnd_resume(int i)
+{
+    MovingObject_resume(i);
+    GameObject_clear_mark(i, 1);
 }

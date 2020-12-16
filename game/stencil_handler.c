@@ -57,6 +57,36 @@ static int StencilHandler_player_is_hit(int projectile, int player)
     return 1;
 }
 
+static int StencilHandler_enemy_is_hit(int enemy, int projectile)
+{
+    if (GameObject_get_mark(projectile) & 1) return 1; //this projectile was already processed
+    GameObject_boss_hit(enemy);
+    GameObject_mark(projectile, 1);
+    return 0;
+}
+
+/* There can be three outcomes:
+ *    i. bullet 1 continues, bullet 2 is destroyed
+ *   ii. bullet 2 continues, bullet 1 is destroyed
+ *  iii. both bullets are destroyed
+ */
+static int StencilHandler_bullet_collision(int bullet1, int bullet2)
+{
+    if (GameObject_get_mark(bullet1) & 1) return 1; //this projectile was already processed
+    if (GameObject_get_mark(bullet2) & 1) return 1;
+
+    int result = GameObject_resolve_projectile_collision(bullet1, bullet2);
+    if (result == 0)
+        return 1;
+
+    void(*bullet1_callback)(int) = (result == 3 || result == 2) ? OnArrival_blink_and_die : OnArrival_blink_and_continue;
+    void(*bullet2_callback)(int) = (result == 3 || result == 1) ? OnArrival_blink_and_die : OnArrival_blink_and_continue;
+
+    MovingObject_target_hit(bullet1, bullet2, bullet1_callback);
+    MovingObject_target_hit(bullet2, bullet1, bullet2_callback);
+    return 1;
+}
+
 static int StencilHandler_player_reached_stargate(int gate, int player)
 {
     assert(player == C_PLAYER_OBJ_INDEX);
@@ -155,9 +185,16 @@ void Stencil_init(enum GameModes current_mode)
         stencil_handlers[SF_EnemyProjectile * SF_N_FLAGS + SF_Player] = StencilHandler_player_is_hit;
         stencil_handlers[SF_Enemy * SF_N_FLAGS + SF_Player] = StencilHandler_player_reached_stargate;
         break;
+    case GM_LEVEL_BOSS:
+        stencil_handlers[SF_Player * SF_N_FLAGS + SF_Player] = StencilHandler_impossible;
+        stencil_handlers[SF_EnemyProjectile * SF_N_FLAGS + SF_Player] = StencilHandler_player_is_hit;
+        stencil_handlers[SF_EnemyProjectile * SF_N_FLAGS + SF_PlayerProjectile] = StencilHandler_bullet_collision;
+        stencil_handlers[SF_PlayerProjectile * SF_N_FLAGS + SF_EnemyProjectile] = StencilHandler_bullet_collision;
+        stencil_handlers[SF_Enemy * SF_N_FLAGS + SF_PlayerProjectile] = StencilHandler_enemy_is_hit;
     case GM_LEVEL1_WON:
     case GM_LEVEL2_WON:
     case GM_LEVEL3_WON:
+    case GM_LEVEL_BOSS_WON:
     case GM_PLAYER_LOST:
         break;
     }

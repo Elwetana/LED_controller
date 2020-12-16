@@ -12,5 +12,9 @@ void PlayerObject_hide_above();
 void PlayerObject_hide_below();
 void PlayerObject_move_left();
 void PlayerObject_move_right();
+void PlayerObject_fire_bullet_red();
+void PlayerObject_fire_bullet_green();
+void PlayerObject_fire_bullet_blue();
+
 
 #endif /* __PLAYER_OBJECT_H__ */

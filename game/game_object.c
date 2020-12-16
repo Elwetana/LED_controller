@@ -39,6 +39,8 @@ char win_messages[GM_PLAYER_LOST][16] = {
     "~~~~~",
     "     ",
     " ~~  "
+    "",
+    "Boss defeated"
 };
 
 
@@ -47,7 +49,7 @@ typedef struct GameObject
     enum StencilFlags stencil_flag;
     int health;
     int deleted;
-    int mark;
+    int mark;           //!< bit array: 0: used by stencil; 1,2,3: colors RGB; 4: player's bullet
     uint64_t time;
 } game_object_t;
 
@@ -55,7 +57,7 @@ static game_object_t game_objects[MAX_N_OBJECTS];
 static enum GameModes current_mode = GM_LEVEL1;
 
 
-static int GameObject_spawn_enemy_projectile(int color_index)
+int GameObject_new_projectile_index()
 {
     int i = C_PROJCT_OBJ_INDEX;
     while (i < MAX_N_OBJECTS && !game_objects[i].deleted)
@@ -67,11 +69,40 @@ static int GameObject_spawn_enemy_projectile(int color_index)
         printf("Failed to create projectile\n");
         return -1;
     }
+    return i;
+}
+
+
+static int GameObject_spawn_enemy_projectile(int color_index)
+{
+    int i = GameObject_new_projectile_index();
+    if (i == -1) return -1;
     MovingObject_init_stopped(i, 2, MO_FORWARD, 1, 2);
     PulseObject_init_steady(i, color_index, 1);
     MovingObject_init_movement(i, config.enemy_speed, game_source.basic_source.n_leds - 3, GameObject_delete_object);
     GameObject_init(i, 1, SF_EnemyProjectile);
     return i;
+}
+
+/*!
+ * @brief Either one of the bullet wins, or both are destroyed
+ * Rules of rock-paper-scissors: B > R, R > G, G > B
+ * @return  0: no collision, 1: bullet 1 wins, 2: bullet 2 wins, 3: both are destroyed
+*/
+int GameObject_resolve_projectile_collision(int bullet1, int bullet2)
+{
+    if ((game_objects[bullet1].mark & 16) == (game_objects[bullet2].mark & 16)) //either two player's bullets or two enemy bullets
+        return 0;
+    if ((game_objects[bullet1].mark & 14) == (game_objects[bullet2].mark & 14))  //they have the same colour
+        return 3;
+    if (game_objects[bullet1].mark & 2) //R
+        return (game_objects[bullet2].mark & 4) == 4 ? 1 : 2;
+    if (game_objects[bullet1].mark & 4) //G
+        return (game_objects[bullet2].mark & 8) == 8 ? 1 : 2;
+    if (game_objects[bullet1].mark & 8) //B
+        return (game_objects[bullet2].mark & 2) == 2 ? 1 : 2;
+    assert(0);
+    return -1; //this should never happen
 }
 
 void GameObject_debug_projectile()
@@ -104,6 +135,7 @@ static void update_stargate(double stargate_shrink_chance)
         {
             printf("Stargate is too small\n");
             GameObjects_set_mode_player_lost(C_PLAYER_OBJ_INDEX);
+            return;
         }
         MovingObject_init_stopped(0, cur_position + 1, MO_FORWARD, cur_length - 2, 9);
         printf("shrinking stargate\n");
@@ -118,13 +150,13 @@ static void update_objects_level1()
         assert(bullet >= 0);
         game_objects[bullet].mark = 4;
     }
-    update_stargate(0.1);  //one shrink on average every ten seconds
     PlayerObject_update();
+    update_stargate(0.1);  //one shrink on average every ten seconds
 }
 
 static void update_objects_level2()
 {
-    if (roll_dice_poisson(2 * config.enemy_spawn_chance))
+    if (roll_dice_poisson(1.5 * config.enemy_spawn_chance))
     {
         int level = (int)(random_01() * 3); //0, 1 or 2 with the same probability
         int color_index = (int[]){ config.color_index_R, config.color_index_G, config.color_index_B }[level];
@@ -132,13 +164,13 @@ static void update_objects_level2()
         assert(bullet >= 0);
         game_objects[bullet].mark = 2 << level; //bit 0 is used by stencil; this is really not a very good system
     }
-    update_stargate(0.15);
     PlayerObject_update();
+    update_stargate(0.15);
 }
 
 static void update_objects_level3()
 {
-    if (roll_dice_poisson(4 * config.enemy_spawn_chance))
+    if (roll_dice_poisson(3 * config.enemy_spawn_chance))
     {
         int level = (int)(random_01() * 3); //0, 1 or 2 with the same probability
         int color_index = (int[]){ config.color_index_C, config.color_index_M, config.color_index_Y }[level];
@@ -147,7 +179,21 @@ static void update_objects_level3()
         //level 0 = C = 4 + 8; 1 = M = 2 + 8; 2 = Y = 2 + 4
         game_objects[bullet].mark = 14 ^ (2 << level);
     }
+    PlayerObject_update();
     update_stargate(0.20);
+}
+
+static void update_objects_level_boss()
+{
+    //TODO -- move boss, change tactics, change weapons and so on...
+    if(roll_dice_poisson(3 * config.enemy_spawn_chance))
+    {
+        int level = (int)(random_01() * 3); //0, 1 or 2 with the same probability
+        int color_index = (int[]){ config.color_index_R, config.color_index_G, config.color_index_B }[level];
+        int bullet = GameObject_spawn_enemy_projectile(color_index);
+        assert(bullet >= 0);
+        game_objects[bullet].mark = 2 << level; //bit 0 is used by stencil; this is really not a very good system
+    }
     PlayerObject_update();
 }
 
@@ -161,12 +207,18 @@ static void GameObject_update_objects()
     case GM_LEVEL2:
         update_objects_level2();
         break;
+    case GM_LEVEL3:
+        update_objects_level3();
+        break;
+    case GM_LEVEL_BOSS:
+        update_objects_level_boss();
+        break;
     case GM_LEVEL1_WON:
     case GM_LEVEL2_WON:
+    case GM_LEVEL3_WON:
+    case GM_LEVEL_BOSS_WON:
         break;
     case GM_PLAYER_LOST:
-        break;
-    default:
         break;
     }
 }
@@ -202,6 +254,11 @@ int GameObject_get_health(int gi)
 void GameObject_mark(int gi, int mark)
 {
     game_objects[gi].mark |= mark;
+}
+
+void GameObject_clear_mark(int gi, int mark)
+{
+    game_objects[gi].mark &= (0xFFFFFF - 1);
 }
 
 int GameObject_get_mark(int gi)
@@ -256,6 +313,14 @@ static void stargate_init()
             //PulseObject_set_color(dec, config.color_index_G, config.color_index_G, config.color_index_G, led);
         }
     }
+}
+
+static void boss_init()
+{
+    //init boss
+    GameObject_init(C_OBJECT_OBJ_INDEX, 5, SF_Enemy);
+    MovingObject_init_stopped(C_OBJECT_OBJ_INDEX, 10, MO_FORWARD, 6, 2);
+    PulseObject_init_steady(C_OBJECT_OBJ_INDEX, config.color_index_player, 6);
 }
 
 static void game_over_init()
@@ -316,9 +381,13 @@ static void GameObjects_init_objects()
         //spawn stargate
         stargate_init();
         break;
+    case GM_LEVEL_BOSS:
+        boss_init();
+        break;
     case GM_LEVEL1_WON:
     case GM_LEVEL2_WON:
     case GM_LEVEL3_WON:
+    case GM_LEVEL_BOSS_WON:
         //spawn victory message
         show_victory_message(win_messages[current_mode]);
         break;
@@ -355,9 +424,22 @@ void GameObjects_player_reached_gate()
     {
         current_mode++;
         printf("Player won level %i\n", current_mode);
+        GameObjects_init(); //TODO here and in all functions that change current_mode -- it would be better to set a flag that mode was changed and call GameObjects_init() in the game object update 
+    }
+}
+
+void GameObject_boss_hit(int i)
+{
+    assert(i == C_OBJECT_OBJ_INDEX);
+    game_objects[C_OBJECT_OBJ_INDEX].health--;
+    if (!game_objects[C_OBJECT_OBJ_INDEX].health)
+    {
+        printf("Boss defeated\n");
+        current_mode++;
         GameObjects_init();
     }
 }
+
 
 void GameObject_debug_win()
 {

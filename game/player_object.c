@@ -121,6 +121,25 @@ void PlayerObject_hide_below()
     set_level(-1);
 }
 
+static void PlayerObject_fire_bullet(int color)
+{
+
+}
+
+void PlayerObject_fire_bullet_red()
+{
+    PlayerObject_fire_bullet(0);
+}
+
+void PlayerObject_fire_bullet_green()
+{
+    PlayerObject_fire_bullet(1);
+}
+
+void PlayerObject_fire_bullet_blue()
+{
+    PlayerObject_fire_bullet(2);
+}
 
 void PlayerObject_take_hit(int pi)
 {
