@@ -89,6 +89,11 @@ void MovingObject_set_facing(int mi, enum MovingObjectFacing facing)
     moving_objects[mi].facing = facing;
 }
 
+enum MovingObjectFacing MovingObject_get_facing(int mi)
+{
+    return moving_objects[mi].facing;
+}
+
 void MovingObject_init_movement(int mi, double speed, int target, void(*on_arrival)(int))
 {
     moving_object_t* object = &moving_objects[mi];

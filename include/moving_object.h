@@ -51,7 +51,7 @@ void MovingObject_resume(int mi);
 
 int MovingObject_get_length(int mi);
 double MovingObject_get_position(int mi);
-
+enum MovingObjectFacing MovingObject_get_facing(int mi);
 
 /*!
  * @brief Set the facing, if the facing is changed, we have to adjust the position
