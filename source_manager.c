@@ -142,15 +142,7 @@ void process_source_message(const char* param)
 {
     char source_name[64];
     int color = -1;
-    char* sep = strchr(param, '?');
-    if (sep != NULL)
-    {
-        int64_t name_length = sep - param;
-        strncpy(source_name, param, name_length);
-        source_name[name_length] = 0x0;
-        color = strtol(sep + 1, NULL, 16);
-    }
-    else if (!strncasecmp("OFF", param, 3))
+    if (!strncasecmp("OFF", param, 3))
     {
         strcpy(source_name, "COLOR");
         color = 0; 
@@ -260,7 +252,7 @@ static void read_color_config()
         printf("Config not found\n");
         exit(-4);
     }
-    char buf[255];
+    char buf[1024];
     while (fgets(buf, 255, config) != NULL)
     {
         SourceColors* sc = malloc(sizeof(SourceColors));
@@ -276,7 +268,11 @@ static void read_color_config()
         sc->colors = malloc(sizeof(ws2811_led_t) * (n_steps + 1));
         sc->steps = malloc(sizeof(int) * n_steps);
         sc->n_steps = n_steps;
-        fgets(buf, 255, config);
+        fgets(buf, 1024, config);
+        while (strnlen(buf, 2) > 0 && (buf[0] == ';' || buf[0] == '#'))
+        {
+            fgets(buf, 1024, config);
+        }
         int color, step, offset;
         char* line = buf;
         offset = 0;

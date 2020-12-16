@@ -20,7 +20,7 @@
 #include "xmas_source.h"
 
 
-struct {
+static struct {
     //snowflakes
     int n_snowflakes;
     float k_diff;
