@@ -55,6 +55,7 @@ typedef struct GameObject
 
 static game_object_t game_objects[MAX_N_OBJECTS];
 static enum GameModes current_mode = GM_LEVEL_BOSS;
+static enum GameModes next_mode = GM_LEVEL_BOSS; //<! flag to be set when the mode is changed in the next update
 
 
 int GameObject_new_projectile_index()
@@ -200,6 +201,11 @@ static void update_objects_level_boss()
 
 static void GameObject_update_objects()
 {
+    if (next_mode != current_mode)
+    {
+        current_mode = next_mode;
+        GameObjects_init();
+    }
     switch (current_mode)
     {
     case GM_LEVEL1:
@@ -423,9 +429,8 @@ void GameObjects_player_reached_gate()
     int player_length = MovingObject_get_length(C_PLAYER_OBJ_INDEX);
     if (sg_start + sg_length > player_start + player_length)
     {
-        current_mode++;
+        next_mode = current_mode + 1;
         printf("Player won level %i\n", current_mode);
-        GameObjects_init(); //TODO here and in all functions that change current_mode -- it would be better to set a flag that mode was changed and call GameObjects_init() in the game object update 
     }
 }
 
@@ -435,25 +440,22 @@ void GameObject_boss_hit(int i)
     game_objects[C_OBJECT_OBJ_INDEX].health--;
     if (!game_objects[C_OBJECT_OBJ_INDEX].health)
     {
+        next_mode = current_mode + 1;
         printf("Boss defeated\n");
-        current_mode++;
-        GameObjects_init();
     }
 }
 
 
 void GameObject_debug_win()
 {
-    current_mode++;
+    next_mode = current_mode + 1;
     printf("Player cheated to win level %i\n", current_mode);
-    GameObjects_init();
 }
 
 void GameObjects_set_mode_player_lost(int i)
 {
     assert(i == C_PLAYER_OBJ_INDEX);
-    current_mode = GM_PLAYER_LOST;
-    GameObjects_init();
+    next_mode = GM_PLAYER_LOST;
     printf("player lost\n");
 }
 
@@ -463,9 +465,8 @@ void GameObjects_next_level()
     //there is a timeout after winning previous level during which we can proceed
     const uint64_t timeout = 2 * 1e9;
     if (game_source.basic_source.current_time - game_objects[0].time < timeout) return;
+    next_mode = current_mode + 1;
     printf("advancing to next level\n");
-    current_mode++;
-    GameObjects_init();
 }
 
 /*! The sequence of actions during one loop:

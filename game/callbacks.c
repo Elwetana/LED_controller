@@ -61,6 +61,6 @@ void OnArrival_blink_and_die(int i)
 
 void OnEnd_resume(int i)
 {
-    MovingObject_resume(i);
+    MovingObject_resume(i, GameObject_delete_object);
     GameObject_clear_mark(i, 1);
 }
