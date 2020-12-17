@@ -58,7 +58,7 @@ enum SourceType string_to_SourceType(const char* source)
 static BasicSource* sources[N_SOURCE_TYPES];
 static uint64_t* current_time;
 static uint64_t* time_delta;
-
+static enum SourceType active_source = N_SOURCE_TYPES;
 
 struct LedParam {
     int led_count;
@@ -83,6 +83,7 @@ void set_source(enum SourceType source_type, uint64_t cur_time)
     SourceManager_process_message = sources[source_type]->process_message;
     current_time = &sources[source_type]->current_time;
     time_delta = &sources[source_type]->time_delta;
+    active_source = source_type;
 }
 
 void SourceManager_init(enum SourceType source_type, int led_count, int time_speed, uint64_t cur_time)
@@ -161,6 +162,7 @@ void process_source_message(const char* param)
     printf("Changing source to %s\n", param);
 }
 
+void SourceManager_reload_color_config();
 
 void check_message()
 {
@@ -204,6 +206,10 @@ void check_message()
         //printf("Sending message to source: %s\n", message);
         SourceManager_process_message(message);
     }
+    else if (!strncasecmp(command, "RELOAD", 6))
+    {
+        SourceManager_reload_color_config();
+    }
     else
     {
         printf("Unknown command received, command: %s, param %s\n", command, param);
@@ -218,12 +224,8 @@ SourceConfig source_config;
 static void SourceConfig_init()
 {
     source_config.colors = malloc(sizeof(SourceColors*) * N_SOURCE_TYPES);
-}
-
-void SourceConfig_add_color(char* source_name, SourceColors* source_colors)
-{
-    enum SourceType source_type = string_to_SourceType(source_name);
-    source_config.colors[source_type] = source_colors;
+    for (int i = 0; i < N_SOURCE_TYPES; ++i)
+        source_config.colors[i] = NULL;
 }
 
 void SourceColors_destruct(SourceColors* source_colors)
@@ -232,15 +234,23 @@ void SourceColors_destruct(SourceColors* source_colors)
     {
         free(source_colors->colors);
         free(source_colors->steps);
+        free(source_colors);
     }
-    free(source_colors);
+}
+
+void SourceConfig_add_color(char* source_name, SourceColors* source_colors)
+{
+    enum SourceType source_type = string_to_SourceType(source_name);
+    SourceColors_destruct(source_config.colors[source_type]);
+    source_config.colors[source_type] = source_colors;
 }
 
 void SourceConfig_destruct()
 {
     for (int i = 0; i < N_SOURCE_TYPES; ++i)
     {
-        SourceColors_destruct(source_config.colors[i]); //TODO: this crashes if not all sources have their colours in config
+        if(source_config.colors[i])
+            SourceColors_destruct(source_config.colors[i]); 
     }
     free(source_config.colors);
 }
@@ -295,6 +305,14 @@ static void read_color_config()
         sc->colors[n_steps] = color;
         SourceConfig_add_color(name, sc);
     }
+}
+
+
+void SourceManager_reload_color_config()
+{
+    read_color_config();
+    BasicSource_build_gradient(sources[active_source], source_config.colors[active_source]->colors, source_config.colors[active_source]->steps, source_config.colors[active_source]->n_steps);
+    printf("Colour config reloaded\n");
 }
 
 static int ini_file_handler(void* user, const char* section, const char* name, const char* value)

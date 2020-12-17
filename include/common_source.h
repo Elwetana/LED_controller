@@ -57,6 +57,7 @@ extern SourceConfig source_config;
 
 void BasicSource_construct(BasicSource* basic_source);
 void BasicSource_init(BasicSource* basic_source, int n_leds, int time_speed, SourceColors* source_colors, uint64_t current_time);
+void BasicSource_build_gradient(BasicSource* basic_source, ws2811_led_t* colors, int* steps, int n_steps);
 float random_01();
 
 
