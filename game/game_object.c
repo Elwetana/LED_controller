@@ -49,7 +49,7 @@ typedef struct GameObject
     enum StencilFlags stencil_flag;
     int health;
     int deleted;
-    int mark;           //!< bit array: 0: used by stencil; 1,2,3: colors RGB; 4: player's bullet
+    int mark;           //!< bit array: 0: used by stencil; 1,2,3: colors RGB; 
     uint64_t time;
 } game_object_t;
 
@@ -91,7 +91,7 @@ static int GameObject_spawn_enemy_projectile(int color_index)
 */
 int GameObject_resolve_projectile_collision(int bullet1, int bullet2)
 {
-    if ((game_objects[bullet1].mark & 16) == (game_objects[bullet2].mark & 16)) //either two player's bullets or two enemy bullets
+    if ((game_objects[bullet1].stencil_flag) == (game_objects[bullet2].stencil_flag)) //either two player's bullets or two enemy bullets
         return 0;
     if ((game_objects[bullet1].mark & 14) == (game_objects[bullet2].mark & 14))  //they have the same colour
         return 3;
@@ -101,6 +101,7 @@ int GameObject_resolve_projectile_collision(int bullet1, int bullet2)
         return (game_objects[bullet2].mark & 8) == 8 ? 1 : 2;
     if (game_objects[bullet1].mark & 8) //B
         return (game_objects[bullet2].mark & 2) == 2 ? 1 : 2;
+    printf("B1: %i, B2: %i\n", game_objects[bullet1].mark, game_objects[bullet2].mark);
     assert(0);
     return -1; //this should never happen
 }

@@ -129,13 +129,14 @@ static void PlayerObject_fire_bullet(int color)
     if (i == -1) return;
 
     enum MovingObjectFacing f = MovingObject_get_facing(C_PLAYER_OBJ_INDEX);
-    double pos = MovingObject_get_position(C_PLAYER_OBJ_INDEX);
-    MovingObject_init_stopped(i, pos + (f == MO_BACKWARD) ? 0 : config.player_ship_size, f, 1, 2);
+    double pos = MovingObject_get_position(C_PLAYER_OBJ_INDEX) + ((f == MO_BACKWARD) ? 0 : config.player_ship_size);
+    MovingObject_init_stopped(i, pos, f, 1, 2);
     int color_index = (int[]){ config.color_index_R, config.color_index_G, config.color_index_B } [color];
     PulseObject_init_steady(i, color_index, 1);
     int target = (f == MO_BACKWARD) ? 3 : game_source.basic_source.n_leds - 3;
     MovingObject_init_movement(i, config.enemy_speed, target, GameObject_delete_object);
     GameObject_init(i, 1, SF_PlayerProjectile);
+    GameObject_mark(i, 2 << color);
     printf("firing bullet %i\n", i);
 }
 

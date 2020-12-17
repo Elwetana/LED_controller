@@ -76,6 +76,7 @@ static int StencilHandler_bullet_collision(int bullet1, int bullet2)
     if (GameObject_get_mark(bullet2) & 1) return 1;
 
     int result = GameObject_resolve_projectile_collision(bullet1, bullet2);
+    printf("bullet collision: %i\n", result);
     if (result == 0)
         return 1;
 
