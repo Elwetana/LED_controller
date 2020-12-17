@@ -23,6 +23,8 @@ void BasicSource_build_gradient(BasicSource* basic_source, ws2811_led_t* colors,
     int offset = 0;
     for (int i = 0; i < n_steps; i++)
     {
+        if (steps[i] == 0)
+            continue;
         fill_gradient(basic_source->gradient.colors, offset, colors[i], colors[i + 1], steps[i], GRADIENT_N - 1);
         offset += steps[i];
     }
