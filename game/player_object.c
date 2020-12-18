@@ -25,6 +25,8 @@
 #include "game_source.h"
 #include "player_object.h"
 
+#define MAX_PLAYER_BULLETS 3
+
 const int C_PLAYER_OBJ_INDEX = MAX_N_OBJECTS - 1;
 
 static struct
@@ -32,6 +34,8 @@ static struct
     int level; //0: normal, 1: above, -1: below
     uint64_t level_change_time;
 } player_object;
+
+static int player_bullets[MAX_PLAYER_BULLETS];
 
 void PlayerObject_init(enum GameModes current_mode)
 {
@@ -74,17 +78,6 @@ int PlayerObject_get_health()
     return GameObject_get_health(C_PLAYER_OBJ_INDEX);
 }
 
-int PlayerObject_is_hit(int bullet)
-{
-    int mark = GameObject_get_mark(bullet);
-    //int level = (mark & 2) / 2 + 2 * (mark & 4) / 4 + 3 * (mark & 8) / 8 ; //this will be 1, 2 or 3
-    //assert(level > 0);
-    //level -= 2;
-    printf("mark %i, player %i\n", mark, player_object.level);
-    int level = 1 << (2 - player_object.level); //this is shift by 1, 2 or 3, i.e. 2, 4 or 8
-    return mark & level;
-}
-
 void PlayerObject_move_left()
 {
     double pos = MovingObject_get_position(C_PLAYER_OBJ_INDEX);
@@ -125,9 +118,34 @@ void PlayerObject_hide_below()
 
 static void PlayerObject_fire_bullet(int color)
 {
+    int pb_index = 0;
+    int pb_min_index = -1;
+    uint64_t pb_min_time = UINT64_MAX;
+    while (pb_index < MAX_PLAYER_BULLETS)
+    {
+        if (player_bullets[pb_index] == 0 || 
+            GameObject_is_deleted(player_bullets[pb_index]) || 
+            GameObject_get_stencil_flag(player_bullets[pb_index]) == SF_EnemyProjectile) //we found an empty slot
+            break;
+        uint64_t pb_time = GameObject_get_time(player_bullets[pb_index]);
+        if (pb_time < pb_min_time)
+        {
+            pb_min_time = pb_time;
+            pb_min_index = pb_index;
+        }
+        pb_index++;
+    }
+
+    if (pb_index == MAX_PLAYER_BULLETS) //there was no empty slot, we will delete the oldest bullet
+    {
+        pb_index = pb_min_index;
+        GameObject_delete_object(player_bullets[pb_index]);
+    }
+
     int i = GameObject_new_projectile_index();
     if (i == -1) return;
 
+    player_bullets[pb_index] = i;
     enum MovingObjectFacing f = MovingObject_get_facing(C_PLAYER_OBJ_INDEX);
     double pos = MovingObject_get_position(C_PLAYER_OBJ_INDEX) + ((f == MO_BACKWARD) ? 0 : config.player_ship_size);
     MovingObject_init_stopped(i, pos, f, 1, 2);
@@ -153,6 +171,19 @@ void PlayerObject_fire_bullet_green()
 void PlayerObject_fire_bullet_blue()
 {
     PlayerObject_fire_bullet(2);
+}
+
+int PlayerObject_is_hit(int bullet)
+{
+    if (GameObjects_get_current_mode() == GM_LEVEL_BOSS)
+        return 1;
+    int mark = GameObject_get_mark(bullet);
+    //int level = (mark & 2) / 2 + 2 * (mark & 4) / 4 + 3 * (mark & 8) / 8 ; //this will be 1, 2 or 3
+    //assert(level > 0);
+    //level -= 2;
+    printf("mark %i, player %i\n", mark, player_object.level);
+    int level = 1 << (2 - player_object.level); //this is shift by 1, 2 or 3, i.e. 2, 4 or 8
+    return mark & level;
 }
 
 void PlayerObject_take_hit(int pi)

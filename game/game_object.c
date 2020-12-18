@@ -235,12 +235,18 @@ void GameObject_delete_object(int gi)
     game_objects[gi].deleted = 1;
 }
 
+int GameObject_is_deleted(int gi)
+{
+    return game_objects[gi].deleted;
+}
+
 void GameObject_init(int gi, int health, int stencil_flag)
 {
     game_objects[gi].deleted = 0;
     game_objects[gi].health = health;
     game_objects[gi].stencil_flag = stencil_flag;
     game_objects[gi].mark = 0;
+    game_objects[gi].time = game_source.basic_source.current_time;
 }
 
 int GameObject_take_hit(int gi)
@@ -271,6 +277,16 @@ void GameObject_clear_mark(int gi, int mark)
 int GameObject_get_mark(int gi)
 {
     return game_objects[gi].mark;
+}
+
+uint64_t GameObject_get_time(int gi)
+{
+    return game_objects[gi].time;
+}
+
+enum StencilFlags GameObject_get_stencil_flag(int gi)
+{
+    return game_objects[gi].stencil_flag;
 }
 
 //******** GAME STATE FUNCTIONS ********
@@ -325,9 +341,18 @@ static void stargate_init()
 static void boss_init()
 {
     //init boss
-    GameObject_init(C_OBJECT_OBJ_INDEX, 5, SF_Enemy);
-    MovingObject_init_stopped(C_OBJECT_OBJ_INDEX, 10, MO_FORWARD, 6, 2);
-    PulseObject_init_steady(C_OBJECT_OBJ_INDEX, config.color_index_player, 6);
+    GameObject_init(C_OBJECT_OBJ_INDEX, config.boss_health, SF_Enemy);
+    MovingObject_init_stopped(C_OBJECT_OBJ_INDEX, 10, MO_FORWARD, config.boss_health / 2, 2);
+    PulseObject_init_steady(C_OBJECT_OBJ_INDEX, config.color_index_player, config.boss_health / 2);
+
+    //init decorations that mark area where shooting backwards is possible
+    GameObject_init(C_BKGRND_OBJ_INDEX, 1, SF_Background);
+    MovingObject_init_stopped(C_BKGRND_OBJ_INDEX, 40, MO_FORWARD, 3, 8);
+    PulseObject_init_steady(C_BKGRND_OBJ_INDEX, config.color_index_stargate, 3);
+
+    GameObject_init(C_BKGRND_OBJ_INDEX + 1, 1, SF_Background);
+    MovingObject_init_stopped(C_BKGRND_OBJ_INDEX + 1, game_source.basic_source.n_leds - 40 - 3, MO_BACKWARD, 3, 8);
+    PulseObject_init_steady(C_BKGRND_OBJ_INDEX + 1, config.color_index_stargate, 3);
 }
 
 static void game_over_init()
@@ -360,7 +385,6 @@ static void show_victory_message(char* message)
     assert(9 * msg_len < MAX_OBJECT_LENGTH);
 
     GameObject_init(0, 1, SF_Background);
-    game_objects[0].time = game_source.basic_source.current_time;
     MovingObject_init_stopped(0, 1, MO_FORWARD, 9 * msg_len + 1, 0);
     MovingObject_init_movement(0, 0.1, game_source.basic_source.n_leds - 9 * msg_len - 2, OnArrival_victory_message);
     MovingObject_set_render_mode(0, 2);
@@ -434,7 +458,14 @@ void GameObjects_player_reached_gate()
     }
 }
 
-void GameObject_boss_hit(int i)
+void GameObjects_shrink_boss()
+{
+    int health = GameObject_get_health(C_OBJECT_OBJ_INDEX);
+    MovingObject_init_stopped(C_OBJECT_OBJ_INDEX, 10, MO_FORWARD, health / 2, 2);
+    PulseObject_init_steady(C_OBJECT_OBJ_INDEX, config.color_index_player, health / 2);
+}
+
+void GameObjects_boss_hit(int i)
 {
     assert(i == C_OBJECT_OBJ_INDEX);
     game_objects[C_OBJECT_OBJ_INDEX].health--;
@@ -443,8 +474,10 @@ void GameObject_boss_hit(int i)
         next_mode = current_mode + 1;
         printf("Boss defeated\n");
     }
+    int len = MovingObject_get_length(C_OBJECT_OBJ_INDEX);
+    PulseObject_init(C_OBJECT_OBJ_INDEX, 1, PM_ONCE, 2, 100, 0, 0, 1, GameObjects_shrink_boss);
+    PulseObject_set_color_all(C_OBJECT_OBJ_INDEX, config.color_index_player, config.color_index_R, config.color_index_player, len);
 }
-
 
 void GameObject_debug_win()
 {

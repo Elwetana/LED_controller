@@ -60,7 +60,7 @@ static int StencilHandler_player_is_hit(int projectile, int player)
 static int StencilHandler_enemy_is_hit(int enemy, int projectile)
 {
     if (GameObject_get_mark(projectile) & 1) return 1; //this projectile was already processed
-    GameObject_boss_hit(enemy);
+    GameObjects_boss_hit(enemy);
     GameObject_mark(projectile, 1);
     return 0;
 }
