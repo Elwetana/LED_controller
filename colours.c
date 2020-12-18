@@ -1,6 +1,7 @@
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <assert.h>
 
 #include "colours.h"
 
@@ -152,14 +153,15 @@ ws2811_led_t lerp_rgb(const ws2811_led_t rgb1, const ws2811_led_t rgb2, const fl
     return hsl2rgb(&hsl_out);
 }
 
-void fill_gradient(ws2811_led_t* gradient, int offset, ws2811_led_t from_color, ws2811_led_t to_color, int steps, int max_index)
+void fill_gradient(ws2811_led_t* gradient, int offset, ws2811_led_t from_color, ws2811_led_t to_color, int steps, int next_steps, int max_index)
 {
+    assert(steps > 0);
     hsl_t hsl_from;
     hsl_t hsl_to;
     rgb2hsl(from_color, &hsl_from);
     rgb2hsl(to_color, &hsl_to);
     hsl_t step_delta;
-    int delta_steps = (steps > 1) ? steps - 1 : steps;
+    int delta_steps = (steps == 1 || next_steps == 0) ? steps : steps - 1;
     for (int i = 0; i < 3; ++i)
     {
         step_delta.f[i] = (hsl_to.f[i] - hsl_from.f[i]) / (float)delta_steps;

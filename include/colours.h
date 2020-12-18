@@ -33,7 +33,20 @@ ws2811_led_t mix_rgb_color(ws2811_led_t rgb1, ws2811_led_t rgb2, double t);
 void rgb2hsl(ws2811_led_t rgb, hsl_t* hsl);
 ws2811_led_t hsl2rgb(hsl_t* hsl);
 void test_rgb2hsl();
-void fill_gradient(ws2811_led_t* gradient, int offset, ws2811_led_t from_color, ws2811_led_t to_color, int steps, int max_index);
+
+/*!
+ * @brief Created gradient from `from_color` to `to_color` with `steps`
+ *
+ * Gradient from 0 to 6 with 3 steps and next_steps = 0 will be 0, 3, 6. With next_steps != 0 it will be 0, 2, 4
+ * @param gradient		pointer to array that will be filled
+ * @param offset		index into `gradient` of the first colour
+ * @param from_color	left endpoint of gradient
+ * @param to_color		right ednpoint of gradient, see `next_steps`
+ * @param steps			how many steps to generate
+ * @param next_steps	if 0, the to_color will be included in gradient, otherwise it will not and the gradient step will be smaller
+ * @param max_index		max index of gradient, colours beyond this will be silently ignored
+*/
+void fill_gradient(ws2811_led_t* gradient, int offset, ws2811_led_t from_color, ws2811_led_t to_color, int steps, int next_steps, int max_index);
 /*! \returns  hsl1 for t == 0 and hsl2 for t == 1 */
 void lerp_hsl(const hsl_t* hsl1, const hsl_t* hsl2, const float t, hsl_t* hsl_out);
 /*! \returns  rgb1 for t == 0 and rgb2 for t == 1 */

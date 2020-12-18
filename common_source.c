@@ -21,13 +21,14 @@ float random_01()
 void BasicSource_build_gradient(BasicSource* basic_source, ws2811_led_t* colors, int* steps, int n_steps)
 {
     int offset = 0;
-    for (int i = 0; i < n_steps; i++)
+    for (int i = 0; i < n_steps - 1; i++)
     {
         if (steps[i] == 0)
             continue;
-        fill_gradient(basic_source->gradient.colors, offset, colors[i], colors[i + 1], steps[i], GRADIENT_N - 1);
+        fill_gradient(basic_source->gradient.colors, offset, colors[i], colors[i + 1], steps[i], steps[i + 1], GRADIENT_N - 1);
         offset += steps[i];
     }
+    fill_gradient(basic_source->gradient.colors, offset, colors[n_steps - 1], colors[n_steps], steps[n_steps - 1], 0, GRADIENT_N - 1);
     printf("Gradient initialized with %i colours\n", offset);
 }
 
