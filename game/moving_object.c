@@ -33,7 +33,7 @@ typedef struct MovingObject
     double old_speed;
     uint32_t target;
     enum MovingObjectFacing facing;
-    int zdepth;
+    enum ZdepthIndex zdepth;
     ws2811_led_t color[MAX_OBJECT_LENGTH];  //!< must be initialized with `length` colors, color[0] is tail, color[length-1] is head, regardless of `facing`
     int render_type;    //!< 0: render antialiased, 1: render with trail (and antialiased), 2: render aligned
     void(*on_arrival)(int);
@@ -69,7 +69,7 @@ void Canvas_clear(ws2811_led_t* leds)
     }
 }
 
-void MovingObject_init_stopped(int mi, double position, enum MovingObjectFacing facing, uint32_t length, int zdepth)
+void MovingObject_init_stopped(int mi, double position, enum MovingObjectFacing facing, uint32_t length, enum ZdepthIndex zdepth)
 {
     assert(length <= MAX_OBJECT_LENGTH);
     moving_object_t* object = &moving_objects[mi];
@@ -84,6 +84,12 @@ void MovingObject_init_stopped(int mi, double position, enum MovingObjectFacing 
     object->on_arrival = NULL;
 }
 
+void MovingObject_set_position(int mi, double new_pos)
+{
+    assert(new_pos >= 0 && new_pos < game_source.basic_source.n_leds);
+    moving_objects[mi].position = new_pos;
+}
+
 void MovingObject_set_facing(int mi, enum MovingObjectFacing facing)
 {
     moving_objects[mi].facing = facing;
@@ -92,6 +98,11 @@ void MovingObject_set_facing(int mi, enum MovingObjectFacing facing)
 enum MovingObjectFacing MovingObject_get_facing(int mi)
 {
     return moving_objects[mi].facing;
+}
+
+double MovingObject_get_speed(int mi)
+{
+    return moving_objects[mi].speed;
 }
 
 void MovingObject_init_movement(int mi, double speed, int target, void(*on_arrival)(int))
@@ -155,7 +166,7 @@ void MovingObject_resume(int mi, void(*new_on_arrival)(int))
 *               camera, so lower z overwrites higher z. If the z-depths are
 *               equal, colors will be added.
 */
-static void render_with_z_test(ws2811_led_t color, double alpha, ws2811_led_t* leds, int led, int zdepth)
+static void render_with_z_test(ws2811_led_t color, double alpha, ws2811_led_t* leds, int led, enum ZdepthIndex zdepth)
 {
     assert(led >= 0 && led < game_source.basic_source.n_leds);
     if (canvas[led].zbuffer < zdepth)
@@ -249,10 +260,18 @@ void MovingObject_target_hit(int mi_bullet, int mi_target, void(*new_callback)(i
     if (mr_bullet->dir > 0)
     {
         new_bullet_position = (int)(mr_target->end_position - moving_objects[mi_bullet].length);
+        if (new_bullet_position < 0)
+        {
+            new_bullet_position = 0;
+        }
     }
     else
     {
         new_bullet_position = (int)(mr_target->end_position + moving_objects[mi_target].length) + 1;
+        if (new_bullet_position + (int)moving_objects[mi_bullet].length > game_source.basic_source.n_leds - 1)
+        {
+            new_bullet_position = game_source.basic_source.n_leds - (int)moving_objects[mi_bullet].length - 1;
+        }
     }
 #ifdef GAME_DEBUG
     printf("Target %f, projectile %i\n", mr_target->end_position, new_bullet_position);

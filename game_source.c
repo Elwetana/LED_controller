@@ -52,8 +52,10 @@ void Game_source_init_objects()
     config.color_index_health = 11; //11: healthy, 12: sick
     config.color_index_game_over = 13;
     config.color_index_stargate = 14; //15 is unused, 16, 17: decoration colors
+    config.color_index_boss_head = 18;
     //config.player_fire_cooldown = 500;
     config.boss_health = 20;
+    config.wraparound_fire_pos = 40;
 
     GameObjects_init();
 }

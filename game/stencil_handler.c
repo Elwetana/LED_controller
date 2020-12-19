@@ -53,6 +53,7 @@ static int StencilHandler_player_is_hit(int projectile, int player)
         GameObject_mark(projectile, 1);
         MovingObject_target_hit(projectile, player, OnArrival_stop_and_explode);
         PlayerObject_take_hit(player);
+        printf("player hit by projectile %i\n", projectile);
     }
     return 1;
 }
@@ -60,8 +61,9 @@ static int StencilHandler_player_is_hit(int projectile, int player)
 static int StencilHandler_enemy_is_hit(int enemy, int projectile)
 {
     if (GameObject_get_mark(projectile) & 1) return 1; //this projectile was already processed
-    GameObjects_boss_hit(enemy);
     GameObject_mark(projectile, 1);
+    MovingObject_target_hit(projectile, enemy, OnArrival_stop_and_explode);
+    GameObjects_boss_hit(enemy);
     return 0;
 }
 

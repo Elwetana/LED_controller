@@ -155,6 +155,7 @@ void PulseObject_update(int pi)
 void PulseObject_init(int pi, double amp, enum PulseModes pm, int repetitions, int period, double phase, double led_phase, double spec, void(*on_end)(int))
 {
     pulse_object_t* po = &pulse_objects[pi];
+    po->index = pi;
     po->amplitude = amp;
     po->pulse_mode = pm;
     po->repetitions = repetitions;

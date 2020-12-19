@@ -19,10 +19,12 @@ struct
 	uint32_t color_index_game_over;
 	uint32_t color_index_stargate;
 	uint32_t color_index_health;
+	uint32_t color_index_boss_head;
 	double enemy_spawn_chance;
 	double enemy_speed;
     double decoration_speed;
 	int boss_health;
+	int wraparound_fire_pos;
 	//double player_fire_cooldown;
 } config;
 
@@ -55,6 +57,7 @@ void GameObjects_player_reached_gate();
 void GameObjects_set_mode_player_lost(int i);
 void GameObjects_boss_hit(int i);
 int GameObject_resolve_projectile_collision(int bullet1, int bullet2);
+void OnArrival_wrap_around(int i);
 
 void GameObject_init(int gi, int health, int stencil_flag);
 void GameObject_delete_object(int gi);
@@ -73,6 +76,7 @@ int GameObject_heal(int gi);
 int GameObject_get_health(int gi);
 
 void GameObject_debug_projectile();
+void GameObject_debug_boss_special();
 void GameObject_debug_win();
 
 #endif /* __GAME_SOURCE_PRIV_H__ */

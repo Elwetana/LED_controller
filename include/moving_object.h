@@ -13,6 +13,17 @@ enum MovingObjectFacing
     MO_FORWARD = 1
 };
 
+enum ZdepthIndex //lower number is closer to camera, i.e. it will be rendered
+{
+    ZI_always_visible = 1,
+    ZI_Player,
+    ZI_Ship,
+    ZI_Projectile,
+    ZI_Background_near,
+    ZI_Background_mid,
+    ZI_Background_far
+};
+
 typedef struct CanvasPixel
 {
     int zbuffer;
@@ -27,10 +38,13 @@ pixel_t* canvas;
 void Canvas_clear(ws2811_led_t* leds);
 
 /*! Init MovingObject with basic values and single colour */
-void MovingObject_init_stopped(int mi, double position, enum MovingObjectFacing facing, uint32_t length, int zdepth);
+void MovingObject_init_stopped(int mi, double position, enum MovingObjectFacing facing, uint32_t length, enum ZdepthIndex zdepth);
 
 /*! Init MovingObject with movement data */
 void MovingObject_init_movement(int mi, double speed, int target, void(*on_arrival)(int));
+
+/*! Set new position directly, used for spell effects and such */
+void MovingObject_set_position(int mi, double new_pos);
 
 /*!
  * @brief Set render mode
@@ -47,14 +61,15 @@ void MovingObject_set_render_mode(int mi, int mode);
 void MovingObject_apply_colour(int mi, ws2811_led_t* colors);
 void MovingObject_stop(int mi);
 void MovingObject_pause(int mi);
-void MovingObject_resume(int mi);
+void MovingObject_resume(int mi, void(*on_arrival)(int));
 
 int MovingObject_get_length(int mi);
 double MovingObject_get_position(int mi);
 enum MovingObjectFacing MovingObject_get_facing(int mi);
+double MovingObject_get_speed(int mi);
 
 /*!
- * @brief Set the facing, if the facing is changed, we have to adjust the position
+ * @brief Set the facing, position remains the same
  * @param facing    desired facing
 */
 void MovingObject_set_facing(int mi, enum MovingObjectFacing facing);

@@ -46,7 +46,7 @@ void PlayerObject_init(enum GameModes current_mode)
     case GM_LEVEL3:
     case GM_LEVEL_BOSS:
         assert(config.player_health_levels + 1 == config.player_ship_size);
-        MovingObject_init_stopped(C_PLAYER_OBJ_INDEX, config.player_start_position, MO_BACKWARD, config.player_ship_size, 1);
+        MovingObject_init_stopped(C_PLAYER_OBJ_INDEX, config.player_start_position, MO_BACKWARD, config.player_ship_size, ZI_Player);
         MovingObject_init_movement(C_PLAYER_OBJ_INDEX, 0, 0, MovingObject_stop);
         PulseObject_init_steady(C_PLAYER_OBJ_INDEX, config.color_index_health, config.player_ship_size);
         PulseObject_set_color(C_PLAYER_OBJ_INDEX, config.color_index_player, config.color_index_player, config.color_index_player, config.player_ship_size - 1);
@@ -148,7 +148,7 @@ static void PlayerObject_fire_bullet(int color)
     player_bullets[pb_index] = i;
     enum MovingObjectFacing f = MovingObject_get_facing(C_PLAYER_OBJ_INDEX);
     double pos = MovingObject_get_position(C_PLAYER_OBJ_INDEX) + ((f == MO_BACKWARD) ? 0 : config.player_ship_size);
-    MovingObject_init_stopped(i, pos, f, 1, 2);
+    MovingObject_init_stopped(i, pos, f, 1, ZI_Projectile);
     int color_index = (int[]){ config.color_index_R, config.color_index_G, config.color_index_B } [color];
     PulseObject_init_steady(i, color_index, 1);
     int target = (f == MO_BACKWARD) ? 3 : game_source.basic_source.n_leds - 3;

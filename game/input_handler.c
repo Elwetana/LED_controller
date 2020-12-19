@@ -85,6 +85,7 @@ void InputHandler_init(enum GameModes game_mode)
         button_handlers[C_MAX_XBTN + XBTN_A] = PlayerObject_fire_bullet_green;
         button_handlers[C_MAX_XBTN + XBTN_B] = PlayerObject_fire_bullet_red;
         button_handlers[C_MAX_XBTN + XBTN_X] = PlayerObject_fire_bullet_blue;
+        button_handlers[C_MAX_XBTN + XBTN_Y] = GameObject_debug_boss_special;
         break;
     case GM_PLAYER_LOST:
         button_handlers[C_MAX_XBTN + XBTN_Start] = ButtonHandler_restart_game;

@@ -53,6 +53,12 @@ typedef struct GameObject
     uint64_t time;
 } game_object_t;
 
+static struct
+{
+    uint64_t last_special_attack;
+    int attack_ready;
+} boss;
+
 static game_object_t game_objects[MAX_N_OBJECTS];
 static enum GameModes current_mode = GM_LEVEL_BOSS;
 static enum GameModes next_mode = GM_LEVEL_BOSS; //<! flag to be set when the mode is changed in the next update
@@ -74,13 +80,13 @@ int GameObject_new_projectile_index()
 }
 
 
-static int GameObject_spawn_enemy_projectile(int color_index)
+static int GameObject_spawn_enemy_projectile(int color_index, double pos, int delete_or_wrap)
 {
     int i = GameObject_new_projectile_index();
     if (i == -1) return -1;
-    MovingObject_init_stopped(i, 2, MO_FORWARD, 1, 2);
+    MovingObject_init_stopped(i, pos, MO_FORWARD, 1, ZI_Projectile);
     PulseObject_init_steady(i, color_index, 1);
-    MovingObject_init_movement(i, config.enemy_speed, game_source.basic_source.n_leds - 3, GameObject_delete_object);
+    MovingObject_init_movement(i, config.enemy_speed, game_source.basic_source.n_leds - 3, (delete_or_wrap ? GameObject_delete_object : OnArrival_wrap_around));
     GameObject_init(i, 1, SF_EnemyProjectile);
     return i;
 }
@@ -109,7 +115,7 @@ int GameObject_resolve_projectile_collision(int bullet1, int bullet2)
 
 void GameObject_debug_projectile()
 {
-    GameObject_spawn_enemy_projectile(config.color_index_W);
+    GameObject_spawn_enemy_projectile(config.color_index_W, 2, 1);
 }
 
 /*!
@@ -139,7 +145,7 @@ static void update_stargate(double stargate_shrink_chance)
             GameObjects_set_mode_player_lost(C_PLAYER_OBJ_INDEX);
             return;
         }
-        MovingObject_init_stopped(0, cur_position + 1, MO_FORWARD, cur_length - 2, 9);
+        MovingObject_init_stopped(0, cur_position + 1, MO_FORWARD, cur_length - 2, ZI_Background_far);
         printf("shrinking stargate\n");
     }
 }
@@ -148,7 +154,8 @@ static void update_objects_level1()
 {
     if (roll_dice_poisson(config.enemy_spawn_chance))
     {
-        int bullet = GameObject_spawn_enemy_projectile(config.color_index_G);
+        double stargate_centre = MovingObject_get_position(0) + MovingObject_get_length(0) / 2;
+        int bullet = GameObject_spawn_enemy_projectile(config.color_index_G, stargate_centre, 1);
         assert(bullet >= 0);
         game_objects[bullet].mark = 4;
     }
@@ -162,7 +169,8 @@ static void update_objects_level2()
     {
         int level = (int)(random_01() * 3); //0, 1 or 2 with the same probability
         int color_index = (int[]){ config.color_index_R, config.color_index_G, config.color_index_B }[level];
-        int bullet = GameObject_spawn_enemy_projectile(color_index);
+        double stargate_centre = MovingObject_get_position(0) + MovingObject_get_length(0) / 2;
+        int bullet = GameObject_spawn_enemy_projectile(color_index, stargate_centre, 1);
         assert(bullet >= 0);
         game_objects[bullet].mark = 2 << level; //bit 0 is used by stencil; this is really not a very good system
     }
@@ -176,7 +184,8 @@ static void update_objects_level3()
     {
         int level = (int)(random_01() * 3); //0, 1 or 2 with the same probability
         int color_index = (int[]){ config.color_index_C, config.color_index_M, config.color_index_Y }[level];
-        int bullet = GameObject_spawn_enemy_projectile(color_index);
+        double stargate_centre = MovingObject_get_position(0) + MovingObject_get_length(0) / 2;
+        int bullet = GameObject_spawn_enemy_projectile(color_index, stargate_centre, 1);
         assert(bullet >= 0);
         //level 0 = C = 4 + 8; 1 = M = 2 + 8; 2 = Y = 2 + 4
         game_objects[bullet].mark = 14 ^ (2 << level);
@@ -185,18 +194,89 @@ static void update_objects_level3()
     update_stargate(0.20);
 }
 
+static void GameObjects_ready_special_attack(int i)
+{
+    assert(i == C_OBJECT_OBJ_INDEX);
+    boss.attack_ready = 1;
+}
+
+static void boss_special_attack_bullet(int i)
+{
+    game_objects[i].stencil_flag = SF_EnemyProjectile;
+}
+
+static void boss_special_attack()
+{
+    int attack = GameObject_new_projectile_index();
+    if (attack == -1)
+        return;
+    GameObject_init(attack, 1, SF_Background);
+    GameObject_mark(attack, 14);
+    MovingObject_init_stopped(attack, 0, MO_FORWARD, game_source.basic_source.n_leds - 1, ZI_Projectile);
+    PulseObject_init(attack, 1, PM_FADE, 8, 150, 0, 0, 1, boss_special_attack_bullet);
+    PulseObject_set_color_all(attack, config.color_index_K, config.color_index_W, config.color_index_K, game_source.basic_source.n_leds - 1);
+    boss.attack_ready = 0;
+    printf("special attack %i\n", attack);
+}
+
+
 static void update_objects_level_boss()
 {
-    //TODO -- move boss, change tactics, change weapons and so on...
-    if(roll_dice_poisson(3 * config.enemy_spawn_chance))
+    double pos = MovingObject_get_position(C_OBJECT_OBJ_INDEX);
+    enum MovingObjectFacing f = MovingObject_get_facing(C_OBJECT_OBJ_INDEX);
+    int health = GameObject_get_health(C_OBJECT_OBJ_INDEX);
+    assert(health > 0);
+
+    int low_health_rage = 1 + config.boss_health / health;
+    if (low_health_rage > 5) low_health_rage = 5;
+
+    if(roll_dice_poisson(low_health_rage * config.enemy_spawn_chance))
     {
         int level = (int)(random_01() * 3); //0, 1 or 2 with the same probability
         int color_index = (int[]){ config.color_index_R, config.color_index_G, config.color_index_B }[level];
-        int bullet = GameObject_spawn_enemy_projectile(color_index);
-        assert(bullet >= 0);
-        game_objects[bullet].mark = 2 << level; //bit 0 is used by stencil; this is really not a very good system
+        double boss_end_pos = pos + (f == MO_FORWARD) * MovingObject_get_length(C_OBJECT_OBJ_INDEX);
+        int bullet = GameObject_spawn_enemy_projectile(color_index, boss_end_pos, (pos < config.wraparound_fire_pos));
+        if (bullet != -1)
+        {
+            game_objects[bullet].mark = 2 << level;
+        }
+    }
+    if (MovingObject_get_speed(C_OBJECT_OBJ_INDEX) == 0 && roll_dice_poisson(2))
+    {
+        double target = (pos < config.wraparound_fire_pos) ? pos + 10 : pos + (random_01() - 0.5) * 10;
+        MovingObject_init_movement(C_OBJECT_OBJ_INDEX, config.player_ship_speed, (int)target, MovingObject_stop);
+    }
+    if (pos > config.wraparound_fire_pos && pos < game_source.basic_source.n_leds - config.wraparound_fire_pos) //there is a chance that boss will turn around
+    {
+        if (roll_dice_poisson(0.2))
+        {
+            MovingObject_set_facing(C_PROJCT_OBJ_INDEX, -1 * f);
+        }
+    }
+
+    const uint64_t special_attack_cooldown = 1 * 1e9;
+    if (health < config.boss_health / 4 && game_source.basic_source.current_time - boss.last_special_attack > special_attack_cooldown) //there is a chance for boss special attack
+    {
+        if (roll_dice_poisson(1))
+        {
+            boss.last_special_attack = game_source.basic_source.current_time;
+            PulseObject_init(C_OBJECT_OBJ_INDEX, 1, PM_ONCE, 1, 500, 0, 2 * M_PI / (health / 2), 1, GameObjects_ready_special_attack);
+            PulseObject_set_color_all(C_OBJECT_OBJ_INDEX, config.color_index_player, config.color_index_K, config.color_index_player, health / 2);
+        }
+    }
+    if (boss.attack_ready)
+    {
+        boss_special_attack();
     }
     PlayerObject_update();
+}
+
+void GameObject_debug_boss_special()
+{
+    int health = GameObject_get_health(C_OBJECT_OBJ_INDEX);
+    boss.last_special_attack = game_source.basic_source.current_time;
+    PulseObject_init(C_OBJECT_OBJ_INDEX, 1, PM_ONCE, 1, 500, 0, 2 * M_PI / (health / 2), 1, GameObjects_ready_special_attack);
+    PulseObject_set_color_all(C_OBJECT_OBJ_INDEX, config.color_index_player, config.color_index_K, config.color_index_player, health / 2);
 }
 
 static void GameObject_update_objects()
@@ -298,12 +378,12 @@ void OnArrival_stargate_decoration(int i)
     int dec_length = MovingObject_get_length(i);
     if (i == 1 || i == 2)
     {
-        MovingObject_init_stopped(i, sg_start, MO_FORWARD, dec_length, 8);
+        MovingObject_init_stopped(i, sg_start, MO_FORWARD, dec_length, ZI_Background_mid);
         MovingObject_init_movement(i, config.decoration_speed, sg_start + sg_width / 2 - dec_length, OnArrival_stargate_decoration);
     }
     else
     {
-        MovingObject_init_stopped(i, sg_start + sg_width, MO_BACKWARD, dec_length, 8);
+        MovingObject_init_stopped(i, sg_start + sg_width, MO_BACKWARD, dec_length, ZI_Background_mid);
         MovingObject_init_movement(i, config.decoration_speed, sg_start + sg_width / 2, OnArrival_stargate_decoration);
     }
 }
@@ -316,7 +396,7 @@ static void stargate_init()
     int stargate_width = 40;
     int stargate_start = 5;
     GameObject_init(0, 1, SF_Enemy);
-    MovingObject_init_stopped(0, stargate_start, MO_FORWARD, stargate_width, 9);
+    MovingObject_init_stopped(0, stargate_start, MO_FORWARD, stargate_width, ZI_Background_far);
     PulseObject_init_steady(0, config.color_index_stargate, stargate_width);
 
     //decorations
@@ -327,7 +407,7 @@ static void stargate_init()
         int dir = (dec < 3) ? +1 : -1;
         GameObject_init(dec, 1, SF_Background);
         MovingObject_init_stopped(dec, stargate_start + (dec - dir - (dir < 0)) * stargate_width / 4,
-            dir, dec_length, 8);
+            dir, dec_length, ZI_Background_mid);
         MovingObject_init_movement(dec, config.decoration_speed, stargate_start + stargate_width / 2 - (dir > 0) * dec_length, OnArrival_stargate_decoration);
         PulseObject_init_steady(dec, 0, dec_length);
         for (int led = 0; led < dec_length; ++led)
@@ -342,24 +422,26 @@ static void boss_init()
 {
     //init boss
     GameObject_init(C_OBJECT_OBJ_INDEX, config.boss_health, SF_Enemy);
-    MovingObject_init_stopped(C_OBJECT_OBJ_INDEX, 10, MO_FORWARD, config.boss_health / 2, 2);
-    PulseObject_init_steady(C_OBJECT_OBJ_INDEX, config.color_index_player, config.boss_health / 2);
+    MovingObject_init_stopped(C_OBJECT_OBJ_INDEX, 10, MO_FORWARD, config.boss_health / 2 + 1, ZI_Ship);
+    PulseObject_init_steady(C_OBJECT_OBJ_INDEX, config.color_index_player, config.boss_health / 2 + 1);
+    PulseObject_set_color(C_OBJECT_OBJ_INDEX, config.color_index_boss_head, config.color_index_boss_head, config.color_index_boss_head, config.boss_health / 2);
 
     //init decorations that mark area where shooting backwards is possible
+    int decor_len = 3;
     GameObject_init(C_BKGRND_OBJ_INDEX, 1, SF_Background);
-    MovingObject_init_stopped(C_BKGRND_OBJ_INDEX, 40, MO_FORWARD, 3, 8);
-    PulseObject_init_steady(C_BKGRND_OBJ_INDEX, config.color_index_stargate, 3);
+    MovingObject_init_stopped(C_BKGRND_OBJ_INDEX, config.wraparound_fire_pos, MO_FORWARD, decor_len, ZI_Background_far);
+    PulseObject_init_steady(C_BKGRND_OBJ_INDEX, config.color_index_stargate, decor_len);
 
     GameObject_init(C_BKGRND_OBJ_INDEX + 1, 1, SF_Background);
-    MovingObject_init_stopped(C_BKGRND_OBJ_INDEX + 1, game_source.basic_source.n_leds - 40 - 3, MO_BACKWARD, 3, 8);
-    PulseObject_init_steady(C_BKGRND_OBJ_INDEX + 1, config.color_index_stargate, 3);
+    MovingObject_init_stopped(C_BKGRND_OBJ_INDEX + 1, game_source.basic_source.n_leds - config.wraparound_fire_pos - decor_len, MO_BACKWARD, decor_len, ZI_Background_far);
+    PulseObject_init_steady(C_BKGRND_OBJ_INDEX + 1, config.color_index_stargate, decor_len);
 }
 
 static void game_over_init()
 {
     int l = game_source.basic_source.n_leds - 10;
     GameObject_init(0, 0, SF_Background);
-    MovingObject_init_stopped(0, 5, MO_FORWARD, l, 0);
+    MovingObject_init_stopped(0, 5, MO_FORWARD, l, ZI_always_visible);
     PulseObject_init(0, 1, PM_REPEAT, 2, 5000, 0, 3 * M_PI / l, 10., NULL);
     PulseObject_set_color_all(0, config.color_index_game_over, config.color_index_K, 0, l);
 }
@@ -379,17 +461,34 @@ void OnArrival_victory_message(int i)
     }
 }
 
+void OnArrival_wrap_around(int i)
+{
+    int len = MovingObject_get_length(i);
+    double pos = MovingObject_get_position(i);
+    double new_pos = -1;
+    if (pos < 2)
+    {
+        new_pos = game_source.basic_source.n_leds - len - 2;
+    }
+    if (pos > game_source.basic_source.n_leds - len - 2)
+    {
+        new_pos = 1;
+    }
+    assert(new_pos != -1);
+    MovingObject_set_position(i, new_pos);
+}
+
 static void show_victory_message(char* message)
 {
     int msg_len = strlen(message);
     assert(9 * msg_len < MAX_OBJECT_LENGTH);
 
     GameObject_init(0, 1, SF_Background);
-    MovingObject_init_stopped(0, 1, MO_FORWARD, 9 * msg_len + 1, 0);
+    MovingObject_init_stopped(0, 1, MO_FORWARD, 9 * msg_len + 1, ZI_always_visible);
     MovingObject_init_movement(0, 0.1, game_source.basic_source.n_leds - 9 * msg_len - 2, OnArrival_victory_message);
     MovingObject_set_render_mode(0, 2);
     PulseObject_init(0, 1, PM_REPEAT, 0, 1000, 0, 0, 0.5, NULL);
-    PulseObject_set_color(0, config.color_index_R, config.color_index_R, config.color_index_R, 0);
+    PulseObject_set_color(0, config.color_index_R, config.color_index_R, config.color_index_R, ZI_always_visible);
     for (int i = 0; i < msg_len; i++)
     {
         char c = message[i];
@@ -458,11 +557,12 @@ void GameObjects_player_reached_gate()
     }
 }
 
-void GameObjects_shrink_boss()
+static void GameObjects_shrink_boss(int i)
 {
     int health = GameObject_get_health(C_OBJECT_OBJ_INDEX);
-    MovingObject_init_stopped(C_OBJECT_OBJ_INDEX, 10, MO_FORWARD, health / 2, 2);
-    PulseObject_init_steady(C_OBJECT_OBJ_INDEX, config.color_index_player, health / 2);
+    MovingObject_init_stopped(C_OBJECT_OBJ_INDEX, 10, MO_FORWARD, health / 2 + 1, ZI_Ship);
+    PulseObject_init_steady(C_OBJECT_OBJ_INDEX, config.color_index_player, health / 2 + 1);
+    PulseObject_set_color(C_OBJECT_OBJ_INDEX, config.color_index_boss_head, config.color_index_boss_head, config.color_index_boss_head, health / 2);
 }
 
 void GameObjects_boss_hit(int i)
@@ -475,7 +575,7 @@ void GameObjects_boss_hit(int i)
         printf("Boss defeated\n");
     }
     int len = MovingObject_get_length(C_OBJECT_OBJ_INDEX);
-    PulseObject_init(C_OBJECT_OBJ_INDEX, 1, PM_ONCE, 2, 100, 0, 0, 1, GameObjects_shrink_boss);
+    PulseObject_init(C_OBJECT_OBJ_INDEX, 1, PM_ONCE, 2, 300, 0, 0, 1, GameObjects_shrink_boss);
     PulseObject_set_color_all(C_OBJECT_OBJ_INDEX, config.color_index_player, config.color_index_R, config.color_index_player, len);
 }
 
@@ -504,6 +604,8 @@ void GameObjects_next_level()
 
 /*! The sequence of actions during one loop:
 *   - process inputs - this may include timers?
+*   - update objects, spawn new ones
+*   - calculate movement -- from this moment no new object can be spawned
 *   - process collisions using stencil buffer -- this may also trigger events
 *   - process colors for blinking objects
 *   - move and render all objects
