@@ -559,6 +559,7 @@ void GameObjects_player_reached_gate()
 
 static void GameObjects_shrink_boss(int i)
 {
+    assert(i == C_OBJECT_OBJ_INDEX);
     int health = GameObject_get_health(C_OBJECT_OBJ_INDEX);
     MovingObject_init_stopped(C_OBJECT_OBJ_INDEX, 10, MO_FORWARD, health / 2 + 1, ZI_Ship);
     PulseObject_init_steady(C_OBJECT_OBJ_INDEX, config.color_index_player, health / 2 + 1);

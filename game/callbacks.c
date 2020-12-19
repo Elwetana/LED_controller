@@ -63,4 +63,8 @@ void OnEnd_resume(int i)
 {
     MovingObject_resume(i, GameObject_delete_object);
     GameObject_clear_mark(i, 1);
+    int level = GameObject_get_mark(i);
+    int color = (level & 2) / 2 + 2 * (level & 4) / 4 + 3 * (level & 8) / 8 - 1;
+    int color_index = (int[]){ config.color_index_R, config.color_index_G, config.color_index_B } [color];
+    PulseObject_init_steady(i, color_index, 1);
 }

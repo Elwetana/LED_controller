@@ -169,11 +169,11 @@ void MovingObject_resume(int mi, void(*new_on_arrival)(int))
 static void render_with_z_test(ws2811_led_t color, double alpha, ws2811_led_t* leds, int led, enum ZdepthIndex zdepth)
 {
     assert(led >= 0 && led < game_source.basic_source.n_leds);
-    if (canvas[led].zbuffer < zdepth)
+    if (canvas[led].zbuffer < (int)zdepth)
     {
         return;
     }
-    if (canvas[led].zbuffer > zdepth)
+    if (canvas[led].zbuffer > (int)zdepth)
     {
         leds[led] = multiply_rgb_color(color, alpha);
         canvas[led].zbuffer = zdepth;
