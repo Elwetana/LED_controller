@@ -294,20 +294,31 @@ void update_boss_defeat()
     {
         return;
     }
-    int i = GameObject_new_projectile_index();
-    if (i == -1)
+    int ii[2];
+    ii[0] = GameObject_new_projectile_index();
+    if(ii[0] == -1)
     {
         printf("Not enough confetti\n");
         return;
     }
+    GameObject_init(ii[0], 1, SF_Background);
+    ii[1] = GameObject_new_projectile_index();
+    if (ii[1] == -1)
+    {
+        printf("Not enough confetti\n");
+        return;
+    }
+    GameObject_init(ii[1], 1, SF_Background);
     int conf_len = 3;
-    GameObject_init(i, 1, SF_Background);
-    MovingObject_init_stopped(i, 100, MO_FORWARD, conf_len, ZI_Background_near);
-    MovingObject_init_movement(i, config.player_ship_speed, 199, GameObject_delete_object);
-    //PulseObject_init(i, 1, PM_STEADY, 1, 0, 0, 0, 1)
-    PulseObject_init_steady(i, config.color_index_K, conf_len);
-    PulseObject_set_color(i, 0, 0, config.color_index_R, 1);
-    PulseObject_set_color(i, 0, 0, config.color_index_boss_head, 2);
+    for(int conf = 0; conf < 2; ++conf)
+    {
+        int i = ii[conf];
+        MovingObject_init_stopped(i, 100, 2 * conf - 1, conf_len, ZI_Background_near);
+        MovingObject_init_movement(i, 6 * config.player_ship_speed, conf * (199 - conf_len), GameObject_delete_object);
+        PulseObject_init_steady(i, config.color_index_K, conf_len);
+        PulseObject_set_color(i, 0, 0, config.color_index_R, 1);
+        PulseObject_set_color(i, 0, 0, config.color_index_boss_head, 2);
+    }
     boss.confetti_thrown++;
     boss.last_confetti = game_source.basic_source.current_time;
 }
