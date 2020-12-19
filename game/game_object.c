@@ -56,7 +56,10 @@ typedef struct GameObject
 static struct
 {
     uint64_t last_special_attack;
-    int attack_ready;
+    int attack_ready; 
+    uint64_t last_turn_around;
+    uint64_t last_confetti;
+    uint64_t confetti_thrown;
 } boss;
 
 static game_object_t game_objects[MAX_N_OBJECTS];
@@ -80,13 +83,14 @@ int GameObject_new_projectile_index()
 }
 
 
-static int GameObject_spawn_enemy_projectile(int color_index, double pos, int delete_or_wrap)
+static int GameObject_spawn_enemy_projectile(int color_index, double pos, enum MovingObjectFacing direction, int delete_or_wrap)
 {
     int i = GameObject_new_projectile_index();
     if (i == -1) return -1;
+    int target = direction == MO_FORWARD ? game_source.basic_source.n_leds - 2 : 1;
     MovingObject_init_stopped(i, pos, MO_FORWARD, 1, ZI_Projectile);
     PulseObject_init_steady(i, color_index, 1);
-    MovingObject_init_movement(i, config.enemy_speed, game_source.basic_source.n_leds - 3, (delete_or_wrap ? GameObject_delete_object : OnArrival_wrap_around));
+    MovingObject_init_movement(i, config.enemy_speed, target, (delete_or_wrap ? GameObject_delete_object : OnArrival_wrap_around));
     GameObject_init(i, 1, SF_EnemyProjectile);
     return i;
 }
@@ -115,7 +119,7 @@ int GameObject_resolve_projectile_collision(int bullet1, int bullet2)
 
 void GameObject_debug_projectile()
 {
-    GameObject_spawn_enemy_projectile(config.color_index_W, 2, 1);
+    GameObject_spawn_enemy_projectile(config.color_index_W, 2, MO_FORWARD, 1);
 }
 
 /*!
@@ -155,7 +159,7 @@ static void update_objects_level1()
     if (roll_dice_poisson(config.enemy_spawn_chance))
     {
         double stargate_centre = MovingObject_get_position(0) + MovingObject_get_length(0) / 2;
-        int bullet = GameObject_spawn_enemy_projectile(config.color_index_G, stargate_centre, 1);
+        int bullet = GameObject_spawn_enemy_projectile(config.color_index_G, stargate_centre, MO_FORWARD, 1);
         assert(bullet >= 0);
         game_objects[bullet].mark = 4;
     }
@@ -170,7 +174,7 @@ static void update_objects_level2()
         int level = (int)(random_01() * 3); //0, 1 or 2 with the same probability
         int color_index = (int[]){ config.color_index_R, config.color_index_G, config.color_index_B }[level];
         double stargate_centre = MovingObject_get_position(0) + MovingObject_get_length(0) / 2;
-        int bullet = GameObject_spawn_enemy_projectile(color_index, stargate_centre, 1);
+        int bullet = GameObject_spawn_enemy_projectile(color_index, stargate_centre, MO_FORWARD, 1);
         assert(bullet >= 0);
         game_objects[bullet].mark = 2 << level; //bit 0 is used by stencil; this is really not a very good system
     }
@@ -185,7 +189,7 @@ static void update_objects_level3()
         int level = (int)(random_01() * 3); //0, 1 or 2 with the same probability
         int color_index = (int[]){ config.color_index_C, config.color_index_M, config.color_index_Y }[level];
         double stargate_centre = MovingObject_get_position(0) + MovingObject_get_length(0) / 2;
-        int bullet = GameObject_spawn_enemy_projectile(color_index, stargate_centre, 1);
+        int bullet = GameObject_spawn_enemy_projectile(color_index, stargate_centre, MO_FORWARD, 1);
         assert(bullet >= 0);
         //level 0 = C = 4 + 8; 1 = M = 2 + 8; 2 = Y = 2 + 4
         game_objects[bullet].mark = 14 ^ (2 << level);
@@ -235,7 +239,7 @@ static void update_objects_level_boss()
         int level = (int)(random_01() * 3); //0, 1 or 2 with the same probability
         int color_index = (int[]){ config.color_index_R, config.color_index_G, config.color_index_B }[level];
         double boss_end_pos = pos + (f == MO_FORWARD) * MovingObject_get_length(C_OBJECT_OBJ_INDEX);
-        int bullet = GameObject_spawn_enemy_projectile(color_index, boss_end_pos, (pos < config.wraparound_fire_pos));
+        int bullet = GameObject_spawn_enemy_projectile(color_index, boss_end_pos, f, (pos < config.wraparound_fire_pos));
         if (bullet != -1)
         {
             game_objects[bullet].mark = 2 << level;
@@ -243,14 +247,18 @@ static void update_objects_level_boss()
     }
     if (MovingObject_get_speed(C_OBJECT_OBJ_INDEX) == 0 && roll_dice_poisson(2))
     {
-        double target = (pos < config.wraparound_fire_pos) ? pos + 10 : pos + (random_01() - 0.5) * 10;
+        double target = (pos < config.wraparound_fire_pos) ? pos + 10 : pos + (random_01() - 0.5) * 6;
         MovingObject_init_movement(C_OBJECT_OBJ_INDEX, config.player_ship_speed, (int)target, MovingObject_stop);
     }
-    if (pos > config.wraparound_fire_pos && pos < game_source.basic_source.n_leds - config.wraparound_fire_pos) //there is a chance that boss will turn around
+
+    const uint64_t turn_around_cooldown = 5 * 1e9;
+    if (pos > config.wraparound_fire_pos && pos < game_source.basic_source.n_leds - config.wraparound_fire_pos &&
+        game_source.basic_source.current_time - boss.last_turn_around > turn_around_cooldown) //there is a chance that boss will turn around
     {
-        if (roll_dice_poisson(0.2))
+        if (roll_dice_poisson(0.5))
         {
             MovingObject_set_facing(C_PROJCT_OBJ_INDEX, -1 * f);
+            boss.last_turn_around = game_source.basic_source.current_time;
         }
     }
 
@@ -279,6 +287,31 @@ void GameObject_debug_boss_special()
     PulseObject_set_color_all(C_OBJECT_OBJ_INDEX, config.color_index_player, config.color_index_K, config.color_index_player, health / 2);
 }
 
+void update_boss_defeat()
+{
+    const uint64_t confetti_cooldown = 500 * 1e6;
+    if (game_source.basic_source.current_time - boss.last_confetti < confetti_cooldown)
+    {
+        return;
+    }
+    int i = GameObject_new_projectile_index();
+    if (i == -1)
+    {
+        printf("Not enough confetti\n");
+        return;
+    }
+    int conf_len = 3;
+    GameObject_init(i, 1, SF_Background);
+    MovingObject_init_stopped(i, 100, MO_FORWARD, conf_len, ZI_Background_near);
+    MovingObject_init_movement(i, config.player_ship_speed, 199, GameObject_delete_object);
+    //PulseObject_init(i, 1, PM_STEADY, 1, 0, 0, 0, 1)
+    PulseObject_init_steady(i, config.color_index_K, conf_len);
+    PulseObject_set_color(i, 0, 0, config.color_index_R, 1);
+    PulseObject_set_color(i, 0, 0, config.color_index_boss_head, 2);
+    boss.confetti_thrown++;
+    boss.last_confetti = game_source.basic_source.current_time;
+}
+
 static void GameObject_update_objects()
 {
     if (next_mode != current_mode)
@@ -303,7 +336,9 @@ static void GameObject_update_objects()
     case GM_LEVEL1_WON:
     case GM_LEVEL2_WON:
     case GM_LEVEL3_WON:
+        break;
     case GM_LEVEL_BOSS_WON:
+        update_boss_defeat();
         break;
     case GM_PLAYER_LOST:
         break;
@@ -517,9 +552,12 @@ static void GameObjects_init_objects()
     case GM_LEVEL1_WON:
     case GM_LEVEL2_WON:
     case GM_LEVEL3_WON:
-    case GM_LEVEL_BOSS_WON:
         //spawn victory message
         show_victory_message(win_messages[current_mode]);
+        break;
+    case GM_LEVEL_BOSS_WON:
+        boss.confetti_thrown = 0;
+        boss.last_confetti = 0;
         break;
     case GM_PLAYER_LOST:
         //spawn game over
