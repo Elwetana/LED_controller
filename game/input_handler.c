@@ -74,7 +74,7 @@ void InputHandler_init(enum GameModes game_mode)
         button_handlers[C_MAX_XBTN + DPAD_R] = PlayerObject_move_right;
         button_handlers[C_MAX_XBTN + DPAD_U] = PlayerObject_hide_above;
         button_handlers[C_MAX_XBTN + DPAD_D] = PlayerObject_hide_below;
-        button_handlers[C_MAX_XBTN + XBTN_A] = GameObject_debug_win;
+        //button_handlers[C_MAX_XBTN + XBTN_A] = GameObject_debug_win;
         //button_handlers[C_MAX_XBTN + XBTN_X] = ButtonHandler_debug_heal;
         break;
     case GM_LEVEL_BOSS:
@@ -85,7 +85,7 @@ void InputHandler_init(enum GameModes game_mode)
         button_handlers[C_MAX_XBTN + XBTN_A] = PlayerObject_fire_bullet_green;
         button_handlers[C_MAX_XBTN + XBTN_B] = PlayerObject_fire_bullet_red;
         button_handlers[C_MAX_XBTN + XBTN_X] = PlayerObject_fire_bullet_blue;
-        button_handlers[C_MAX_XBTN + XBTN_Y] = PlayerObject_cloak; //GameObject_debug_win;//GameObject_debug_boss_special;
+        button_handlers[C_MAX_XBTN + XBTN_Y] = PlayerObject_cloak; //*/GameObject_debug_win;//GameObject_debug_boss_special;
         break;
     case GM_PLAYER_LOST:
         button_handlers[C_MAX_XBTN + XBTN_Start] = ButtonHandler_restart_game;
@@ -93,11 +93,11 @@ void InputHandler_init(enum GameModes game_mode)
     case GM_LEVEL1_WON:
     case GM_LEVEL2_WON:
     case GM_LEVEL3_WON:
-    case GM_LEVEL_BOSS_DEFEATED:
         button_handlers[C_MAX_XBTN + XBTN_X] = ButtonHandler_next_level;
         button_handlers[C_MAX_XBTN + XBTN_Y] = ButtonHandler_next_level;
         button_handlers[C_MAX_XBTN + XBTN_A] = ButtonHandler_next_level;
         button_handlers[C_MAX_XBTN + XBTN_B] = ButtonHandler_next_level;
+    case GM_LEVEL_BOSS_DEFEATED:
     case GM_LEVEL_BOSS_WON:
         break;
     }

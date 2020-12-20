@@ -313,7 +313,7 @@ void PlayerObject_take_hit(int pi)
     (void)pi;
 
     void (*callback)(int);
-    int health = 4;// GameObject_take_hit(C_PLAYER_OBJ_INDEX);
+    int health = GameObject_take_hit(C_PLAYER_OBJ_INDEX);
     if (health <= 0)
     {
         //game over

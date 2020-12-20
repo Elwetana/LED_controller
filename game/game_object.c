@@ -33,15 +33,15 @@ const int C_OBJECT_OBJ_INDEX = 32; //ships and asteroids
 const int C_PROJCT_OBJ_INDEX = 128; //projectiles
 
 char win_messages[GM_PLAYER_LOST][16] = {
-    "     ",
-    "~   ~",
-    "  ~  ",
-    "~~~~~",
-    "     ",
-    " ~~  "
-    "",
-    "",
-    "Boss defeated"
+    "     ", //level 1
+    "~   ~", //level 1 won
+    "  ~  ", //level 2
+    "~~~~~", //level 2 won
+    "     ", //level 3
+    " ~~  ", //level 3 won
+    "",      //level boss
+    "",      //level boss defeated
+    "Boss defeated"  //level boss won
 };
 
 
@@ -64,8 +64,8 @@ static struct
 } boss;
 
 static game_object_t game_objects[MAX_N_OBJECTS];
-static enum GameModes current_mode = GM_LEVEL_BOSS;
-static enum GameModes next_mode = GM_LEVEL_BOSS; //<! flag to be set when the mode is changed in the next update
+static enum GameModes current_mode = GM_LEVEL1;
+static enum GameModes next_mode = GM_LEVEL1; //<! flag to be set when the mode is changed in the next update
 
 
 static int get_free_index(int min, int max, char* error_message)
@@ -339,6 +339,10 @@ void update_boss_defeat()
     }
     boss.confetti_thrown++;
     boss.last_confetti = game_source.basic_source.current_time;
+    if(boss.confetti_thrown > 40)
+    {
+        next_mode = GM_LEVEL_BOSS_WON;
+    }
 }
 
 static void GameObject_update_objects()
