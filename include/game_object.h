@@ -59,6 +59,8 @@ void GameObjects_set_mode_player_lost(int i);
 void GameObjects_boss_hit(int i);
 int GameObject_resolve_projectile_collision(int bullet1, int bullet2);
 void OnArrival_wrap_around(int i);
+void GameObjects_set_level_by_message(char* message);
+void GameObjects_restart_lost_level();
 
 void GameObject_init(int gi, int health, int stencil_flag);
 void GameObject_delete_object(int gi);

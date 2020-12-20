@@ -33,15 +33,15 @@ const int C_OBJECT_OBJ_INDEX = 32; //ships and asteroids
 const int C_PROJCT_OBJ_INDEX = 128; //projectiles
 
 char win_messages[GM_PLAYER_LOST][16] = {
-    "     ", //level 1
-    "~   ~", //level 1 won
-    "  ~  ", //level 2
-    "~~~~~", //level 2 won
-    "     ", //level 3
-    " ~~  ", //level 3 won
-    "",      //level boss
-    "",      //level boss defeated
-    "Boss defeated"  //level boss won
+    "Alpha", //level 1
+    "Beta", //level 1 won
+    "Gama", //level 2
+    "Delta", //level 2 won
+    "Epsilon", //level 3
+    "Zeta", //level 3 won
+    "Eta",      //level boss
+    "Theta",      //level boss defeated
+    "Iota"  //level boss won
 };
 
 
@@ -66,7 +66,7 @@ static struct
 static game_object_t game_objects[MAX_N_OBJECTS];
 static enum GameModes current_mode = GM_LEVEL1;
 static enum GameModes next_mode = GM_LEVEL1; //<! flag to be set when the mode is changed in the next update
-
+static enum GameModes prev_mode = GM_LEVEL1;
 
 static int get_free_index(int min, int max, char* error_message)
 {
@@ -349,6 +349,8 @@ static void GameObject_update_objects()
 {
     if (next_mode != current_mode)
     {
+        printf("Changing mode from %i to %i\n", current_mode, next_mode);
+        prev_mode = current_mode;
         current_mode = next_mode;
         GameObjects_init();
     }
@@ -666,14 +668,34 @@ void GameObjects_set_mode_player_lost(int i)
     printf("player lost\n");
 }
 
-
 void GameObjects_next_level()
 {
     //there is a timeout after winning previous level during which we can proceed
     const uint64_t timeout = 2 * 1e9;
     if (game_source.basic_source.current_time - game_objects[0].time < timeout) return;
-    next_mode = current_mode + 1;
-    printf("advancing to next level\n");
+    if (current_mode != GM_PLAYER_LOST)
+    {
+        next_mode = current_mode + 1;
+        printf("advancing to next level\n");
+    }
+}
+
+void GameObjects_set_level_by_message(char* message)
+{
+    for (int i = 0; i < (int)GM_PLAYER_LOST; ++i)
+    {
+        if (_stricmp(message, win_messages[i]) == 0)
+        {
+            printf("setting mode %i\n", i);
+            next_mode = i;
+            break;
+        }
+    }
+}
+
+void GameObjects_restart_lost_level()
+{
+    next_mode = prev_mode;
 }
 
 /*! The sequence of actions during one loop:

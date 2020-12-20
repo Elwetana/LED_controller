@@ -60,7 +60,7 @@ void Game_source_init_objects()
     GameObjects_init();
 }
 
-//msg = color?xxxxxx
+//msg = mode?xxxxxx
 void GameSource_process_message(const char* msg)
 {
     char* sep = strchr(msg, '?');
@@ -85,13 +85,11 @@ void GameSource_process_message(const char* msg)
     strncpy(payload, sep + 1, 64);
     target[sep - msg] = 0x0;
     payload[63] = 0x0;
-    if (!strncasecmp(target, "color", 5))
+    if (!strncasecmp(target, "mode", 5))
     {
-        int col;
-        col = (int)strtol(payload, NULL, 16);
-        game_source.basic_source.gradient.colors[0] = col;
-        game_source.first_update = 0;
-        printf("Switched colour in GameSource to: %s = %x\n", payload, col);
+        enum GameModes gm_before = GameObjects_get_current_mode();
+        GameObjects_set_level_by_message(payload);
+        printf("Sent code: %s, game mode before: %i\n", payload, gm_before);
     }
     else
         printf("GameSource: Unknown target: %s, payload was: %s\n", target, payload);

@@ -28,25 +28,6 @@
 //handlers of the button events, the lower half is on_release
 static void(*button_handlers[2 * C_MAX_XBTN])();
 
-/*!
- * @brief Set facing to left
- * If we are already facing left, do nothing, otherwise we must change the position
-*/
-static void ButtonHandler_face_player_backward()
-{
-    MovingObject_set_facing(C_PLAYER_OBJ_INDEX, MO_BACKWARD);
-}
-
-static void ButtonHandler_face_player_forward()
-{
-    MovingObject_set_facing(C_PLAYER_OBJ_INDEX, MO_FORWARD);
-}
-
-static void ButtonHandler_restart_game()
-{
-    GameObjects_init();
-}
-
 static void ButtonHandler_next_level()
 {
     GameObjects_next_level();
@@ -55,6 +36,11 @@ static void ButtonHandler_next_level()
 static void ButtonHandler_debug_game_over()
 {
     GameObjects_set_mode_player_lost(C_PLAYER_OBJ_INDEX);
+}
+
+static void ButtonHandler_start_from_level1()
+{
+    GameObjects_set_level_by_message("Alpha");
 }
 
 void InputHandler_init(enum GameModes game_mode)
@@ -68,27 +54,29 @@ void InputHandler_init(enum GameModes game_mode)
     case GM_LEVEL1:
     case GM_LEVEL2:
     case GM_LEVEL3:
-        button_handlers[C_MAX_XBTN + XBTN_LB] = ButtonHandler_face_player_backward;
-        button_handlers[C_MAX_XBTN + XBTN_RB] = ButtonHandler_face_player_forward;
+        button_handlers[C_MAX_XBTN + XBTN_LB] = PlayerObject_face_backward;
+        button_handlers[C_MAX_XBTN + XBTN_RB] = PlayerObject_face_forward;
         button_handlers[C_MAX_XBTN + DPAD_L] = PlayerObject_move_left;
         button_handlers[C_MAX_XBTN + DPAD_R] = PlayerObject_move_right;
         button_handlers[C_MAX_XBTN + DPAD_U] = PlayerObject_hide_above;
         button_handlers[C_MAX_XBTN + DPAD_D] = PlayerObject_hide_below;
         //button_handlers[C_MAX_XBTN + XBTN_A] = GameObject_debug_win;
         //button_handlers[C_MAX_XBTN + XBTN_X] = ButtonHandler_debug_heal;
+        button_handlers[C_MAX_XBTN + XBTN_Back] = ButtonHandler_debug_game_over;
         break;
     case GM_LEVEL_BOSS:
-        button_handlers[C_MAX_XBTN + XBTN_LB] = ButtonHandler_face_player_backward;
-        button_handlers[C_MAX_XBTN + XBTN_RB] = ButtonHandler_face_player_forward;
+        button_handlers[C_MAX_XBTN + XBTN_LB] = PlayerObject_face_backward;
+        button_handlers[C_MAX_XBTN + XBTN_RB] = PlayerObject_face_forward;
         button_handlers[C_MAX_XBTN + DPAD_L] = PlayerObject_move_left;
         button_handlers[C_MAX_XBTN + DPAD_R] = PlayerObject_move_right;
         button_handlers[C_MAX_XBTN + XBTN_A] = PlayerObject_fire_bullet_green;
         button_handlers[C_MAX_XBTN + XBTN_B] = PlayerObject_fire_bullet_red;
         button_handlers[C_MAX_XBTN + XBTN_X] = PlayerObject_fire_bullet_blue;
         button_handlers[C_MAX_XBTN + XBTN_Y] = PlayerObject_cloak; //*/GameObject_debug_win;//GameObject_debug_boss_special;
+        button_handlers[C_MAX_XBTN + XBTN_Back] = ButtonHandler_debug_game_over;
         break;
     case GM_PLAYER_LOST:
-        button_handlers[C_MAX_XBTN + XBTN_Start] = ButtonHandler_restart_game;
+        button_handlers[C_MAX_XBTN + XBTN_Start] = GameObjects_restart_lost_level;
         break;
     case GM_LEVEL1_WON:
     case GM_LEVEL2_WON:
@@ -101,7 +89,7 @@ void InputHandler_init(enum GameModes game_mode)
     case GM_LEVEL_BOSS_WON:
         break;
     }
-    button_handlers[C_MAX_XBTN + XBTN_Back] = ButtonHandler_debug_game_over;
+    button_handlers[C_MAX_XBTN + XBTN_Xbox] = ButtonHandler_start_from_level1;
 }
 
 

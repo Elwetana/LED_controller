@@ -128,6 +128,16 @@ void PlayerObject_move_right()
     MovingObject_init_movement(C_PLAYER_OBJ_INDEX, config.player_ship_speed, (uint32_t)pos + 1, MovingObject_stop);
 }
 
+void PlayerObject_face_backward()
+{
+    MovingObject_set_facing(C_PLAYER_OBJ_INDEX, MO_BACKWARD);
+}
+
+void PlayerObject_face_forward()
+{
+    MovingObject_set_facing(C_PLAYER_OBJ_INDEX, MO_FORWARD);
+}
+
 static int is_player_bullet(int pb_index)
 {
 #ifdef  GAME_DEBUG
