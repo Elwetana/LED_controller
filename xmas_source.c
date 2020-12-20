@@ -616,6 +616,33 @@ static int update_leds_icicles(ws2811_t* ledstrip)
 
 #pragma endregion
 
+#pragma region Gradient
+
+const int XMAS_GRAD_START = 12;
+const int XMAS_GRAD_LEN = 19;
+
+static unsigned long start_time = 0;
+
+static void Gradient_init()
+{
+    start_time = current_time_in_ms();
+}
+
+static int update_leds_gradient(ws2811_t* ledstrip)
+{
+    unsigned int time_shift = (current_time_in_ms() - start_time) / 200;
+    for (int led = 0; led < xmas_source.basic_source.n_leds; ++led)
+    {
+        int segment = led / XMAS_GRAD_LEN;
+        int is_even = (segment + 1) % 2;
+        int grad_index = (is_even * (XMAS_GRAD_LEN - 1 - led + time_shift) - (is_even - 1) * (led + time_shift)) % XMAS_GRAD_LEN;
+        ledstrip->channel[0].leds[led] = xmas_source.basic_source.gradient.colors[grad_index];
+    }
+    return 1;
+}
+
+#pragma endregion
+
 #pragma region XmasSource
 
 static int update_leds_debug(ws2811_t* ledstrip)
@@ -645,6 +672,8 @@ XMAS_MODE_t string_to_xmas_mode(const char* txt)
         return XM_GLITTER;
     if (strcasecmp(txt, "glitter2") == 0)
         return XM_GLITTER2;
+    if (strcasecmp(txt, "gradient") == 0)
+        return XM_GRADIENT;
     return N_XMAS_MODES;
 }
 
@@ -833,6 +862,8 @@ int XmasSource_update_leds(int frame, ws2811_t* ledstrip)
         return update_leds_glitter(ledstrip);
     case XM_ICICLES:
         return update_leds_icicles(ledstrip);
+    case XM_GRADIENT:
+        return update_leds_gradient(ledstrip);
     case XM_DEBUG:
         return update_leds_debug(ledstrip);
     case N_XMAS_MODES:
@@ -860,6 +891,8 @@ void XmasSource_destruct_current_mode()
         free(snowflakes);
         free(diff_data);
         free(spec_data);
+        break;
+    case XM_GRADIENT:
         break;
     case N_XMAS_MODES:
         break;
@@ -891,6 +924,9 @@ void XmasSource_init_current_mode()
         break;
     case XM_SNOWFLAKES:
         Snowflakes_init();
+        break;
+    case XM_GRADIENT:
+        Gradient_init();
         break;
     case N_XMAS_MODES:
         break;

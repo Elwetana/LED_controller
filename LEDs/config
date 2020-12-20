@@ -10,9 +10,9 @@ MORSE 3
 0x000000  1 0xFFFFFF  1 0xFF0000  6 0x0000FF
 DISCO 3
 0x00FF08  5 0x004CFF  5 0xFF00A2  5 0xFFB300
-XMAS 9
-#0:debug-1:glt1 green-2:glt1 red-3:glt1 orange/glt2 star-4:glt1 purple/glt2 sky-5:glt1 blue-6:Icicle start-9:Icicle end-10:Snowflake-11:SF ray
-0xA0A0A0 1 0x102801 1 0x3A0800 1 0xDD992C 1 0x0F001B 1 0x000B22 1 0x05344a 4 0x080011 0 0x1a3c80 2 0x0d1e40
+XMAS 12
+#0:debug-1:glt1 green-2:glt1 red-3:glt1 orange/glt2 star-4:glt1 purple/glt2 sky-5:glt1 blue-6:Icicle start-9:Icicle end-10:Snowflake-11:SF ray-12:Grad start-21:Grad mid-30:Grad end
+0xA0A0A0 1 0x102801 1 0x3A0800 1 0xDD992C 1 0x0F001B 1 0x000B22 1 0x05344a 4 0x080011 0 0x1a3c80 2 0x0d1e40 0 0xff008c 9 0xe68b00 10 0x166600
 GAME 17
 ;0:index R-1:index G -2:index B  -3:index C  -4:index M  -5:index Y  -6:index W  -7:index K  -8:P low   -9:P mid  -10:P hgh  -11:P healthy-12:P sick  -13:game over-14:stargate-17:SG deco-18:boss head
 0xFF0000  1 0x00FF00  1 0x0000FF  1 0x00FFFF  1 0xFF00FF  1 0xFFFF00  1 0xFFFFFF  1 0x000000  1 0xff008c 1 0xA2A1A0 1 0x00adff 1 0x606000   1 0x201000  1 0x150040   1 0x020005  4 0x5200db 0 0xff8000   1 0x0
