@@ -25,6 +25,8 @@
 #include "game_source.h"
 #include "player_object.h"
 
+//#define GAME_DEBUG
+
 #define MAX_PLAYER_BULLETS 3
 
 const int C_PLAYER_OBJ_INDEX = MAX_N_OBJECTS - 1;
@@ -89,7 +91,7 @@ void PlayerObject_update()
             PulseObject_set_color(C_PLAYER_OBJ_INDEX, config.color_index_player, config.color_index_player, config.color_index_player, config.player_ship_size - 1);
             GameObject_delete_object(player_object.shields[0]);
             GameObject_delete_object(player_object.shields[1]);
-            //printf("Dropping back\n");
+            //printf("Deleting shields\n");
         }
         break;
     case GM_LEVEL1_WON:
@@ -128,18 +130,41 @@ void PlayerObject_move_right()
 
 static int is_player_bullet(int pb_index)
 {
+#ifdef  GAME_DEBUG
+    if (player_object.bullets[pb_index] == 0)
+    {
+        printf("Unused bullet slot\n");
+        return 0;
+    }
+    if (GameObject_is_deleted(player_object.bullets[pb_index]))
+    {
+        printf("Bullet was deleted\n");
+        return 0;
+    }
+    if (GameObject_get_stencil_flag(player_object.bullets[pb_index]) == SF_EnemyProjectile)
+    {
+        printf("Bullet was reused as enemy projectile\n");
+        return 0;
+    }
+    return 1;
+#else
     return !(player_object.bullets[pb_index] == 0 ||
         GameObject_is_deleted(player_object.bullets[pb_index]) ||
         GameObject_get_stencil_flag(player_object.bullets[pb_index]) == SF_EnemyProjectile);
+#endif //  GAME_DEBUG
+
 }
 
 void PlayerObject_cloak()
 {
+    if (player_object.level != 0)
+        return;
     for (int pb_index = 0; pb_index < MAX_PLAYER_BULLETS; ++pb_index)
     {
         if (is_player_bullet(pb_index))
         {
             GameObject_delete_object(pb_index);
+            player_object.bullets[pb_index] = 0;
         }
     }
     player_object.level = 99;
@@ -217,14 +242,31 @@ static void PlayerObject_fire_bullet(int color)
 
     if (pb_index == MAX_PLAYER_BULLETS) //there was no empty slot, we will delete the oldest bullet
     {
+#ifdef GAME_DEBUG
+        printf("all slots are occupied:\n");
+        for (int bi = 0; bi < MAX_PLAYER_BULLETS; ++bi) {
+            double bp = MovingObject_get_position(player_object.bullets[bi]);
+            double bt = (game_source.basic_source.current_time - GameObject_get_time(player_object.bullets[bi])) / (double)1e9;
+            printf("%i: id %i, pos: %f, age: %f s, replace=%i\n", bi, player_object.bullets[bi], bp, bt, bi==pb_min_index);
+        }
+#endif // GAME_DEBUG
+
         pb_index = pb_min_index;
         GameObject_delete_object(player_object.bullets[pb_index]);
     }
 
     int i = GameObject_new_projectile_index();
     if (i == -1) return;
+    for (int bi = 0; bi < MAX_PLAYER_BULLETS; ++bi) {
+        if(player_object.bullets[bi] == i) player_object.bullets[bi] = 0;
+    }
 
     player_object.bullets[pb_index] = i;
+#ifdef GAME_DEBUG
+    for (int bi = 0; bi < MAX_PLAYER_BULLETS; ++bi) {
+        printf("%i: %i\n", bi, player_object.bullets[bi]);
+    }
+#endif
     GameObject_init(i, 1, SF_PlayerProjectile);
     GameObject_mark(i, 2 << color);
     MovingObject_init_stopped(i, pos, f, 1, ZI_Projectile);

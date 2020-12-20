@@ -110,6 +110,7 @@ void MovingObject_init_movement(int mi, double speed, int target, void(*on_arriv
     moving_object_t* object = &moving_objects[mi];
     object->speed = speed;
     object->target = target;
+    assert(on_arrival != NULL);
     object->on_arrival = on_arrival;
     object->render_type = 1;
 }
@@ -153,6 +154,7 @@ void MovingObject_pause(int mi)
 void MovingObject_resume(int mi, void(*new_on_arrival)(int))
 {
     //printf("Resuming object %i\n", mi);
+    assert(new_on_arrival != NULL);
     moving_objects[mi].speed = moving_objects[mi].old_speed;
     moving_objects[mi].on_arrival = new_on_arrival;
 }
@@ -300,6 +302,7 @@ void MovingObject_target_hit(int mi_bullet, int mi_target, void(*new_callback)(i
         }
     }
     mr_bullet->target_reached = 1;
+    assert(new_callback != NULL);
     moving_objects[mi_bullet].on_arrival = new_callback;
 }
 
@@ -386,6 +389,11 @@ int MovingObject_update(int mi)
     object->position = mr->end_position;
     if (mr->target_reached == 1)
     {
+        if (object->on_arrival == NULL) //this should never happen
+        {
+            printf("ERROR: on_arrival not set for object %i\n", mi);
+            return 0;
+        }
         object->on_arrival(object->index);
         return 0;
     }

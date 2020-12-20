@@ -61,10 +61,13 @@ void OnArrival_blink_and_die(int i)
 
 void OnEnd_resume(int i)
 {
+    assert(GameObjects_get_current_mode() == GM_LEVEL_BOSS); //only RGB and W are used
     MovingObject_resume(i, GameObject_delete_object);
     GameObject_clear_mark(i, 1);
     int level = GameObject_get_mark(i);
     int color = (level & 2) / 2 + 2 * (level & 4) / 4 + 3 * (level & 8) / 8 - 1;
-    int color_index = (int[]){ config.color_index_R, config.color_index_G, config.color_index_B } [color];
+    int color_index = config.color_index_W;
+    if(color < 3)
+        color_index = (int[]){ config.color_index_R, config.color_index_G, config.color_index_B } [color];
     PulseObject_init_steady(i, color_index, 1);
 }
