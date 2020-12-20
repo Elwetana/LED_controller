@@ -57,6 +57,7 @@ void PlayerObject_init(enum GameModes current_mode)
     case GM_LEVEL2_WON:
     case GM_LEVEL3_WON:
     case GM_LEVEL_BOSS_WON:
+    case GM_LEVEL_BOSS_DEFEATED:
     case GM_PLAYER_LOST:
         GameObject_delete_object(C_PLAYER_OBJ_INDEX);
         break;
@@ -231,7 +232,7 @@ static void PlayerObject_fire_bullet(int color)
     PulseObject_init_steady(i, color_index, 1);
     int target = (f == MO_BACKWARD) ? 3 : game_source.basic_source.n_leds - 3;
     MovingObject_init_movement(i, config.enemy_speed, target, GameObject_delete_object);
-    printf("firing bullet %i\n", i);
+    //printf("firing bullet %i\n", i);
 }
 
 void PlayerObject_fire_bullet_red()
@@ -256,7 +257,7 @@ int PlayerObject_is_hit(int bullet)
     if (GameObjects_get_current_mode() == GM_LEVEL_BOSS)
     {
         //on boss level all bullets hit, only special attack does not hit when the player is cloaked
-        if (mark & 14 && player_object.level == 99)
+        if (player_object.level == 99 && mark & 2 && mark & 4 && mark & 8)
             return 0;
         return 1;
     }
@@ -270,7 +271,7 @@ void PlayerObject_take_hit(int pi)
     (void)pi;
 
     void (*callback)(int);
-    int health = GameObject_take_hit(C_PLAYER_OBJ_INDEX);
+    int health = 4;// GameObject_take_hit(C_PLAYER_OBJ_INDEX);
     if (health <= 0)
     {
         //game over

@@ -53,7 +53,7 @@ static int StencilHandler_player_is_hit(int projectile, int player)
         GameObject_mark(projectile, 1);
         MovingObject_target_hit(projectile, player, OnArrival_stop_and_explode);
         PlayerObject_take_hit(player);
-        printf("player hit by projectile %i\n", projectile);
+        //printf("player hit by projectile %i\n", projectile);
     }
     return 1;
 }
@@ -78,7 +78,7 @@ static int StencilHandler_bullet_collision(int bullet1, int bullet2)
     if (GameObject_get_mark(bullet2) & 1) return 1;
 
     int result = GameObject_resolve_projectile_collision(bullet1, bullet2);
-    printf("bullet collision: %i vs %i: %i\n", bullet1, bullet2, result);
+    //printf("bullet collision: %i vs %i: %i\n", bullet1, bullet2, result);
     if (result == 0)
         return 1;
 

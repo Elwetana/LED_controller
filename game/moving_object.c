@@ -139,7 +139,7 @@ double MovingObject_get_position(int mi)
 
 void MovingObject_stop(int mi)
 {
-    printf("Stopping object %i\n", mi);
+    //printf("Stopping object %i\n", mi);
     moving_objects[mi].speed = 0;
     assert(moving_objects[mi].position - (int)moving_objects[mi].position < C_PRECIS);
 }
@@ -152,7 +152,7 @@ void MovingObject_pause(int mi)
 
 void MovingObject_resume(int mi, void(*new_on_arrival)(int))
 {
-    printf("Resuming object %i\n", mi);
+    //printf("Resuming object %i\n", mi);
     moving_objects[mi].speed = moving_objects[mi].old_speed;
     moving_objects[mi].on_arrival = new_on_arrival;
 }

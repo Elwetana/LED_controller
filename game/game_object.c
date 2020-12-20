@@ -40,6 +40,7 @@ char win_messages[GM_PLAYER_LOST][16] = {
     "     ",
     " ~~  "
     "",
+    "",
     "Boss defeated"
 };
 
@@ -265,14 +266,21 @@ static void update_objects_level_boss()
     if (pos > config.wraparound_fire_pos && pos < game_source.basic_source.n_leds - config.wraparound_fire_pos &&
         game_source.basic_source.current_time - boss.last_turn_around > turn_around_cooldown) //there is a chance that boss will turn around
     {
+        //printf("Considering boss turn around. Current facing %i ", f);
         if (roll_dice_poisson(0.5))
         {
-            MovingObject_set_facing(C_PROJCT_OBJ_INDEX, -1 * f);
+            MovingObject_set_facing(C_OBJECT_OBJ_INDEX, -1 * f);
             boss.last_turn_around = game_source.basic_source.current_time;
+            f = MovingObject_get_facing(C_OBJECT_OBJ_INDEX);
+            //printf("- succeeded, now f=%i\n", f);
+        }
+        else
+        {
+            //printf("- not\n");
         }
     }
 
-    const uint64_t special_attack_cooldown = 1 * 1e9;
+    const uint64_t special_attack_cooldown = 10 * 1e9;
     if (health < config.boss_health / 4 && game_source.basic_source.current_time - boss.last_special_attack > special_attack_cooldown) //there is a chance for boss special attack
     {
         if (roll_dice_poisson(1))
@@ -574,10 +582,11 @@ static void GameObjects_init_objects()
     case GM_LEVEL1_WON:
     case GM_LEVEL2_WON:
     case GM_LEVEL3_WON:
+    case GM_LEVEL_BOSS_WON:
         //spawn victory message
         show_victory_message(win_messages[current_mode]);
         break;
-    case GM_LEVEL_BOSS_WON:
+    case GM_LEVEL_BOSS_DEFEATED:
         boss.confetti_thrown = 0;
         boss.last_confetti = 0;
         break;
