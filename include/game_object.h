@@ -42,6 +42,7 @@ enum GameModes
 	GM_LEVEL3,
 	GM_LEVEL3_WON,
 	GM_LEVEL_BOSS,
+	GM_LEVEL_BOSS_DEFEATED,
 	GM_LEVEL_BOSS_WON,
 	GM_PLAYER_LOST
 };
@@ -66,6 +67,7 @@ uint64_t GameObject_get_time(int gi);
 enum StencilFlags GameObject_get_stencil_flag(int gi);
 
 int GameObject_new_projectile_index();
+int GameObject_new_background_index();
 
 void GameObject_mark(int gi, int mark);
 void GameObject_clear_mark(int gi, int mark);

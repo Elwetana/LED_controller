@@ -10,6 +10,7 @@ int PlayerObject_is_hit(int bullet);
 void PlayerObject_take_hit(int i);
 void PlayerObject_hide_above();
 void PlayerObject_hide_below();
+void PlayerObject_cloak();
 void PlayerObject_move_left();
 void PlayerObject_move_right();
 void PlayerObject_fire_bullet_red();

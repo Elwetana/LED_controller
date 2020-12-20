@@ -28,7 +28,7 @@
 #include "callbacks.h"
 
 
-const int C_BKGRND_OBJ_INDEX = 0;
+const int C_BKGRND_OBJ_INDEX = 8;
 const int C_OBJECT_OBJ_INDEX = 32; //ships and asteroids
 const int C_PROJCT_OBJ_INDEX = 128; //projectiles
 
@@ -67,19 +67,29 @@ static enum GameModes current_mode = GM_LEVEL_BOSS;
 static enum GameModes next_mode = GM_LEVEL_BOSS; //<! flag to be set when the mode is changed in the next update
 
 
-int GameObject_new_projectile_index()
+static int get_free_index(int min, int max, char* error_message)
 {
-    int i = C_PROJCT_OBJ_INDEX;
-    while (i < MAX_N_OBJECTS && !game_objects[i].deleted)
+    int i = min;
+    while (i < max && !game_objects[i].deleted)
     {
         i++;
     }
-    if (i >= MAX_N_OBJECTS)
+    if (i >= max)
     {
-        printf("Failed to create projectile\n");
+        printf(error_message);
         return -1;
     }
     return i;
+}
+
+int GameObject_new_projectile_index()
+{
+    return get_free_index(C_PROJCT_OBJ_INDEX, MAX_N_OBJECTS, "Failed to find a free projectile index\n");
+}
+
+int GameObject_new_background_index()
+{
+    return get_free_index(C_BKGRND_OBJ_INDEX, C_OBJECT_OBJ_INDEX, "Failed to find a free background index\n");
 }
 
 
@@ -347,8 +357,9 @@ static void GameObject_update_objects()
     case GM_LEVEL1_WON:
     case GM_LEVEL2_WON:
     case GM_LEVEL3_WON:
-        break;
     case GM_LEVEL_BOSS_WON:
+        break;
+    case GM_LEVEL_BOSS_DEFEATED:
         update_boss_defeat();
         break;
     case GM_PLAYER_LOST:
@@ -474,13 +485,13 @@ static void boss_init()
 
     //init decorations that mark area where shooting backwards is possible
     int decor_len = 3;
-    GameObject_init(C_BKGRND_OBJ_INDEX, 1, SF_Background);
-    MovingObject_init_stopped(C_BKGRND_OBJ_INDEX, config.wraparound_fire_pos, MO_FORWARD, decor_len, ZI_Background_far);
-    PulseObject_init_steady(C_BKGRND_OBJ_INDEX, config.color_index_stargate, decor_len);
+    GameObject_init(0, 1, SF_Background);
+    MovingObject_init_stopped(0, config.wraparound_fire_pos, MO_FORWARD, decor_len, ZI_Background_far);
+    PulseObject_init_steady(0, config.color_index_stargate, decor_len);
 
-    GameObject_init(C_BKGRND_OBJ_INDEX + 1, 1, SF_Background);
-    MovingObject_init_stopped(C_BKGRND_OBJ_INDEX + 1, game_source.basic_source.n_leds - config.wraparound_fire_pos - decor_len, MO_BACKWARD, decor_len, ZI_Background_far);
-    PulseObject_init_steady(C_BKGRND_OBJ_INDEX + 1, config.color_index_stargate, decor_len);
+    GameObject_init(1, 1, SF_Background);
+    MovingObject_init_stopped(0 + 1, game_source.basic_source.n_leds - config.wraparound_fire_pos - decor_len, MO_BACKWARD, decor_len, ZI_Background_far);
+    PulseObject_init_steady(0 + 1, config.color_index_stargate, decor_len);
 }
 
 static void game_over_init()

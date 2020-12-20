@@ -199,6 +199,7 @@ void Stencil_init(enum GameModes current_mode)
     case GM_LEVEL1_WON:
     case GM_LEVEL2_WON:
     case GM_LEVEL3_WON:
+    case GM_LEVEL_BOSS_DEFEATED:
     case GM_LEVEL_BOSS_WON:
     case GM_PLAYER_LOST:
         break;
