@@ -619,24 +619,34 @@ static int update_leds_icicles(ws2811_t* ledstrip)
 #pragma region Gradient
 
 const int XMAS_GRAD_START = 12;
-const int XMAS_GRAD_LEN = 19;
+#define XMAS_GRAD_LEN 19
 
 static unsigned long start_time = 0;
+hsl_t grad_colors[XMAS_GRAD_LEN];
 
 static void Gradient_init()
 {
     start_time = current_time_in_ms();
+    for (int i = 0; i < XMAS_GRAD_LEN; ++i)
+    {
+        rgb2hsl(xmas_source.basic_source.gradient.colors[XMAS_GRAD_START + i], &grad_colors[i]);
+    }
 }
 
 static int update_leds_gradient(ws2811_t* ledstrip)
 {
-    unsigned int time_shift = (current_time_in_ms() - start_time) / 200;
+    double time_shift = (current_time_in_ms() - start_time) / 200;
+    double offset = time_shift - (long)time_shift;
+    int shift = (long)time_shift % XMAS_GRAD_LEN;
     for (int led = 0; led < xmas_source.basic_source.n_leds; ++led)
     {
         int segment = led / XMAS_GRAD_LEN;
         int is_even = (segment + 1) % 2;
-        int grad_index = (is_even * (XMAS_GRAD_LEN - 1 - led + time_shift) - (is_even - 1) * (led + time_shift)) % XMAS_GRAD_LEN;
-        ledstrip->channel[0].leds[led] = xmas_source.basic_source.gradient.colors[grad_index];
+        int grad_index_1 = (is_even * (XMAS_GRAD_LEN - 1 - led + shift) - (is_even - 1) * (led + shift)) % XMAS_GRAD_LEN;
+        int grad_index_2 = (grad_index_1 + 1) % XMAS_GRAD_LEN;
+        hsl_t col_hsl;
+        lerp_hsl(&grad_colors[grad_index_1], &grad_colors[grad_index_2], is_even ? offset : 1. - offset, &col_hsl);
+        ledstrip->channel[0].leds[led] = hsl2rgb(&col_hsl);
     }
     return 1;
 }
