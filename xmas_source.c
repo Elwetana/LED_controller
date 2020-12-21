@@ -351,7 +351,7 @@ void Snowflakes_update()
             printf("Moving snowflake number %d\n", flake);
             //now we need to generate direction, let's say there is 50% chance of going down
             float r01 = random_01();
-            int dir = (r01 < config.down_chance) ? DOWN : (r01 < (config.down_chance + config.left_chance)) ? LEFT : RIGHT;
+            int dir = (r01 < config.down_chance) ? DOWN : (r01 < (config.down_chance + config.left_chance) ? LEFT : RIGHT);
             //check if there is a led in this direction
             if ((geometry.neighbors[snowflakes[flake].origin][dir] == -1) || (geometry.neighbors[snowflakes[flake].origin][dir + 1] != 1))
             {

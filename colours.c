@@ -84,8 +84,8 @@ void rgb2hsl(ws2811_led_t rgb, hsl_t* hsl)
     if(vmax == b)
         h = (2.0f / 3.0f) + dg - dr;
 
-    if(h < 0) h += 1;
-    if(h > 1) h -= 1;
+    while(h < 0) h += 1;
+    while(h > 1) h -= 1;
     hsl->h = h;
 }
 
@@ -126,18 +126,22 @@ ws2811_led_t hsl2rgb(hsl_t* hsl)
 */
 void lerp_hsl(const hsl_t* hsl1, const hsl_t* hsl2, const float t, hsl_t* hsl_out)
 {
-    for (int i = 0; i < 3; ++i)
+    for (int i = 1; i < 3; ++i)
     {
         hsl_out->f[i] = hsl1->f[i] + t * (hsl2->f[i] - hsl1->f[i]);
     }
-
-    if (((hsl2->h - hsl1->h)*(hsl2->h - hsl1->h)) > 0.25f) //std::abs(hsl1a.x - hsl2.x) > 0.5f
+    if (((hsl2->h - hsl1->h) * (hsl2->h - hsl1->h)) > 0.25f) //std::abs(hsl1a.x - hsl2.x) > 0.5f
     {
-        hsl_out->h += (hsl1->h > hsl2->h) ? -1 : 1;
+        float h2 = hsl2->h + (hsl1->h > hsl2->h ? 1. : -1.);
+        hsl_out->h = hsl1->h + t * (h2 - hsl1->h);
     }
     if (hsl_out->h < 0)
     {
         hsl_out->h += 1;
+    }
+    if (hsl_out->h > 1)
+    {
+        hsl_out->h -= 1;
     }
 }
 
@@ -190,6 +194,17 @@ void fill_gradient(ws2811_led_t* gradient, int offset, ws2811_led_t from_color, 
 
 void test_rgb2hsl()
 {
+    ws2811_led_t c1 = 0xef0001;
+    ws2811_led_t c2 = 0xee0d00; // with offset 0.500000 gave e8ef
+    hsl_t h1, h2, h31, h32;
+    rgb2hsl(c1, &h1);
+    rgb2hsl(c2, &h2);
+    lerp_hsl(&h1, &h2, 0.1, &h31);
+    ws2811_led_t c31 = hsl2rgb(&h31);
+    lerp_hsl(&h2, &h1, 0.9, &h32);
+    ws2811_led_t c32 = hsl2rgb(&h32);
+    assert(c31 == c32);
+
     const int n_tests = 5;
     ws2811_led_t inputs[5] = {0x00FF0000, 0x00808000, 0x00000080, 0x00A0A0A0, 0x0050C0F0};
     hsl_t outputs[5] = {
