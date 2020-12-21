@@ -253,6 +253,8 @@ typedef struct MovingLed {
     float speed;    // in leds per second
     int stop_at_destination; // 0 - continue movement, 1 stop at destination
     int is_moving;  // 0 - not moving, 1 - is moving
+    int next_stop;
+    int destination;
 } moving_led_t;
 
 void MovingLed_move(moving_led_t* moving_led)
@@ -276,6 +278,7 @@ void MovingLed_move(moving_led_t* moving_led)
             moving_led->is_moving = 0;
         }
     }
+    moving_led->next_stop = geometry.neighbors[moving_led->origin][moving_led->direction];
 }
 
 int MovingLed_get_intensity(moving_led_t* moving_led, float* at_origin, float* at_destination)
@@ -680,7 +683,6 @@ static int update_leds_gradient(ws2811_t* ledstrip)
 
 #pragma region Pattern
 
-
 struct
 {
     int* times;      //for every beat the shift to right, -1 means no light
@@ -691,6 +693,8 @@ struct
 
 int joy_pattern_colors[] = { 31,31,31,31,31, 32,32,32,32,32, 33,33,33,33,33, 34,34,34,34,34};
 int joy_pattern_time[] = {0, 0, -1, 5, 5, -1, -1, 10, -1, 15, -1, 20, -1, -1, 25, -1, 30, -1, 35, -1, 40, -1, -1, 45, -1, 50, -1, -1};
+
+//int sad_pattern_color[] = {};
 
 static void Pattern_init()
 {
@@ -716,6 +720,104 @@ static int update_leds_pattern(ws2811_t* ledstrip)
             ledstrip->channel[0].leds[led] = xmas_source.basic_source.gradient.colors[pattern_data.colors[index]];
         }
     }
+    return 1;
+}
+
+#pragma endregion
+
+#pragma region Fireworks
+
+static moving_led_t flares[255];
+static fireworks_gen = 0;
+static const int firework_color_index = 35;
+static const float flare_speed_at_one = 15.; //leds per second
+static const float deceleration_at_1 = 1;  //leds per second squared
+
+static void Fireworks_init_flare(int fi, int origin, dir_t direction, int destination, float speed)
+{
+    flares[fi].origin = origin;
+    flares[fi].direction = direction;
+    flares[fi].destination = destination;
+    flares[fi].speed = speed;
+    flares[fi].distance = 0;
+    flares[fi].stop_at_destination = 0;
+    flares[fi].is_moving = 1;
+}
+
+static void Firworks_spawn_next_gen()
+{
+    printf("spawning new flare generation: %i\n", fireworks_gen + 1);
+    int cur_gen_end_index = 1 << (fireworks_gen - 1);
+    int reach = xmas_source.basic_source.n_leds / (2 << fireworks_gen);
+    float flare_speed = flare_speed_at_one / (float)(1 << fireworks_gen);
+    for (int fi = 0; fi < cur_gen_end_index; ++fi)
+    {
+        int origin = flares[fi].origin;
+        Fireworks_init_flare(fi, origin, FORWARD, origin + reach, flare_speed);
+        Fireworks_init_flare(cur_gen_end_index + fi, origin, BACKWARD, origin - reach, flare_speed);
+    }
+    fireworks_gen++;
+}
+
+static void Fireworks_update(ws2811_led_t* leds)
+{
+    if (fireworks_gen == 0)
+    {
+        //spawn the first flare
+        Fireworks_init_flare(0, 1, FORWARD, xmas_source.basic_source.n_leds / 2, flare_speed_at_one);
+        fireworks_gen++;
+        return;
+    }
+    int cur_gen_end_index = 1 << (fireworks_gen - 1);
+    int flares_at_destination = 0;
+    hsl_t color;
+    float deceleration = deceleration_at_1 / (1 << (fireworks_gen - 1));
+    rgb2hsl(xmas_source.basic_source.gradient.colors[firework_color_index + fireworks_gen - 1], &color);
+    for (int fi = 0; fi < cur_gen_end_index; ++fi)
+    {
+        MovingLed_move(&flares[fi]);
+        double time_seconds = (double)(xmas_source.basic_source.time_delta) / (double)1e9;
+        flares[fi].speed -= deceleration * time_seconds;
+
+        assert(flares[fi].origin >= 0 && flares[fi].origin < xmas_source.basic_source.n_leds);
+        assert(flares[fi].next_stop >= -1 && flares[fi].next_stop < xmas_source.basic_source.n_leds);
+        //pos = 5, offset = 0.3 => 5 gets 70%, 6 gets 30% when moving forward
+        float at_origin, at_next_stop;
+        MovingLed_get_intensity(&flares[fi], &at_origin, &at_next_stop);
+        hsl_t res = color;
+        res.l *= at_origin;
+        leds[flares[fi].origin] = hsl2rgb(&res);
+        if (flares[fi].next_stop != -1)
+        {
+            res.l = color.l * at_next_stop;
+            leds[flares[fi].next_stop] = hsl2rgb(&res);
+        }
+        int dir = 2 * (flares[fi].direction == FORWARD) - 1; //+1 when moving forward, -1 when moving backward
+        if ((dir * (flares[fi].destination - flares[fi].next_stop)) < 1) //we are approaching destination
+        {
+            flares[fi].stop_at_destination = 1;
+        }
+        if (!flares[fi].is_moving)
+        {
+            flares_at_destination++;
+        }
+        if (flares_at_destination == cur_gen_end_index)
+        {
+            if (fireworks_gen == 7)
+                fireworks_gen = 0;
+            else
+                Firworks_spawn_next_gen();
+        }
+    }
+}
+
+static int update_leds_fireworks(ws2811_t* ledstrip)
+{
+    for (int led = 0; led < xmas_source.basic_source.n_leds; ++led)
+    {
+        ledstrip->channel[0].leds[led] = 0x0;
+    }
+    Fireworks_update(ledstrip->channel[0].leds);
     return 1;
 }
 
@@ -754,6 +856,8 @@ XMAS_MODE_t string_to_xmas_mode(const char* txt)
         return XM_GRADIENT;
     if (strcasecmp(txt, "joy_pattern") == 0)
         return XM_JOY_PATTERN;
+    if (strcasecmp(txt, "fireworks") == 0)
+        return XM_FIREWORKS;
     return N_XMAS_MODES;
 }
 
@@ -956,6 +1060,8 @@ int XmasSource_update_leds(int frame, ws2811_t* ledstrip)
         return update_leds_debug(ledstrip);
     case XM_JOY_PATTERN:
         return update_leds_pattern(ledstrip);
+    case XM_FIREWORKS:
+        return update_leds_fireworks(ledstrip);
     case N_XMAS_MODES:
         printf("Invalid Xmas Source Mode in frame %d\n", frame);
         break;
@@ -984,6 +1090,7 @@ void XmasSource_destruct_current_mode()
         break;
     case XM_GRADIENT:
     case XM_JOY_PATTERN:
+    case XM_FIREWORKS:
         break;
     case N_XMAS_MODES:
         break;
@@ -1021,6 +1128,7 @@ void XmasSource_init_current_mode()
         break;
     case XM_JOY_PATTERN:
         Pattern_init();
+    case XM_FIREWORKS:
     case N_XMAS_MODES:
         break;
     }
