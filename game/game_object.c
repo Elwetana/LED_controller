@@ -161,7 +161,7 @@ static void update_stargate(double stargate_shrink_chance)
             return;
         }
         MovingObject_init_stopped(0, cur_position + 1, MO_FORWARD, cur_length - 2, ZI_Background_far);
-        printf("shrinking stargate\n");
+        //printf("shrinking stargate\n");
     }
 }
 
@@ -684,7 +684,7 @@ void GameObjects_set_level_by_message(char* message)
 {
     for (int i = 0; i < (int)GM_PLAYER_LOST; ++i)
     {
-        if (_stricmp(message, win_messages[i]) == 0)
+        if (strncmp(message, win_messages[i], 16) == 0)
         {
             printf("setting mode %i\n", i);
             next_mode = i;

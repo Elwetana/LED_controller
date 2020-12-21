@@ -207,7 +207,7 @@ static void set_level(int level)
     player_object.level = level;
     player_object.level_change_time = game_source.basic_source.current_time;
     //printf("hiding\n");
-    PulseObject_set_color(C_PLAYER_OBJ_INDEX, config.color_index_player, config.color_index_player, config.color_index_player + level, config.player_ship_size - 1);
+    PulseObject_set_color(C_PLAYER_OBJ_INDEX, config.color_index_player, config.color_index_player, config.color_index_player - level, config.player_ship_size - 1);
 }
 
 void PlayerObject_hide_above()
