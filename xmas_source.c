@@ -38,6 +38,10 @@ static struct {
     //icicles
     int n_icicle_leds;
     float icicle_speed;
+    //gradient
+    int gradient_speed;
+    //pattern
+    int beat_length;
 } config;
 
 typedef struct GlitterConfig
@@ -426,6 +430,7 @@ static int update_leds_snowflake(ws2811_t* ledstrip)
         double l = config.k_diff * cos(diff_alpha) + config.k_spec * pow(cos(spec_alpha), config.spec);
 
         hsl_t centre_col = snowflake_colors[2];
+        float snowflake_hue = centre_col.h;
         centre_col.l += (float)l;
         if (centre_col.l + l > 1.f) centre_col.l = 1.f;
         hsl_t edge_col = snowflake_colors[1];
@@ -435,15 +440,20 @@ static int update_leds_snowflake(ws2811_t* ledstrip)
         //now set all leds
         hsl_t res;
         lerp_hsl(&edge_col, &centre_col, origin_intensity, &res);
+        assert((res.h - snowflake_hue) * (res.h - snowflake_hue) < 0.01);
         ledstrip->channel[0].leds[flake_leds[0]] = hsl2rgb(&res);
         lerp_hsl(&centre_col, &edge_col, origin_intensity, &res);
-        if (flake_leds[1] != -1) ledstrip->channel[0].leds[flake_leds[1]] = hsl2rgb(&res);
+        assert((res.h - snowflake_hue) * (res.h - snowflake_hue) < 0.01);
+        if (flake_leds[1] != -1) 
+            ledstrip->channel[0].leds[flake_leds[1]] = hsl2rgb(&res);
         lerp_hsl(&black_col, &edge_col, origin_intensity, &res);
+        assert((res.h - snowflake_hue) * (res.h - snowflake_hue) < 0.01);
         for (int i = 2; i < 5; ++i) // 2,5
         {
             if (flake_leds[i] != -1) ledstrip->channel[0].leds[flake_leds[i]] = hsl2rgb(&res);
         }
         lerp_hsl(&edge_col, &black_col, origin_intensity, &res);
+        assert((res.h - snowflake_hue) * (res.h - snowflake_hue) < 0.01);
         for (int i = 5; i < 8; ++i) //5,8
         {
             if (flake_leds[i] != -1) ledstrip->channel[0].leds[flake_leds[i]] = hsl2rgb(&res);
@@ -618,11 +628,11 @@ static int update_leds_icicles(ws2811_t* ledstrip)
 
 #pragma region Gradient
 
-const int XMAS_GRAD_START = 12;
+static const int XMAS_GRAD_START = 12;
 #define XMAS_GRAD_LEN 19
 
 static unsigned long start_time = 0;
-hsl_t grad_colors[XMAS_GRAD_LEN];
+static hsl_t grad_colors[XMAS_GRAD_LEN];
 
 static void Gradient_init()
 {
@@ -635,7 +645,7 @@ static void Gradient_init()
 
 static int update_leds_gradient(ws2811_t* ledstrip)
 {
-    double time_shift = (double)(current_time_in_ms() - start_time) / 100.;
+    double time_shift = (double)(current_time_in_ms() - start_time) / config.gradient_speed;
     int length = 2 * XMAS_GRAD_LEN - 2;
     for (int led = 0; led < xmas_source.basic_source.n_leds; ++led)
     {
@@ -647,17 +657,63 @@ static int update_leds_gradient(ws2811_t* ledstrip)
             hsl_t col_hsl;
             lerp_hsl(&grad_colors[index], &grad_colors[index + 1], offset, &col_hsl);
             ws2811_led_t c = hsl2rgb(&col_hsl);
+#ifdef GAME_DEBUG
             int r = (int)((c & 0xFF0000) >> 16);
             int g = (int)((c & 0xFF00) >> 8);
             int b = (int)((c & 0xFF));
-            if(b > r && b > g) {
+            if (b > r && b > g) {
                 printf("Mixing %x and %x with offset %f gave %x (index %i)\n", xmas_source.basic_source.gradient.colors[XMAS_GRAD_START + index], xmas_source.basic_source.gradient.colors[XMAS_GRAD_START + index + 1], offset, c, index);
             }
+#endif // GAME_DEBUG
             ledstrip->channel[0].leds[led] = c;
         }
         else
         {
             ledstrip->channel[0].leds[led] = hsl2rgb(&grad_colors[XMAS_GRAD_LEN - 1]);
+        }
+    }
+    return 1;
+}
+
+#pragma endregion
+
+#pragma region Pattern
+
+
+struct
+{
+    int* times;      //for every beat the shift to right, -1 means no light
+    int* colors;    //for every led < pattern_length, index into gradient.colors
+    int colors_length;
+    int times_length;
+} pattern_data;
+
+int joy_pattern_colors[] = { 31,31,31,31,31, 32,32,32,32,32, 33,33,33,33,33, 4,4,4,4,4};
+int joy_pattern_time[] = {0, 0, -1, 5, 5, -1, -1, 10, -1, 15, -1, 20, -1, -1, 25, -1, 30, -1, 35, -1, 40, -1, -1, 45, -1, 50, -1, -1};
+
+static void Pattern_init()
+{
+    start_time = current_time_in_ms();
+    config.beat_length = 100;
+    pattern_data.colors = joy_pattern_colors;
+    pattern_data.colors_length = sizeof(joy_pattern_colors)/sizeof(int);
+    pattern_data.times = joy_pattern_time;
+    pattern_data.times_length = sizeof(joy_pattern_time)/sizeof(int);
+}
+
+static int update_leds_pattern(ws2811_t* ledstrip)
+{
+    int beat = ((current_time_in_ms() - start_time) / config.beat_length) % pattern_data.times_length;
+    for (int led = 0; led < xmas_source.basic_source.n_leds; ++led)
+    {
+        if (pattern_data.times[beat] == -1)
+        {
+            ledstrip->channel[0].leds[led] = 0x0;
+        }
+        else
+        {
+            int index = (led + pattern_data.times[beat]) % pattern_data.colors_length;
+            ledstrip->channel[0].leds[led] = xmas_source.basic_source.gradient.colors[pattern_data.colors[index]];
         }
     }
     return 1;
@@ -696,6 +752,8 @@ XMAS_MODE_t string_to_xmas_mode(const char* txt)
         return XM_GLITTER2;
     if (strcasecmp(txt, "gradient") == 0)
         return XM_GRADIENT;
+    if (strcasecmp(txt, "joy_pattern") == 0)
+        return XM_JOY_PATTERN;
     return N_XMAS_MODES;
 }
 
@@ -868,6 +926,10 @@ int XmasSource_process_config(const char* name, const char* value)
         config.icicle_speed = strtof(value, NULL);
         return 1;
     }
+    if (strcasecmp(name, "gradient_speed") == 0) {
+        config.gradient_speed = atoi(value);
+        return 1;
+    }
     printf("Unknown config option %s with value %s\n", name, value);
     return 0;
 }
@@ -888,6 +950,8 @@ int XmasSource_update_leds(int frame, ws2811_t* ledstrip)
         return update_leds_gradient(ledstrip);
     case XM_DEBUG:
         return update_leds_debug(ledstrip);
+    case XM_JOY_PATTERN:
+        return update_leds_pattern(ledstrip);
     case N_XMAS_MODES:
         printf("Invalid Xmas Source Mode in frame %d\n", frame);
         break;
@@ -950,6 +1014,8 @@ void XmasSource_init_current_mode()
     case XM_GRADIENT:
         Gradient_init();
         break;
+    case XM_JOY_PATTERN:
+        Pattern_init();
     case N_XMAS_MODES:
         break;
     }
