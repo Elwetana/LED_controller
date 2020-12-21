@@ -689,18 +689,16 @@ struct
     int times_length;
 } pattern_data;
 
-int joy_pattern_colors[] = { 31,31,31,31,31, 32,32,32,32,32, 33,33,33,33,33, 4,4,4,4,4};
+int joy_pattern_colors[] = { 31,31,31,31,31, 32,32,32,32,32, 33,33,33,33,33, 34,34,34,34,34};
 int joy_pattern_time[] = {0, 0, -1, 5, 5, -1, -1, 10, -1, 15, -1, 20, -1, -1, 25, -1, 30, -1, 35, -1, 40, -1, -1, 45, -1, 50, -1, -1};
 
 static void Pattern_init()
 {
     start_time = current_time_in_ms();
-    config.beat_length = 100;
     pattern_data.colors = joy_pattern_colors;
     pattern_data.colors_length = sizeof(joy_pattern_colors)/sizeof(int);
     pattern_data.times = joy_pattern_time;
     pattern_data.times_length = sizeof(joy_pattern_time)/sizeof(int);
-    printf("color 31: %x\n", xmas_source.basic_source.gradient.colors[pattern_data.colors[31]]);
 }
 
 static int update_leds_pattern(ws2811_t* ledstrip)
@@ -930,6 +928,10 @@ int XmasSource_process_config(const char* name, const char* value)
     }
     if (strcasecmp(name, "gradient_speed") == 0) {
         config.gradient_speed = atoi(value);
+        return 1;
+    }
+    if (strcasecmp(name, "beat_length") == 0) {
+        config.beat_length = atoi(value);
         return 1;
     }
     printf("Unknown config option %s with value %s\n", name, value);
