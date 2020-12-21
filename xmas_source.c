@@ -635,18 +635,30 @@ static void Gradient_init()
 
 static int update_leds_gradient(ws2811_t* ledstrip)
 {
-    double time_shift = (current_time_in_ms() - start_time) / 200;
-    double offset = time_shift - (long)time_shift;
-    int shift = (long)time_shift % XMAS_GRAD_LEN;
+    double time_shift = (double)(current_time_in_ms() - start_time) / 100.;
+    int length = 2 * XMAS_GRAD_LEN - 2;
     for (int led = 0; led < xmas_source.basic_source.n_leds; ++led)
     {
-        int segment = led / XMAS_GRAD_LEN;
-        int is_even = (segment + 1) % 2;
-        int grad_index_1 = (is_even * (XMAS_GRAD_LEN - 1 - led + shift) - (is_even - 1) * (led + shift)) % XMAS_GRAD_LEN;
-        int grad_index_2 = (grad_index_1 + 1) % XMAS_GRAD_LEN;
-        hsl_t col_hsl;
-        lerp_hsl(&grad_colors[grad_index_1], &grad_colors[grad_index_2], is_even ? offset : 1. - offset, &col_hsl);
-        ledstrip->channel[0].leds[led] = hsl2rgb(&col_hsl);
+        double dindex = fabs(fmod(led + time_shift, length) - length / 2);
+        int index = (int)dindex;
+        double offset = dindex - index;
+        if(index < XMAS_GRAD_LEN - 1)
+        {
+            hsl_t col_hsl;
+            lerp_hsl(&grad_colors[index], &grad_colors[index + 1], offset, &col_hsl);
+            ws2811_led_t c = hsl2rgb(&col_hsl);
+            int r = (int)((c & 0xFF0000) >> 16);
+            int g = (int)((c & 0xFF00) >> 8);
+            int b = (int)((c & 0xFF));
+            if(b > r && b > g) {
+                printf("Mixing %x and %x with offset %f gave %x (index %i)\n", xmas_source.basic_source.gradient.colors[XMAS_GRAD_START + index], xmas_source.basic_source.gradient.colors[XMAS_GRAD_START + index + 1], offset, c, index);
+            }
+            ledstrip->channel[0].leds[led] = c;
+        }
+        else
+        {
+            ledstrip->channel[0].leds[led] = hsl2rgb(&grad_colors[XMAS_GRAD_LEN - 1]);
+        }
     }
     return 1;
 }
