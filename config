@@ -10,7 +10,7 @@ MORSE 3
 0x000000  1 0xFFFFFF  1 0xFF0000  6 0x0000FF
 DISCO 3
 0x00FF08  5 0x004CFF  5 0xFF00A2  5 0xFFB300
-XMAS 12
+XMAS 14
 #0:debug-1:glt1 green-2:glt1 red-3:glt1 orange/glt2 star-4:glt1 purple/glt2 sky-5:glt1 blue-6:Icicle start-9:Icicle end-10:Snowflake-11:SF ray-12:Grad start-23:Grad mid-30:Grad end-31:pattern1 start-33:pattern1 end 
 0xA0A0A0 1 0x102801 1 0x3A0800 1 0xDD992C 1 0x0F001B 1 0x000B22 1 0x05344a 4 0x080011 0 0x1a3c80 2 0x0d1e40 0 0xcc0010 11 0xe68b00 8 0x166600 0 0xff0000 3 0xffff00
 GAME 17
