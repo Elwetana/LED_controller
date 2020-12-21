@@ -135,6 +135,10 @@ void lerp_hsl(const hsl_t* hsl1, const hsl_t* hsl2, const float t, hsl_t* hsl_ou
         float h2 = hsl2->h + (hsl1->h > hsl2->h ? 1. : -1.);
         hsl_out->h = hsl1->h + t * (h2 - hsl1->h);
     }
+    else
+    {
+        hsl_out->h = hsl1->h + t * (hsl2->h - hsl1->h);
+    }
     if (hsl_out->h < 0)
     {
         hsl_out->h += 1;
