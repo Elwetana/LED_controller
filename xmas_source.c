@@ -8,6 +8,7 @@
 #include <string.h>
 #include <time.h>
 #include <math.h>
+#include <assert.h>
 #ifdef __linux__
 #include "ws2811.h"
 #else
@@ -699,6 +700,7 @@ static void Pattern_init()
     pattern_data.colors_length = sizeof(joy_pattern_colors)/sizeof(int);
     pattern_data.times = joy_pattern_time;
     pattern_data.times_length = sizeof(joy_pattern_time)/sizeof(int);
+    printf("color 31: %x\n", xmas_source.basic_source.gradient.colors[pattern_data.colors[31]]);
 }
 
 static int update_leds_pattern(ws2811_t* ledstrip)
@@ -979,6 +981,7 @@ void XmasSource_destruct_current_mode()
         free(spec_data);
         break;
     case XM_GRADIENT:
+    case XM_JOY_PATTERN:
         break;
     case N_XMAS_MODES:
         break;
