@@ -728,10 +728,20 @@ static int update_leds_pattern(ws2811_t* ledstrip)
 #pragma region Fireworks
 
 static moving_led_t flares[255];
-static fireworks_gen = 0;
+static int fireworks_gen = 0;
 static const int firework_color_index = 35;
-static const float flare_speed_at_one = 15.; //leds per second
+static const float flare_speed_at_1 = 15.; //leds per second
 static const float deceleration_at_1 = 1;  //leds per second squared
+static const int wait_time_at_1 = 500; //in ms
+static int flare_wait_time; //if > 0 we are waiting to spawn next gen, if < 0 wait is over, if == 0 we haven't started waiting yet
+static ws2811_led_t* static_flares;
+
+static void Fireworks_init()
+{
+    static_flares = malloc(sizeof(ws2811_led_t) * xmas_source.basic_source.n_leds);
+    for (int led = 0; led < xmas_source.basic_source.n_leds; ++led)
+        static_flares[led] = 0x0;
+}
 
 static void Fireworks_init_flare(int fi, int origin, dir_t direction, int destination, float speed)
 {
@@ -749,10 +759,11 @@ static void Firworks_spawn_next_gen()
     printf("spawning new flare generation: %i\n", fireworks_gen + 1);
     int cur_gen_end_index = 1 << (fireworks_gen - 1);
     int reach = xmas_source.basic_source.n_leds / (2 << fireworks_gen);
-    float flare_speed = flare_speed_at_one / (float)(1 << fireworks_gen);
+    float flare_speed = flare_speed_at_1 / (float)(1 << fireworks_gen);
     for (int fi = 0; fi < cur_gen_end_index; ++fi)
     {
         int origin = flares[fi].origin;
+        static_flares[origin] = xmas_source.basic_source.gradient.colors[firework_color_index + fireworks_gen - 1];
         Fireworks_init_flare(fi, origin, FORWARD, origin + reach, flare_speed);
         Fireworks_init_flare(cur_gen_end_index + fi, origin, BACKWARD, origin - reach, flare_speed);
     }
@@ -764,7 +775,7 @@ static void Fireworks_update(ws2811_led_t* leds)
     if (fireworks_gen == 0)
     {
         //spawn the first flare
-        Fireworks_init_flare(0, 1, FORWARD, xmas_source.basic_source.n_leds / 2, flare_speed_at_one);
+        Fireworks_init_flare(0, 1, FORWARD, xmas_source.basic_source.n_leds / 2, flare_speed_at_1);
         fireworks_gen++;
         return;
     }
@@ -803,19 +814,34 @@ static void Fireworks_update(ws2811_led_t* leds)
         }
         if (flares_at_destination == cur_gen_end_index)
         {
-            if (fireworks_gen == 7)
-                fireworks_gen = 0;
+            assert(flare_wait_time < 1); //we should never get positive flare time, this is skipped directly
+            if (flare_wait_time == 0)
+            {
+                flare_wait_time = wait_time_at_1 * (1 << (fireworks_gen - 1));
+            }
             else
-                Firworks_spawn_next_gen();
+            {
+                flare_wait_time = 0;
+                if (fireworks_gen == 7)
+                    fireworks_gen = 0;
+                else
+                    Firworks_spawn_next_gen();
+            }
         }
     }
 }
 
 static int update_leds_fireworks(ws2811_t* ledstrip)
 {
+    if (flare_wait_time > 0)
+    {
+        flare_wait_time -= current_time_in_ms();
+        if (flare_wait_time == 0) flare_wait_time--;
+        return 0;
+    }
     for (int led = 0; led < xmas_source.basic_source.n_leds; ++led)
     {
-        ledstrip->channel[0].leds[led] = 0x0;
+        ledstrip->channel[0].leds[led] = static_flares[led];
     }
     Fireworks_update(ledstrip->channel[0].leds);
     return 1;
@@ -1088,9 +1114,10 @@ void XmasSource_destruct_current_mode()
         free(diff_data);
         free(spec_data);
         break;
+    case XM_FIREWORKS:
+        free(static_flares);
     case XM_GRADIENT:
     case XM_JOY_PATTERN:
-    case XM_FIREWORKS:
         break;
     case N_XMAS_MODES:
         break;
@@ -1129,6 +1156,8 @@ void XmasSource_init_current_mode()
     case XM_JOY_PATTERN:
         Pattern_init();
     case XM_FIREWORKS:
+        Fireworks_init();
+        break;
     case N_XMAS_MODES:
         break;
     }
