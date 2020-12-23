@@ -683,6 +683,59 @@ static int update_leds_gradient(ws2811_t* ledstrip)
 
 #pragma region Pattern
 
+int rings[200]; //n_leds
+
+static void Pattern_init()
+{
+    for (int spring = 0; spring < geometry.n_springs; ++spring)
+    {
+        rings[geometry.springs[spring]] = 1;  //ring 0
+    }
+    int ring = 1;
+    int up_found = 1;
+    while (up_found)
+    {
+        up_found = 0;
+        for (int led = 0; led < xmas_source.basic_source.n_leds; ++led)
+        {
+            if (rings[led] == ring && geometry.neighbors[led][UP] != -1)
+            {
+                rings[geometry.neighbors[led][UP]] = ring + 1;
+                up_found = 1;
+            }
+        }
+        ring++;
+    }
+    Gradient_init();
+}
+
+static int update_leds_pattern(ws2811_t* ledstrip)
+{
+    double time_shift = (double)(current_time_in_ms() - start_time) / config.gradient_speed;
+    int length = 2 * XMAS_GRAD_LEN - 2;
+    for (int led = 0; led < xmas_source.basic_source.n_leds; ++led)
+    {
+        int ring = rings[led];
+        double dindex = fabs(fmod(ring + time_shift, length) - length / 2);
+        int index = (int)dindex;
+        double offset = dindex - index;
+        if (index < XMAS_GRAD_LEN - 1)
+        {
+            hsl_t col_hsl;
+            lerp_hsl(&grad_colors[index], &grad_colors[index + 1], offset, &col_hsl);
+            ws2811_led_t c = hsl2rgb(&col_hsl);
+            ledstrip->channel[0].leds[led] = c;
+        }
+        else
+        {
+            ledstrip->channel[0].leds[led] = hsl2rgb(&grad_colors[XMAS_GRAD_LEN - 1]);
+        }
+    }
+    return 1;
+}
+
+
+/*
 struct
 {
     int* times;      //for every beat the shift to right, -1 means no light
@@ -722,7 +775,7 @@ static int update_leds_pattern(ws2811_t* ledstrip)
     }
     return 1;
 }
-
+*/
 #pragma endregion
 
 #pragma region Fireworks
