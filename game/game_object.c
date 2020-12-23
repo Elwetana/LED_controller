@@ -34,14 +34,14 @@ const int C_PROJCT_OBJ_INDEX = 128; //projectiles
 
 char win_messages[GM_PLAYER_LOST][16] = {
     "Alpha", //level 1
-    "Beta", //level 1 won
+    "Na konci duhy", //level 1 won
     "Gama", //level 2
-    "Delta", //level 2 won
+    "Najdete poklad", //level 2 won
     "Epsilon", //level 3
-    "Zeta", //level 3 won
+    "a duha roste", //level 3 won
     "Eta",      //level boss
     "Theta",      //level boss defeated
-    "Iota"  //level boss won
+    "jako z vody"  //level boss won
 };
 
 
