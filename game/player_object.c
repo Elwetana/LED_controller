@@ -200,7 +200,11 @@ void PlayerObject_cloak()
 
 static void set_level(int level)
 {
-    if (player_object.level != 0)
+    if (player_object.level == -1 && level == 1)
+        level = 0;
+    else if (player_object.level == 1 && level == -1)
+        level = 0;
+    else if (player_object.level != 0)
     {
         return; //cannot change level when hid
     }

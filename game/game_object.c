@@ -195,7 +195,7 @@ static void update_objects_level2()
 
 static void update_objects_level3()
 {
-    if (roll_dice_poisson(3 * config.enemy_spawn_chance))
+    if (roll_dice_poisson(1.5 * config.enemy_spawn_chance))
     {
         int level = (int)(random_01() * 3); //0, 1 or 2 with the same probability
         int color_index = (int[]){ config.color_index_C, config.color_index_M, config.color_index_Y }[level];
@@ -206,7 +206,7 @@ static void update_objects_level3()
         game_objects[bullet].mark = 14 ^ (2 << level);
     }
     PlayerObject_update();
-    update_stargate(0.20);
+    update_stargate(0.15);
 }
 
 static void GameObjects_ready_special_attack(int i)
@@ -525,10 +525,12 @@ void OnArrival_victory_message(int i)
     if (pos > 2)
     {
         MovingObject_init_movement(0, 0.1, 1, OnArrival_victory_message);
+        MovingObject_set_render_mode(0, 2);
     }
     else
     {
         MovingObject_init_movement(0, 0.1, game_source.basic_source.n_leds - len - 1, OnArrival_victory_message);
+        MovingObject_set_render_mode(0, 2);
     }
 }
 

@@ -569,6 +569,12 @@ static void Icicles_init()
     }
     for (int i = 0; i < geometry.n_heads; ++i)
     {
+        //printf("h %i\n", geometry.neighbors[geometry.heads[i]][HEIGHT]);
+        if(geometry.neighbors[geometry.heads[i]][HEIGHT] < 3)
+        {
+            icicles[i].origin = -1;
+            continue;
+        }
         icicles[i].origin = geometry.heads[i];
         icicles[i].direction = DOWN;
         icicles[i].distance = 0;
@@ -601,7 +607,12 @@ static int update_leds_icicles(ws2811_t* ledstrip)
     }
     for (int i = 0; i < geometry.n_heads; ++i)
     {
-        MovingLed_move(&icicles[i]);
+        if(icicles[i].origin == -1)
+        {
+           continue;
+        }
+        if(random_01() < 0.5)
+            MovingLed_move(&icicles[i]);
         if (icicles[i].is_moving == 0)
         {
             icicles[i].origin = geometry.heads[i];
