@@ -20,12 +20,15 @@
 
 static int input;
 static int dpad_pressed = 200;
+static int left_stick_pressed = XBTN_LST_L;
+static uint64_t down_timeout = 100 * 1e6; //in ns
 static char* button_names[] = {
     "DPAD LEFT", "DPAD RIGHT", "DPAD UP", "DPAD DOWN", //300 - 303
     "BUTTON A", "BUTTON B", "UNKNOWN 306", "BUTTON X", "BUTTON Y", //304-308
     "ERROR 309", "LEFT SHOULDER", "RIGHT SHOULDER", "UNKNOWN 312", //309-312
     "UNKNOWN 313", "BACK", "START", "XBOX", "LEFT THUMB", "RIGHT THUMB" //313-318
 };
+static uint64_t button_states[C_MAX_XBTN];
 
 #ifndef __linux__
 static WORD current_state;
@@ -59,6 +62,10 @@ void Controller_init()
     last_state = 0;
     processed = 0;
 #endif
+    for(int i = 0; i < C_MAX_XBTN; ++i)
+    {
+        button_states[i] = 0;
+    }
 }
 
 char* Controller_get_button_name(enum EButtons button)
@@ -112,7 +119,7 @@ void process_d_pad(enum EButtons* button, enum EState* state, int value, enum EB
     }
 }
 
-int Controller_get_button(enum EButtons* button, enum EState* state)
+int Controller_get_button(uint64_t t, enum EButtons* button, enum EState* state)
 {
 #ifndef __linux__
     return Controller_get_button_windows(button, state);
@@ -125,37 +132,55 @@ int Controller_get_button(enum EButtons* button, enum EState* state)
         {
             *button = ie.code - C_BTN_OFFSET;
             *state = ie.value;
-            return 1;
+            goto update;
         }
         if (ie.type == EV_ABS)
         {
             if (ie.code == ABS_HAT0X)
             {
                 process_d_pad(button, state, ie.value, DPAD_L, DPAD_R);
-                return 1;
+                goto update;
             }
             if (ie.code == ABS_HAT0Y)
             {
                 process_d_pad(button, state, ie.value, DPAD_U, DPAD_D);
-                return 1;
+                goto update;
             }
             else if(ie.code == ABS_X)
             {
                 if (ie.value > 16383)
                 {
                     *state = BT_pressed;
-                    *button = DPAD_R;
-                    return 1;
+                    *button = XBTN_LST_R;
+                    left_stick_pressed = XBTN_LST_R;
+                    goto update;
                 }
                 if (ie.value < -16383)
                 {
                     *state = BT_pressed;
-                    *button = DPAD_L;
-                    return 1;
+                    *button = XBTN_LST_L;
+                    left_stick_pressed = XBTN_LST_L;
+                    goto update;
                 }
+                *state = BT_released;
+                *button = left_stick_pressed;
+                goto update;
             }
         }
         len = read(input, &ie, sizeof(struct input_event));
     }
+    for(int i = 0; i < C_MAX_XBTN; ++i)
+    {
+        if (button_states[i] != 0 && (t - button_states[i]) > down_timeout)
+        {
+            button_states[i] = t;
+            *button = i;
+            *state = BT_down;
+            return 1;
+        }
+    }
     return 0;
+update: 
+    button_states[*button] = (*state == BT_pressed) ? t : 0;
+    return 1;
 }

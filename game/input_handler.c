@@ -60,6 +60,8 @@ void InputHandler_init(enum GameModes game_mode)
         button_handlers[C_MAX_XBTN + DPAD_R] = PlayerObject_move_right;
         button_handlers[C_MAX_XBTN + DPAD_U] = PlayerObject_hide_above;
         button_handlers[C_MAX_XBTN + DPAD_D] = PlayerObject_hide_below;
+        button_handlers[C_MAX_XBTN + XBTN_LST_L] = PlayerObject_move_left;
+        button_handlers[C_MAX_XBTN + XBTN_LST_R] = PlayerObject_move_right;
         //button_handlers[C_MAX_XBTN + XBTN_A] = GameObject_debug_win;
         //button_handlers[C_MAX_XBTN + XBTN_X] = ButtonHandler_debug_heal;
         button_handlers[C_MAX_XBTN + XBTN_Back] = ButtonHandler_debug_game_over;
@@ -69,6 +71,8 @@ void InputHandler_init(enum GameModes game_mode)
         button_handlers[C_MAX_XBTN + XBTN_RB] = PlayerObject_face_forward;
         button_handlers[C_MAX_XBTN + DPAD_L] = PlayerObject_move_left;
         button_handlers[C_MAX_XBTN + DPAD_R] = PlayerObject_move_right;
+        button_handlers[C_MAX_XBTN + XBTN_LST_L] = PlayerObject_move_left;
+        button_handlers[C_MAX_XBTN + XBTN_LST_R] = PlayerObject_move_right;
         button_handlers[C_MAX_XBTN + XBTN_A] = PlayerObject_fire_bullet_green;
         button_handlers[C_MAX_XBTN + XBTN_B] = PlayerObject_fire_bullet_red;
         button_handlers[C_MAX_XBTN + XBTN_X] = PlayerObject_fire_bullet_blue;
@@ -97,7 +101,7 @@ int InputHandler_process_input()
 {
     enum EButtons button;
     enum EState state;
-    int i = Controller_get_button(&button, &state);
+    int i = Controller_get_button(game_source.basic_source.current_time, &button, &state);
 #ifdef GAME_DEBUG
     if (i != 0) printf("controller button: %s, state: %i\n", Controller_get_button_name(button), state);
 #endif // GAME_DEBUG
@@ -105,6 +109,7 @@ int InputHandler_process_input()
     {
         return 1;
     }
+    if(state == BT_down) state = BT_pressed;
     int button_index = state * C_MAX_XBTN + button;
     if (button_handlers[button_index])
     {
