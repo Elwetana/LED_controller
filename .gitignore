@@ -4,9 +4,12 @@ LEDs/packages/
 LEDs/Release/
 LEDs/Debug/
 LEDs/.vs/
+.vs/
 .sconsign.dblite
 *.o
 *.log
 led_main
 controller_test
 AubioTest/x64/
+geometry.xlsx
+*.swp

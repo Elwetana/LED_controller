@@ -8,6 +8,9 @@ typedef enum XMAS_MODE
 	XM_GLITTER,    //colours are here: https://coolors.co/1b4501-7b143b-dd992c-550d82-d1b6e2
 	XM_ICICLES,
 	XM_GLITTER2,
+	XM_GRADIENT,
+	XM_JOY_PATTERN,
+	XM_FIREWORKS,
 	N_XMAS_MODES
 } XMAS_MODE_t;
 

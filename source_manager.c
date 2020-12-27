@@ -18,6 +18,7 @@
 #include "morse_source.h"
 #include "disco_source.h"
 #include "xmas_source.h"
+#include "game_source.h"
 #include "source_manager.h"
 #include "listener.h"
 #include "ini.h"
@@ -42,8 +43,11 @@ enum SourceType string_to_SourceType(const char* source)
     else if (!strncasecmp("DISCO", source, 5)) {
         return DISCO_SOURCE;
     }
-    else if (!strncasecmp("XMAS", source, 5)) {
+    else if (!strncasecmp("XMAS", source, 4)) {
         return XMAS_SOURCE;
+    }
+    else if (!strncasecmp("GAME", source, 4)) {
+        return GAME_SOURCE;
     }
     else {
         printf("Unknown source");
@@ -54,7 +58,7 @@ enum SourceType string_to_SourceType(const char* source)
 static BasicSource* sources[N_SOURCE_TYPES];
 static uint64_t* current_time;
 static uint64_t* time_delta;
-
+static enum SourceType active_source = N_SOURCE_TYPES;
 
 struct LedParam {
     int led_count;
@@ -79,6 +83,7 @@ void set_source(enum SourceType source_type, uint64_t cur_time)
     SourceManager_process_message = sources[source_type]->process_message;
     current_time = &sources[source_type]->current_time;
     time_delta = &sources[source_type]->time_delta;
+    active_source = source_type;
 }
 
 void SourceManager_init(enum SourceType source_type, int led_count, int time_speed, uint64_t cur_time)
@@ -93,6 +98,7 @@ void SourceManager_init(enum SourceType source_type, int led_count, int time_spe
     sources[MORSE_SOURCE]  = &morse_source.basic_source;
     sources[DISCO_SOURCE]  = &disco_source.basic_source;
     sources[XMAS_SOURCE]   = &xmas_source.basic_source;
+    sources[GAME_SOURCE]   = &game_source.basic_source;
     SourceManager_construct_sources();
 
     Listener_init();
@@ -115,7 +121,7 @@ inline int ishex(int x)
 
 // Decode URL-encoded strings
 // https://rosettacode.org/wiki/URL_decoding#C
-int decode(const char* s, char* dec)
+int64_t decode(const char* s, char* dec)
 {
     char* o;
     const char* end = s + strlen(s);
@@ -137,15 +143,7 @@ void process_source_message(const char* param)
 {
     char source_name[64];
     int color = -1;
-    char* sep = strchr(param, '?');
-    if (sep != NULL)
-    {
-        int name_length = sep - param;
-        strncpy(source_name, param, name_length);
-        source_name[name_length] = 0x0;
-        color = strtol(sep + 1, NULL, 16);
-    }
-    else if (!strncasecmp("OFF", param, 3))
+    if (!strncasecmp("OFF", param, 3))
     {
         strcpy(source_name, "COLOR");
         color = 0; 
@@ -164,6 +162,7 @@ void process_source_message(const char* param)
     printf("Changing source to %s\n", param);
 }
 
+void SourceManager_reload_color_config();
 
 void check_message()
 {
@@ -178,7 +177,7 @@ void check_message()
     }
     if (strlen(msg) > 64) 
     {
-        printf("Message too long: %s, %i", msg, strlen(msg));
+        printf("Message too long: %s, %zi", msg, strlen(msg));
         goto quit;
     }
     char command[64];
@@ -189,6 +188,9 @@ void check_message()
         printf("Unknown message received %s\n", msg);
         goto quit;
     }
+    //make sure strings are null-terminated
+    command[63] = 0x0;
+    param[63] = 0x0;
     if (!strncasecmp(command, "SOURCE", 6))
     {
         process_source_message(param);
@@ -204,6 +206,10 @@ void check_message()
         //printf("Sending message to source: %s\n", message);
         SourceManager_process_message(message);
     }
+    else if (!strncasecmp(command, "RELOAD", 6))
+    {
+        SourceManager_reload_color_config();
+    }
     else
     {
         printf("Unknown command received, command: %s, param %s\n", command, param);
@@ -218,12 +224,8 @@ SourceConfig source_config;
 static void SourceConfig_init()
 {
     source_config.colors = malloc(sizeof(SourceColors*) * N_SOURCE_TYPES);
-}
-
-void SourceConfig_add_color(char* source_name, SourceColors* source_colors)
-{
-    enum SourceType source_type = string_to_SourceType(source_name);
-    source_config.colors[source_type] = source_colors;
+    for (int i = 0; i < N_SOURCE_TYPES; ++i)
+        source_config.colors[i] = NULL;
 }
 
 void SourceColors_destruct(SourceColors* source_colors)
@@ -232,15 +234,23 @@ void SourceColors_destruct(SourceColors* source_colors)
     {
         free(source_colors->colors);
         free(source_colors->steps);
+        free(source_colors);
     }
-    free(source_colors);
+}
+
+void SourceConfig_add_color(char* source_name, SourceColors* source_colors)
+{
+    enum SourceType source_type = string_to_SourceType(source_name);
+    SourceColors_destruct(source_config.colors[source_type]);
+    source_config.colors[source_type] = source_colors;
 }
 
 void SourceConfig_destruct()
 {
     for (int i = 0; i < N_SOURCE_TYPES; ++i)
     {
-        SourceColors_destruct(source_config.colors[i]); //TODO: this crashes if not all sources have their colours in config
+        if(source_config.colors[i])
+            SourceColors_destruct(source_config.colors[i]); 
     }
     free(source_config.colors);
 }
@@ -252,7 +262,7 @@ static void read_color_config()
         printf("Config not found\n");
         exit(-4);
     }
-    char buf[255];
+    char buf[1024];
     while (fgets(buf, 255, config) != NULL)
     {
         SourceColors* sc = malloc(sizeof(SourceColors));
@@ -268,7 +278,11 @@ static void read_color_config()
         sc->colors = malloc(sizeof(ws2811_led_t) * (n_steps + 1));
         sc->steps = malloc(sizeof(int) * n_steps);
         sc->n_steps = n_steps;
-        fgets(buf, 255, config);
+        fgets(buf, 1024, config);
+        while (strnlen(buf, 2) > 0 && (buf[0] == ';' || buf[0] == '#'))
+        {
+            fgets(buf, 1024, config);
+        }
         int color, step, offset;
         char* line = buf;
         offset = 0;
@@ -291,6 +305,14 @@ static void read_color_config()
         sc->colors[n_steps] = color;
         SourceConfig_add_color(name, sc);
     }
+}
+
+
+void SourceManager_reload_color_config()
+{
+    read_color_config();
+    BasicSource_build_gradient(sources[active_source], source_config.colors[active_source]->colors, source_config.colors[active_source]->steps, source_config.colors[active_source]->n_steps);
+    printf("Colour config reloaded\n");
 }
 
 static int ini_file_handler(void* user, const char* section, const char* name, const char* value)

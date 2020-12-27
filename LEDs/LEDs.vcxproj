@@ -75,6 +75,8 @@
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <LinkIncremental>true</LinkIncremental>
     <IncludePath>$(ProjectDir)..\sound;$(ProjectDir)..\include;$(IncludePath)</IncludePath>
+    <CustomBuildBeforeTargets>
+    </CustomBuildBeforeTargets>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
     <LinkIncremental>false</LinkIncremental>
@@ -105,6 +107,7 @@
       <PreprocessorDefinitions>_DEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
       <AdditionalIncludeDirectories>D:\code\C++\vcpkg\installed\x86-windows\include;D:\code\C++\aubio\src;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalOptions>/w34062 %(AdditionalOptions)</AdditionalOptions>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
@@ -112,6 +115,17 @@
       <AdditionalLibraryDirectories>D:\code\C++\aubio\build\src;D:\code\C++\vcpkg\installed\x64-windows\lib;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
       <AdditionalDependencies>aubio.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
+    <CustomBuildStep>
+      <Command>
+      </Command>
+    </CustomBuildStep>
+    <PostBuildEvent>
+      <Command>
+      </Command>
+    </PostBuildEvent>
+    <PreBuildEvent>
+      <Command>xcopy /y $(ProjectDir)..\config  $(ProjectDir)</Command>
+    </PreBuildEvent>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
     <ClCompile>
@@ -154,6 +168,15 @@
     <ClCompile Include="..\fakeled.c" />
     <ClCompile Include="..\faketime.c" />
     <ClCompile Include="..\fire_source.c" />
+    <ClCompile Include="..\game\callbacks.c" />
+    <ClCompile Include="..\game\controller.c" />
+    <ClCompile Include="..\game\game_object.c" />
+    <ClCompile Include="..\game\input_handler.c" />
+    <ClCompile Include="..\game\moving_object.c" />
+    <ClCompile Include="..\game\player_object.c" />
+    <ClCompile Include="..\game\pulse_object.c" />
+    <ClCompile Include="..\game\stencil_handler.c" />
+    <ClCompile Include="..\game_source.c" />
     <ClCompile Include="..\getopt.c" />
     <ClCompile Include="..\ini.c" />
     <ClCompile Include="..\led_main.c" />
@@ -181,22 +204,32 @@
     </None>
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="..\include\callbacks.h" />
     <ClInclude Include="..\include\chaser_source.h" />
     <ClInclude Include="..\include\color_source.h" />
     <ClInclude Include="..\include\colours.h" />
     <ClInclude Include="..\include\common_source.h" />
+    <ClInclude Include="..\include\controller.h" />
     <ClInclude Include="..\include\disco_source.h" />
+    <ClInclude Include="..\include\fakeinput.h" />
     <ClInclude Include="..\include\fakeled.h" />
     <ClInclude Include="..\include\fakesignal.h" />
     <ClInclude Include="..\include\faketime.h" />
     <ClInclude Include="..\include\fire_source.h" />
+    <ClInclude Include="..\include\game_source.h" />
+    <ClInclude Include="..\include\game_object.h" />
     <ClInclude Include="..\include\getopt.h" />
     <ClInclude Include="..\include\ini.h" />
+    <ClInclude Include="..\include\input_handler.h" />
     <ClInclude Include="..\include\led_main.h" />
     <ClInclude Include="..\include\listener.h" />
     <ClInclude Include="..\include\morse_source.h" />
+    <ClInclude Include="..\include\moving_object.h" />
     <ClInclude Include="..\include\perlin_source.h" />
+    <ClInclude Include="..\include\player_object.h" />
+    <ClInclude Include="..\include\pulse_object.h" />
     <ClInclude Include="..\include\source_manager.h" />
+    <ClInclude Include="..\include\stencil_handler.h" />
     <ClInclude Include="..\include\xmas_source.h" />
     <ClInclude Include="..\sound\fakealsa.h" />
   </ItemGroup>

@@ -8,13 +8,12 @@
 #include <string.h>
 #include <time.h>
 #include <math.h>
+#include <assert.h>
 #ifdef __linux__
 #include "ws2811.h"
 #else
 #include "fakeled.h"
 #include "faketime.h"
-#include <Xinput.h>
-#pragma comment(lib, "XInput.lib")
 #endif // __linux__
 
 #include "common_source.h"
@@ -22,7 +21,7 @@
 #include "xmas_source.h"
 
 
-struct {
+static struct {
     //snowflakes
     int n_snowflakes;
     float k_diff;
@@ -40,6 +39,10 @@ struct {
     //icicles
     int n_icicle_leds;
     float icicle_speed;
+    //gradient
+    int gradient_speed;
+    //pattern
+    int beat_length;
 } config;
 
 typedef struct GlitterConfig
@@ -168,7 +171,7 @@ static void calculate_height()
     }
 }
 
-static void XmasSource_read_geometry()
+static int XmasSource_read_geometry()
 {
     geometry.neighbors = malloc(xmas_source.basic_source.n_leds * sizeof(*geometry.neighbors));
     FILE* fgeom = fopen("geometry", "r");
@@ -179,11 +182,16 @@ static void XmasSource_read_geometry()
     int row = 0;
     while (row < xmas_source.basic_source.n_leds)
     {
-        fscanf(fgeom, "%d\t%d\t%d\t%d\t%d\t%d\t%d\t%d\n",
+        int n = fscanf(fgeom, "%d\t%d\t%d\t%d\t%d\t%d\t%d\t%d\n",
             &geometry.neighbors[row][UP], &geometry.neighbors[row][UP + 1],
             &geometry.neighbors[row][RIGHT], &geometry.neighbors[row][RIGHT + 1],
             &geometry.neighbors[row][DOWN], &geometry.neighbors[row][DOWN + 1],
             &geometry.neighbors[row][LEFT], &geometry.neighbors[row][LEFT + 1]);
+        if (n != 8)
+        {
+            printf("Error reading geometry\n");
+            return 0;
+        }
         geometry.neighbors[row][FORWARD] = row + 1;
         geometry.neighbors[row][FORWARD + 1] = 1;
         geometry.neighbors[row][BACKWARD] = row - 1;
@@ -201,6 +209,7 @@ static void XmasSource_read_geometry()
     */
     calculate_height();
     find_heads_and_springs();
+    return 1;
 }
 
 #pragma endregion
@@ -209,12 +218,17 @@ static void XmasSource_read_geometry()
 
 typedef struct PeriodData {
     //all are times in ms
-    long lastChange;
-    long nextChange;
-    long basePeriod;   
-    long periodRange;
+    unsigned long lastChange;
+    unsigned long nextChange;
+    unsigned long basePeriod;
+    unsigned long periodRange;
     double phaseShift;
 } period_data_t;
+
+unsigned long current_time_in_ms()
+{
+    return (unsigned long)(xmas_source.basic_source.current_time / (uint64_t)1e6);
+}
 
 /**
 * Generate linearly increasing number from 0 to 2 * pi, with some random variation
@@ -223,7 +237,7 @@ typedef struct PeriodData {
 */
 double get_angle(period_data_t* period_data)
 {
-    long cur_time = xmas_source.basic_source.current_time / (long)1e6;
+    unsigned long cur_time = current_time_in_ms();
     if (cur_time >= period_data->nextChange)
     {
         period_data->lastChange = period_data->nextChange;
@@ -239,6 +253,8 @@ typedef struct MovingLed {
     float speed;    // in leds per second
     int stop_at_destination; // 0 - continue movement, 1 stop at destination
     int is_moving;  // 0 - not moving, 1 - is moving
+    int next_stop;
+    int destination;
 } moving_led_t;
 
 void MovingLed_move(moving_led_t* moving_led)
@@ -246,7 +262,7 @@ void MovingLed_move(moving_led_t* moving_led)
     if (moving_led->is_moving == 0)
         return;
     double time_seconds = (xmas_source.basic_source.time_delta / (long)1e3) / (double)1e6;
-    moving_led->distance += moving_led->speed * time_seconds;
+    moving_led->distance += moving_led->speed * (float)time_seconds;
     if (moving_led->distance >= 1.0f)
     {
         moving_led->distance -= 1;
@@ -262,11 +278,12 @@ void MovingLed_move(moving_led_t* moving_led)
             moving_led->is_moving = 0;
         }
     }
+    moving_led->next_stop = geometry.neighbors[moving_led->origin][moving_led->direction];
 }
 
 int MovingLed_get_intensity(moving_led_t* moving_led, float* at_origin, float* at_destination)
 {
-    *at_origin = (1 - moving_led->distance);
+    *at_origin = (1.f - moving_led->distance);
     *at_destination = moving_led->distance;
     /*
     if(moving_led->distance > 0.5f)
@@ -296,8 +313,13 @@ void Snowflakes_init()
     snowflakes = malloc(sizeof(moving_led_t) * config.n_snowflakes);
     diff_data = malloc(sizeof(period_data_t) * config.n_snowflakes);
     spec_data = malloc(sizeof(period_data_t) * config.n_snowflakes);
+    if (!snowflakes || !diff_data || !spec_data)
+    {
+        printf("Cannot allocate memory for snowflakes\n");
+        return;
+    }
     int d = (int)(xmas_source.basic_source.n_leds / config.n_snowflakes);
-    long cur_time = xmas_source.basic_source.current_time / (long)1e6;
+    unsigned long cur_time = current_time_in_ms();
     for (int flake = 0; flake < config.n_snowflakes; ++flake)
     {
         diff_data[flake].nextChange  = cur_time - 1;
@@ -337,7 +359,7 @@ void Snowflakes_update()
             printf("Moving snowflake number %d\n", flake);
             //now we need to generate direction, let's say there is 50% chance of going down
             float r01 = random_01();
-            int dir = (r01 < config.down_chance) ? DOWN : (r01 < (config.down_chance + config.left_chance)) ? LEFT : RIGHT;
+            int dir = (r01 < config.down_chance) ? DOWN : (r01 < (config.down_chance + config.left_chance) ? LEFT : RIGHT);
             //check if there is a led in this direction
             if ((geometry.neighbors[snowflakes[flake].origin][dir] == -1) || (geometry.neighbors[snowflakes[flake].origin][dir + 1] != 1))
             {
@@ -412,7 +434,8 @@ static int update_leds_snowflake(ws2811_t* ledstrip)
         double l = config.k_diff * cos(diff_alpha) + config.k_spec * pow(cos(spec_alpha), config.spec);
 
         hsl_t centre_col = snowflake_colors[2];
-        centre_col.l += l;
+        float snowflake_hue = centre_col.h;
+        centre_col.l += (float)l;
         if (centre_col.l + l > 1.f) centre_col.l = 1.f;
         hsl_t edge_col = snowflake_colors[1];
         edge_col.l += (float)pow(l, 2);
@@ -421,15 +444,20 @@ static int update_leds_snowflake(ws2811_t* ledstrip)
         //now set all leds
         hsl_t res;
         lerp_hsl(&edge_col, &centre_col, origin_intensity, &res);
+        assert((res.h - snowflake_hue) * (res.h - snowflake_hue) < 0.01);
         ledstrip->channel[0].leds[flake_leds[0]] = hsl2rgb(&res);
         lerp_hsl(&centre_col, &edge_col, origin_intensity, &res);
-        if (flake_leds[1] != -1) ledstrip->channel[0].leds[flake_leds[1]] = hsl2rgb(&res);
+        assert((res.h - snowflake_hue) * (res.h - snowflake_hue) < 0.01);
+        if (flake_leds[1] != -1) 
+            ledstrip->channel[0].leds[flake_leds[1]] = hsl2rgb(&res);
         lerp_hsl(&black_col, &edge_col, origin_intensity, &res);
+        assert((res.h - snowflake_hue) * (res.h - snowflake_hue) < 0.01);
         for (int i = 2; i < 5; ++i) // 2,5
         {
             if (flake_leds[i] != -1) ledstrip->channel[0].leds[flake_leds[i]] = hsl2rgb(&res);
         }
         lerp_hsl(&edge_col, &black_col, origin_intensity, &res);
+        assert((res.h - snowflake_hue) * (res.h - snowflake_hue) < 0.01);
         for (int i = 5; i < 8; ++i) //5,8
         {
             if (flake_leds[i] != -1) ledstrip->channel[0].leds[flake_leds[i]] = hsl2rgb(&res);
@@ -460,7 +488,12 @@ static void Glitter_init_common()
 {
     glitter_periods = malloc(sizeof(period_data_t) * xmas_source.basic_source.n_leds);
     glitter_colors = malloc(sizeof(ws2811_led_t) * xmas_source.basic_source.n_leds);
-    long cur_time = xmas_source.basic_source.current_time / (long)1e6;
+    if (!glitter_periods || !glitter_colors)
+    {
+        printf("Cannot allocate memory for glitter.\n");
+        return;
+    }
+    unsigned long cur_time = current_time_in_ms();
     for (int led = 0; led < xmas_source.basic_source.n_leds; ++led)
     {
         int col = select_glitter_color();
@@ -474,7 +507,6 @@ static void Glitter_init_common()
         //printf("Setting led %d to shift %f\n", led, glitter_periods[led].phaseShift);
     }
 }
-
 
 static void Glitter1_init()
 {
@@ -496,14 +528,6 @@ static void Glitter_destruct()
     free(glitter_colors);
 }
 
-ws2811_led_t multiply_rgb_color(ws2811_led_t rgb, double t)
-{
-    int r = (int)(((rgb >> 16) & 0xFF) * t);
-    int g = (int)(((rgb >> 8) & 0xFF) * t);
-    int b = (int)((rgb & 0xFF) * t);
-    return r << 16 | g << 8 | b;
-}
-
 static int update_leds_glitter(ws2811_t* ledstrip)
 {
     //in all subsequent updates there is a chance that exactly one led will be set to new colour (or possibly the same colour)
@@ -517,7 +541,7 @@ static int update_leds_glitter(ws2811_t* ledstrip)
     }
     for (int led = 0; led < xmas_source.basic_source.n_leds; ++led)
     {
-        float angle = get_angle(&glitter_periods[led]);
+        double angle = get_angle(&glitter_periods[led]);
         double t = glitter_config->amp_add + glitter_config->amp_mul * cos(angle);
         ledstrip->channel[0].leds[led] = multiply_rgb_color(glitter_colors[led], t);
         //printf("%f  ", t);
@@ -538,8 +562,19 @@ static void Icicles_init()
 {
     icicle_colors = malloc(sizeof(hsl_t) * (config.n_icicle_leds + 2));
     icicles = malloc(sizeof(moving_led_t) * geometry.n_heads);
+    if (!icicle_colors || !icicles)
+    {
+        printf("Cannot allocate memory for icicles.\n");
+        return;
+    }
     for (int i = 0; i < geometry.n_heads; ++i)
     {
+        //printf("h %i\n", geometry.neighbors[geometry.heads[i]][HEIGHT]);
+        if(geometry.neighbors[geometry.heads[i]][HEIGHT] < 3)
+        {
+            icicles[i].origin = -1;
+            continue;
+        }
         icicles[i].origin = geometry.heads[i];
         icicles[i].direction = DOWN;
         icicles[i].distance = 0;
@@ -572,7 +607,12 @@ static int update_leds_icicles(ws2811_t* ledstrip)
     }
     for (int i = 0; i < geometry.n_heads; ++i)
     {
-        MovingLed_move(&icicles[i]);
+        if(icicles[i].origin == -1)
+        {
+           continue;
+        }
+        if(random_01() < 0.5)
+            MovingLed_move(&icicles[i]);
         if (icicles[i].is_moving == 0)
         {
             icicles[i].origin = geometry.heads[i];
@@ -601,6 +641,281 @@ static int update_leds_icicles(ws2811_t* ledstrip)
 
 #pragma endregion
 
+#pragma region Gradient
+
+static const int XMAS_GRAD_START = 12;
+#define XMAS_GRAD_LEN 19
+
+static unsigned long start_time = 0;
+static hsl_t grad_colors[XMAS_GRAD_LEN];
+
+static void Gradient_init()
+{
+    start_time = current_time_in_ms();
+    for (int i = 0; i < XMAS_GRAD_LEN; ++i)
+    {
+        rgb2hsl(xmas_source.basic_source.gradient.colors[XMAS_GRAD_START + i], &grad_colors[i]);
+    }
+}
+
+static int update_leds_gradient(ws2811_t* ledstrip)
+{
+    double time_shift = (double)(current_time_in_ms() - start_time) / config.gradient_speed;
+    int length = 2 * XMAS_GRAD_LEN - 2;
+    for (int led = 0; led < xmas_source.basic_source.n_leds; ++led)
+    {
+        double dindex = fabs(fmod(led + time_shift, length) - length / 2);
+        int index = (int)dindex;
+        double offset = dindex - index;
+        if(index < XMAS_GRAD_LEN - 1)
+        {
+            hsl_t col_hsl;
+            lerp_hsl(&grad_colors[index], &grad_colors[index + 1], offset, &col_hsl);
+            ws2811_led_t c = hsl2rgb(&col_hsl);
+#ifdef GAME_DEBUG
+            int r = (int)((c & 0xFF0000) >> 16);
+            int g = (int)((c & 0xFF00) >> 8);
+            int b = (int)((c & 0xFF));
+            if (b > r && b > g) {
+                printf("Mixing %x and %x with offset %f gave %x (index %i)\n", xmas_source.basic_source.gradient.colors[XMAS_GRAD_START + index], xmas_source.basic_source.gradient.colors[XMAS_GRAD_START + index + 1], offset, c, index);
+            }
+#endif // GAME_DEBUG
+            ledstrip->channel[0].leds[led] = c;
+        }
+        else
+        {
+            ledstrip->channel[0].leds[led] = hsl2rgb(&grad_colors[XMAS_GRAD_LEN - 1]);
+        }
+    }
+    return 1;
+}
+
+#pragma endregion
+
+#pragma region Pattern
+
+int rings[200]; //n_leds
+
+static void Pattern_init()
+{
+    for (int spring = 0; spring < geometry.n_springs; ++spring)
+    {
+        rings[geometry.springs[spring]] = 1;  //ring 0
+    }
+    int ring = 1;
+    int up_found = 1;
+    while (up_found)
+    {
+        up_found = 0;
+        for (int led = 0; led < xmas_source.basic_source.n_leds; ++led)
+        {
+            if (rings[led] == ring && geometry.neighbors[led][UP] != -1)
+            {
+                rings[geometry.neighbors[led][UP]] = ring + 1;
+                up_found = 1;
+            }
+        }
+        ring++;
+    }
+    Gradient_init();
+}
+
+static int update_leds_pattern(ws2811_t* ledstrip)
+{
+    double time_shift = (double)(current_time_in_ms() - start_time) / config.gradient_speed;
+    int length = 2 * XMAS_GRAD_LEN - 2;
+    for (int led = 0; led < xmas_source.basic_source.n_leds; ++led)
+    {
+        int ring = rings[led];
+        double dindex = fabs(fmod(ring + time_shift, length) - length / 2);
+        int index = (int)dindex;
+        double offset = dindex - index;
+        if (index < XMAS_GRAD_LEN - 1)
+        {
+            hsl_t col_hsl;
+            lerp_hsl(&grad_colors[index], &grad_colors[index + 1], offset, &col_hsl);
+            ws2811_led_t c = hsl2rgb(&col_hsl);
+            ledstrip->channel[0].leds[led] = c;
+        }
+        else
+        {
+            ledstrip->channel[0].leds[led] = hsl2rgb(&grad_colors[XMAS_GRAD_LEN - 1]);
+        }
+    }
+    return 1;
+}
+
+
+/*
+struct
+{
+    int* times;      //for every beat the shift to right, -1 means no light
+    int* colors;    //for every led < pattern_length, index into gradient.colors
+    int colors_length;
+    int times_length;
+} pattern_data;
+
+int joy_pattern_colors[] = { 31,31,31,31,31, 32,32,32,32,32, 33,33,33,33,33, 34,34,34,34,34};
+int joy_pattern_time[] = {0, 0, -1, 5, 5, -1, -1, 10, -1, 15, -1, 20, -1, -1, 25, -1, 30, -1, 35, -1, 40, -1, -1, 45, -1, 50, -1, -1};
+
+//int sad_pattern_color[] = {};
+
+static void Pattern_init()
+{
+    start_time = current_time_in_ms();
+    pattern_data.colors = joy_pattern_colors;
+    pattern_data.colors_length = sizeof(joy_pattern_colors)/sizeof(int);
+    pattern_data.times = joy_pattern_time;
+    pattern_data.times_length = sizeof(joy_pattern_time)/sizeof(int);
+}
+
+static int update_leds_pattern(ws2811_t* ledstrip)
+{
+    int beat = ((current_time_in_ms() - start_time) / config.beat_length) % pattern_data.times_length;
+    for (int led = 0; led < xmas_source.basic_source.n_leds; ++led)
+    {
+        if (pattern_data.times[beat] == -1)
+        {
+            ledstrip->channel[0].leds[led] = 0x0;
+        }
+        else
+        {
+            int index = (led + pattern_data.times[beat]) % pattern_data.colors_length;
+            ledstrip->channel[0].leds[led] = xmas_source.basic_source.gradient.colors[pattern_data.colors[index]];
+        }
+    }
+    return 1;
+}
+*/
+#pragma endregion
+
+#pragma region Fireworks
+
+static moving_led_t flares[255];
+static int fireworks_gen = 0;
+static const int firework_color_index = 35;
+static const float flare_speed_at_1 = 21.; //leds per second
+static const float deceleration_at_1 = 2.;  //leds per second squared
+static const int wait_time_at_1 = 250; //in ms
+static int flare_wait_time; //if > 0 we are waiting to spawn next gen, if < 0 wait is over, if == 0 we haven't started waiting yet
+static ws2811_led_t* static_flares;
+
+static void Fireworks_init()
+{
+    static_flares = malloc(sizeof(ws2811_led_t) * xmas_source.basic_source.n_leds);
+    fireworks_gen = 0;
+}
+
+static void Fireworks_init_flare(int fi, int origin, dir_t direction, int destination, float speed)
+{
+    flares[fi].origin = origin;
+    flares[fi].direction = direction;
+    flares[fi].destination = destination;
+    flares[fi].speed = speed;
+    flares[fi].distance = 0;
+    flares[fi].stop_at_destination = 0;
+    flares[fi].is_moving = 1;
+}
+
+static void Firworks_spawn_next_gen()
+{
+    //printf("spawning new flare generation: %i\n", fireworks_gen + 1);
+    int cur_gen_end_index = 1 << (fireworks_gen - 1);
+    int reach = xmas_source.basic_source.n_leds / (2 << fireworks_gen);
+    float flare_speed = flare_speed_at_1 / (float)(1 << fireworks_gen);
+    for (int fi = 0; fi < cur_gen_end_index; ++fi)
+    {
+        int origin = flares[fi].origin;
+        static_flares[origin] = xmas_source.basic_source.gradient.colors[firework_color_index + fireworks_gen - 1];
+        Fireworks_init_flare(fi, origin, FORWARD, origin + reach, flare_speed);
+        Fireworks_init_flare(cur_gen_end_index + fi, origin, BACKWARD, origin - reach, flare_speed);
+    }
+    fireworks_gen++;
+}
+
+static void Fireworks_update(ws2811_led_t* leds)
+{
+    if (fireworks_gen == 0)
+    {
+        for (int led = 0; led < xmas_source.basic_source.n_leds; ++led)
+            static_flares[led] = 0x0;
+        //spawn the first flare
+        Fireworks_init_flare(0, 1, FORWARD, xmas_source.basic_source.n_leds / 2, flare_speed_at_1);
+        fireworks_gen++;
+        return;
+    }
+    int cur_gen_end_index = 1 << (fireworks_gen - 1);
+    int flares_at_destination = 0;
+    hsl_t color;
+    float deceleration = deceleration_at_1 / (1 << (fireworks_gen - 1));
+    rgb2hsl(xmas_source.basic_source.gradient.colors[firework_color_index + fireworks_gen - 1], &color);
+    for (int fi = 0; fi < cur_gen_end_index; ++fi)
+    {
+        MovingLed_move(&flares[fi]);
+        double time_seconds = (double)(xmas_source.basic_source.time_delta) / (double)1e9;
+        flares[fi].speed -= deceleration * time_seconds;
+
+        assert(flares[fi].origin >= 0 && flares[fi].origin < xmas_source.basic_source.n_leds);
+        assert(flares[fi].next_stop >= -1 && flares[fi].next_stop < xmas_source.basic_source.n_leds);
+        //pos = 5, offset = 0.3 => 5 gets 70%, 6 gets 30% when moving forward
+        float at_origin, at_next_stop;
+        MovingLed_get_intensity(&flares[fi], &at_origin, &at_next_stop);
+        hsl_t res = color;
+        res.l *= at_origin;
+        leds[flares[fi].origin] = hsl2rgb(&res);
+        if (flares[fi].next_stop != -1)
+        {
+            res.l = color.l * at_next_stop;
+            leds[flares[fi].next_stop] = hsl2rgb(&res);
+        }
+        int dir = 2 * (flares[fi].direction == FORWARD) - 1; //+1 when moving forward, -1 when moving backward
+        if ((dir * (flares[fi].destination - flares[fi].next_stop)) < 1) //we are approaching destination
+        {
+            flares[fi].stop_at_destination = 1;
+        }
+        if (!flares[fi].is_moving)
+        {
+            flares_at_destination++;
+        }
+        if (flares_at_destination == cur_gen_end_index)
+        {
+            assert(flare_wait_time < 1); //we should never get positive flare time, this is skipped directly
+            if (flare_wait_time == 0)
+            {
+                flare_wait_time = wait_time_at_1 * (1 << (fireworks_gen - 1));
+                //printf("setting wait for %i ms\n", flare_wait_time);
+            }
+            else
+            {
+                flare_wait_time = 0;
+                if (fireworks_gen == 7)
+                    fireworks_gen = 0;
+                else
+                    Firworks_spawn_next_gen();
+            }
+        }
+    }
+}
+
+static int update_leds_fireworks(ws2811_t* ledstrip)
+{
+    if (flare_wait_time > 0)
+    {
+        flare_wait_time -= (int)((double)xmas_source.basic_source.time_delta / (double)1e6);
+        if (flare_wait_time == 0) flare_wait_time--;
+        //printf("Wait time remaining: %i\n", flare_wait_time);
+        return 0;
+    }
+    for (int led = 0; led < xmas_source.basic_source.n_leds; ++led)
+    {
+        ledstrip->channel[0].leds[led] = static_flares[led];
+    }
+    Fireworks_update(ledstrip->channel[0].leds);
+    return 1;
+}
+
+#pragma endregion
+
 #pragma region XmasSource
 
 static int update_leds_debug(ws2811_t* ledstrip)
@@ -611,8 +926,8 @@ static int update_leds_debug(ws2811_t* ledstrip)
     }
     for (int led = 0; led < xmas_source.basic_source.n_leds; ++led)
     {
-        //ledstrip->channel[0].leds[led] = led == xmas_source.led_index ? xmas_source.basic_source.gradient.colors[0] : 0;
-        ledstrip->channel[0].leds[led] = led < (int)sizeof(xmas_source.basic_source.gradient.colors)/(int)sizeof(int) ? xmas_source.basic_source.gradient.colors[led] : 0;
+        ledstrip->channel[0].leds[led] = led == xmas_source.led_index ? xmas_source.basic_source.gradient.colors[0] : 0;
+        //ledstrip->channel[0].leds[led] = led < (int)sizeof(xmas_source.basic_source.gradient.colors)/(int)sizeof(int) ? xmas_source.basic_source.gradient.colors[led] : 0;
     }
     xmas_source.first_update = 1;
     return 1;
@@ -630,6 +945,12 @@ XMAS_MODE_t string_to_xmas_mode(const char* txt)
         return XM_GLITTER;
     if (strcasecmp(txt, "glitter2") == 0)
         return XM_GLITTER2;
+    if (strcasecmp(txt, "gradient") == 0)
+        return XM_GRADIENT;
+    if (strcasecmp(txt, "joy_pattern") == 0)
+        return XM_JOY_PATTERN;
+    if (strcasecmp(txt, "fireworks") == 0)
+        return XM_FIREWORKS;
     return N_XMAS_MODES;
 }
 
@@ -640,19 +961,19 @@ int XmasSource_process_config(const char* name, const char* value)
         return 1;
     }
     if (strcasecmp(name, "k_diff") == 0) {
-        config.k_diff = atof(value);
+        config.k_diff = strtof(value, NULL);
         return 1;
     }
     if (strcasecmp(name, "k_spec") == 0) {
-        config.k_spec = atof(value);
+        config.k_spec = strtof(value, NULL);
         return 1;
     }
     if (strcasecmp(name, "spec_phase") == 0) {
-        config.spec_phase = atof(value);
+        config.spec_phase = strtof(value, NULL);
         return 1;
     }
     if (strcasecmp(name, "spec") == 0) {
-        config.spec = atof(value);
+        config.spec = strtof(value, NULL);
         return 1;
     }
     if (strcasecmp(name, "snowflake_color") == 0) {
@@ -660,7 +981,7 @@ int XmasSource_process_config(const char* name, const char* value)
         return 1;
     }
     if (strcasecmp(name, "move_chance") == 0) {
-        config.move_chance = atof(value);
+        config.move_chance = strtof(value, NULL);
         return 1;
     }
     if (strcasecmp(name, "diff_base_period") == 0) {
@@ -680,16 +1001,16 @@ int XmasSource_process_config(const char* name, const char* value)
         return 1;
     }
     if (strcasecmp(name, "down_chance") == 0) {
-        config.down_chance = atof(value);
+        config.down_chance = strtof(value, NULL);
         return 1;
     }
     if (strcasecmp(name, "left_chance") == 0) {
-        config.left_chance = atof(value);
+        config.left_chance = strtof(value, NULL);
         return 1;
     }
     //glitter1
     if (strcasecmp(name, "glt1_chance") == 0) {
-        glt1_config.glitter_chance = atof(value);
+        glt1_config.glitter_chance = strtof(value, NULL);
         return 1;
     }
     if (strcasecmp(name, "glt1_color") == 0) {
@@ -697,43 +1018,43 @@ int XmasSource_process_config(const char* name, const char* value)
         return 1;
     }
     if (strcasecmp(name, "glt_green") == 0) {
-        glt1_config.prob1 = atof(value);
+        glt1_config.prob1 = strtof(value, NULL);
         return 1;
     }
     if (strcasecmp(name, "glt_red") == 0) {
-        glt1_config.prob2 = atof(value);
+        glt1_config.prob2 = strtof(value, NULL);
         return 1;
     }
     if (strcasecmp(name, "glt_orange") == 0) {
-        glt1_config.prob3 = atof(value);
+        glt1_config.prob3 = strtof(value, NULL);
         return 1;
     }
     if (strcasecmp(name, "glt_purple") == 0) {
-        glt1_config.prob4 = atof(value);
+        glt1_config.prob4 = strtof(value, NULL);
         return 1;
     }
     if (strcasecmp(name, "glt_blue") == 0) {
-        glt1_config.prob5 = atof(value);
+        glt1_config.prob5 = strtof(value, NULL);
         return 1;
     }
     if (strcasecmp(name, "glt1_phase_position") == 0) {
-        glt1_config.phase_position = atof(value);
+        glt1_config.phase_position = strtof(value, NULL);
         return 1;
     }
     if (strcasecmp(name, "glt1_phase_constant") == 0) {
-        glt1_config.phase_constant = atof(value);
+        glt1_config.phase_constant = strtof(value, NULL);
         return 1;
     }
     if (strcasecmp(name, "glt1_phase_random") == 0) {
-        glt1_config.phase_random = atof(value);
+        glt1_config.phase_random = strtof(value, NULL);
         return 1;
     }
     if (strcasecmp(name, "glt1_amp_add") == 0) {
-        glt1_config.amp_add = atof(value);
+        glt1_config.amp_add = strtof(value, NULL);
         return 1;
     }
     if (strcasecmp(name, "glt1_amp_mul") == 0) {
-        glt1_config.amp_mul = atof(value);
+        glt1_config.amp_mul = strtof(value, NULL);
         return 1;
     }
     if (strcasecmp(name, "glt1_base_period") == 0) {
@@ -746,43 +1067,43 @@ int XmasSource_process_config(const char* name, const char* value)
     }
     //glitter2
     if (strcasecmp(name, "glt2_phase_position") == 0) {
-        glt2_config.phase_position = atof(value);
+        glt2_config.phase_position = strtof(value, NULL);
         return 1;
     }
     if (strcasecmp(name, "glt2_phase_constant") == 0) {
-        glt2_config.phase_constant = atof(value);
+        glt2_config.phase_constant = strtof(value, NULL);
         return 1;
     }
     if (strcasecmp(name, "glt2_phase_random") == 0) {
-        glt2_config.phase_random = atof(value);
+        glt2_config.phase_random = strtof(value, NULL);
         return 1;
     }
     if (strcasecmp(name, "glt2_amp_add") == 0) {
-        glt2_config.amp_add = atof(value);
+        glt2_config.amp_add = strtof(value, NULL);
         return 1;
     }
     if (strcasecmp(name, "glt2_amp_mul") == 0) {
-        glt2_config.amp_mul = atof(value);
+        glt2_config.amp_mul = strtof(value, NULL);
         return 1;
     }
     if (strcasecmp(name, "glt2_color") == 0) {
-        glt2_config.color = atof(value);
+        glt2_config.color = atoi(value);
         return 1;
     }
 
     if (strcasecmp(name, "glt_sky") == 0) {
-        glt2_config.prob1 = atof(value);
+        glt2_config.prob1 = strtof(value, NULL);
         return 1;
     }
     if (strcasecmp(name, "glt_star") == 0) {
-        glt2_config.prob2 = atof(value);
+        glt2_config.prob2 = strtof(value, NULL);
         glt2_config.prob3 = 1.f;
         glt2_config.prob4 = 1.f;
         glt2_config.prob5 = 1.f;
         return 1;
     }
     if (strcasecmp(name, "glt2_chance") == 0) {
-        glt2_config.glitter_chance = atof(value);
+        glt2_config.glitter_chance = strtof(value, NULL);
         return 1;
     }
     if (strcasecmp(name, "glt2_base_period") == 0) {
@@ -799,7 +1120,15 @@ int XmasSource_process_config(const char* name, const char* value)
         return 1;
     }
     if (strcasecmp(name, "icicle_speed") == 0) {
-        config.icicle_speed = atof(value);
+        config.icicle_speed = strtof(value, NULL);
+        return 1;
+    }
+    if (strcasecmp(name, "gradient_speed") == 0) {
+        config.gradient_speed = atoi(value);
+        return 1;
+    }
+    if (strcasecmp(name, "beat_length") == 0) {
+        config.beat_length = atoi(value);
         return 1;
     }
     printf("Unknown config option %s with value %s\n", name, value);
@@ -818,8 +1147,14 @@ int XmasSource_update_leds(int frame, ws2811_t* ledstrip)
         return update_leds_glitter(ledstrip);
     case XM_ICICLES:
         return update_leds_icicles(ledstrip);
+    case XM_GRADIENT:
+        return update_leds_gradient(ledstrip);
     case XM_DEBUG:
         return update_leds_debug(ledstrip);
+    case XM_JOY_PATTERN:
+        return update_leds_pattern(ledstrip);
+    case XM_FIREWORKS:
+        return update_leds_fireworks(ledstrip);
     case N_XMAS_MODES:
         printf("Invalid Xmas Source Mode in frame %d\n", frame);
         break;
@@ -845,6 +1180,11 @@ void XmasSource_destruct_current_mode()
         free(snowflakes);
         free(diff_data);
         free(spec_data);
+        break;
+    case XM_FIREWORKS:
+        free(static_flares);
+    case XM_GRADIENT:
+    case XM_JOY_PATTERN:
         break;
     case N_XMAS_MODES:
         break;
@@ -877,6 +1217,15 @@ void XmasSource_init_current_mode()
     case XM_SNOWFLAKES:
         Snowflakes_init();
         break;
+    case XM_GRADIENT:
+        Gradient_init();
+        break;
+    case XM_JOY_PATTERN:
+        Pattern_init();
+        break;
+    case XM_FIREWORKS:
+        Fireworks_init();
+        break;
     case N_XMAS_MODES:
         break;
     }
@@ -907,6 +1256,7 @@ void XmasSource_process_message(const char* msg)
     strncpy(target, msg, sep - msg);
     strncpy(payload, sep + 1, 64);
     target[sep - msg] = 0x0;
+    payload[63] = 0x0;
     if (!strncasecmp(target, "MODE", 4))
     {
         XMAS_MODE_t mode = string_to_xmas_mode(payload);
@@ -920,6 +1270,12 @@ void XmasSource_process_message(const char* msg)
         XmasSource_init_current_mode();
         xmas_source.first_update = 0;
         printf("Switched mode in XmasSource to: %s\n", payload);
+    }
+    else if (!strncasecmp(target, "DEBUG", 5))
+    {
+        xmas_source.led_index = atoi(payload);
+        xmas_source.first_update = 0;
+        printf("Set new debug led to %i\n", xmas_source.led_index);
     }
     else
         printf("Unknown target: %s, payload was: %s\n", target, payload);
@@ -952,18 +1308,4 @@ XmasSource xmas_source = {
 
 #pragma endregion
 
-
-/*
-    XINPUT_STATE state;
-    DWORD dwUserIndex = 0;
-    while (1)
-    {
-        DWORD res = XInputGetState(dwUserIndex, &state);
-        if(state.Gamepad.wButtons != 0)
-            printf("Res: %d, buttons: %d\n", res, state.Gamepad.wButtons);
-
-    }
-
-
-*/
 #pragma GCC diagnostic pop

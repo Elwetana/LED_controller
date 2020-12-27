@@ -6,6 +6,7 @@
 #include <string.h>
 #include <time.h>
 #include <math.h>
+#include <ctype.h>
 #ifdef __linux__
 #include "ws2811.h"
 #include <ctype.h>

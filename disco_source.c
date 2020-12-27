@@ -42,7 +42,7 @@ int snd_pcm_hw_params(snd_pcm_t* pcm, snd_pcm_hw_params_t* params) {
     return 0;
 }
 
-snd_pcm_format_width(snd_pcm_format_t format) {
+int snd_pcm_format_width(snd_pcm_format_t format) {
     (void)format;
     return 16;
 }
@@ -58,7 +58,7 @@ void sound_hw_init()
      * - therefore only samplerate can be changed, it is samples_per_frame * framerate
      * The samplerate above is our target, but the actual samplerate will be different
      */
-    unsigned int framerate = 1e6 / arg_options.frame_time;
+    unsigned int framerate = (unsigned int)(1e6 / arg_options.frame_time);
     disco_source.samplerate = 44100;
     disco_source.samples_per_frame = disco_source.samplerate / framerate;
     if (disco_source.samples_per_frame < 512) disco_source.samples_per_frame = 512;

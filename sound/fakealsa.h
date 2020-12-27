@@ -33,4 +33,4 @@ typedef enum _snd_pcm_access {
 	SND_PCM_ACCESS_LAST = SND_PCM_ACCESS_RW_NONINTERLEAVED
 } snd_pcm_access_t;
 
-extern snd_pcm_format_width(snd_pcm_format_t format);
+extern int snd_pcm_format_width(snd_pcm_format_t format);
