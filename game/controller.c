@@ -139,6 +139,21 @@ int Controller_get_button(enum EButtons* button, enum EState* state)
                 process_d_pad(button, state, ie.value, DPAD_U, DPAD_D);
                 return 1;
             }
+            else if(ie.code == ABS_X)
+            {
+                if (ie.value > 16383)
+                {
+                    *state = BT_pressed;
+                    *button = DPAD_R;
+                    return 1;
+                }
+                if (ie.value < -16383)
+                {
+                    *state = BT_pressed;
+                    *button = DPAD_L;
+                    return 1;
+                }
+            }
         }
         len = read(input, &ie, sizeof(struct input_event));
     }
