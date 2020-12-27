@@ -16,13 +16,20 @@ Finally, I created a different project with sound input, where LEDs blink to the
 of music from analogue input (you need extra sound card on Raspberry Pi for that). The
 colour of LEDs depends on tempo, dominant frequency and phase of the beat.
 
+Even more finally, I added some colourful modes for decorating a Christmas tree and I
+added a simple 1-D game with four levels that uses Xbox controller connected to the RPi.
+
 The colours used by the application are in the `config` file, the interpretation varies
 slightly in different modes, but basically its hex colours that are end points in a 
 gradient and how many steps should be generated in between. So e.g. `0x00001 10 0x0000ff
 5 0x008888` generates 10 steps gradient from black to blue (when making gradients from
 black or white, it's better to give the program a hint about gradient path by using a 
 number that's not pure black or white), followed by five step gradient from blue to dark
-cyan.
+cyan. The gradient is inclusive of the right colour if this is the last gradient or if it
+is followed by 0, so `0x00FF00 3 0x000000 0 0x...` will generate gradient with three colours:
+pure green, 50% green and black, while `0x00FF00 3 0x000000 3 0x...` will generate three
+colours: pure green, 66% green, 33% green; black will be the first colour of the next
+gradient.
 
 ## Requirements
 
