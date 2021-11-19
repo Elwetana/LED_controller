@@ -110,7 +110,7 @@ void Controller_init()
     for (int i = 0; i < C_MAX_CONTROLLERS; i++)
     {
 #ifdef __linux__
-        char* input_path[18];
+        char input_path[18];
         sprintf(input_path, "/dev/input/event%i", i);
         input[i] = open(input_path, O_RDONLY | O_NONBLOCK);
         if (input[i] == -1)
@@ -201,7 +201,7 @@ int Controller_get_button(uint64_t t, enum EButtons* button, enum EState* state,
                 goto update;
             }
         }
-        len = read(input, &ie, sizeof(struct input_event));
+        len = read(input[controller_index], &ie, sizeof(struct input_event));
     }
     for(int i = 0; i < C_MAX_XBTN; ++i)
     {

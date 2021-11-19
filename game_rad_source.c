@@ -107,6 +107,7 @@ int RadInputHandler_process_input()
 
 int GameRadSource_update_leds(int frame, ws2811_t* ledstrip)
 {
+    (void)frame;
     RadInputHandler_process_input();
 
     double time_seconds = ((game_rad_source.basic_source.current_time -game_rad_source.start_time)  / (long)1e3) / (double)1e6;
