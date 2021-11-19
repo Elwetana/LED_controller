@@ -4,6 +4,7 @@
 #include <string.h>
 #include <time.h>
 #include <math.h>
+#include <assert.h>
 
 #ifdef __linux__
 #include <unistd.h>
@@ -18,7 +19,8 @@
 
 #include "controller.h"
 
-static int input;
+static int input[C_MAX_CONTROLLERS];
+static int n_players;
 static int dpad_pressed = 200;
 static int left_stick_pressed = XBTN_LST_L;
 static uint64_t down_timeout = 100 * 1e6; //in ns
@@ -28,12 +30,12 @@ static char* button_names[] = {
     "ERROR 309", "LEFT SHOULDER", "RIGHT SHOULDER", "UNKNOWN 312", //309-312
     "UNKNOWN 313", "BACK", "START", "XBOX", "LEFT THUMB", "RIGHT THUMB" //313-318
 };
-static uint64_t button_states[C_MAX_XBTN];
+static uint64_t button_states[C_MAX_CONTROLLERS][C_MAX_XBTN];
 
 #ifndef __linux__
-static WORD current_state;
-static WORD last_state;
-static WORD processed;
+static WORD current_state[C_MAX_CONTROLLERS];
+static WORD last_state[C_MAX_CONTROLLERS];
+static WORD processed[C_MAX_CONTROLLERS];
 static enum EButtons xMap[] = { DPAD_U, DPAD_D, DPAD_L, DPAD_R, XBTN_Start, XBTN_Back, XBTN_L3, XBTN_R3, XBTN_LB, XBTN_RB, XBTN_ERROR, XBTN_ERROR, XBTN_A, XBTN_B, XBTN_X, XBTN_Y };
 /*
 XINPUT_GAMEPAD_DPAD_UP	    0x0001
@@ -53,56 +55,87 @@ XINPUT_GAMEPAD_Y	        0x8000
 */
 #endif
 
-void Controller_init()
-{
-#ifdef __linux__
-    input = open("/dev/input/event0", O_RDONLY | O_NONBLOCK);
-#else
-    current_state = 0;
-    last_state = 0;
-    processed = 0;
-#endif
-    for(int i = 0; i < C_MAX_XBTN; ++i)
-    {
-        button_states[i] = 0;
-    }
-}
-
 char* Controller_get_button_name(enum EButtons button)
 {
     return button_names[button];
 }
 
 #ifndef __linux__
-int Controller_get_button_windows(enum EButtons* button, enum EState* state)
+int Controller_get_button_windows(enum EButtons* button, enum EState* state, DWORD dwUserIndex)
 {
     XINPUT_STATE xstate;
-    DWORD dwUserIndex = 0;
-    if (processed == 0)
+    if (processed[dwUserIndex] == 0)
     {
-        XInputGetState(dwUserIndex, &xstate);
-        current_state = xstate.Gamepad.wButtons;
+        DWORD dwResult = XInputGetState(dwUserIndex, &xstate);
+        if (dwResult == ERROR_SUCCESS)
+            current_state[dwUserIndex] = xstate.Gamepad.wButtons;
+        else
+            return -1;
     }
-    WORD diff = current_state ^ last_state;
+    WORD diff = current_state[dwUserIndex] ^ last_state[dwUserIndex];
     if (diff > 0)
     {
         for (int i = 0; i < 16; ++i)
         {
             WORD bit = 1 << i;
-            if ((diff & bit) && !(processed & bit))
+            if ((diff & bit) && !(processed[dwUserIndex] & bit))
             {
-                processed |= bit;
+                processed[dwUserIndex] |= bit;
                 *button = xMap[i];
-                *state = (bit & current_state) ? BT_pressed : BT_released;
+                *state = (bit & current_state[dwUserIndex]) ? BT_pressed : BT_released;
                 return 1;
             }
         }
     }
-    last_state = current_state;
-    processed = 0;
+    last_state[dwUserIndex] = current_state[dwUserIndex];
+    processed[dwUserIndex] = 0;
     return 0;
 }
+
+int Controller_check_present_windows(int dwUserIndex)
+{
+    enum EButtons button;
+    enum EState state;
+    return Controller_get_button_windows(&button, &state, dwUserIndex);
+}
 #endif
+
+int Controller_get_n_players()
+{
+    return n_players;
+}
+
+void Controller_init()
+{
+    for (int i = 0; i < C_MAX_CONTROLLERS; i++)
+    {
+#ifdef __linux__
+        char* input_path[18];
+        sprintf(input_path, "/dev/input/event%i", i);
+        input[i] = open(input_path, O_RDONLY | O_NONBLOCK);
+        if (input[i] == -1)
+        {
+            n_players = i;
+            return;
+        }
+#else
+        int isPresent = Controller_check_present_windows(i);
+        if (isPresent == -1)
+        {
+            n_players = i;
+            return;
+        }
+        current_state[i] = 0;
+        last_state[i] = 0;
+        processed[i] = 0;
+#endif
+        for (int button = 0; button < C_MAX_XBTN; ++button)
+        {
+            button_states[i][button] = 0;
+        }
+    }
+    n_players = C_MAX_CONTROLLERS;
+}
 
 void process_d_pad(enum EButtons* button, enum EState* state, int value, enum EButtons neg_value, enum EButtons pos_value)
 {
@@ -119,13 +152,14 @@ void process_d_pad(enum EButtons* button, enum EState* state, int value, enum EB
     }
 }
 
-int Controller_get_button(uint64_t t, enum EButtons* button, enum EState* state)
+int Controller_get_button(uint64_t t, enum EButtons* button, enum EState* state, int controller_index)
 {
+    assert(controller_index < n_players);
 #ifndef __linux__
-    return Controller_get_button_windows(button, state);
+    return Controller_get_button_windows(button, state, controller_index);
 #endif
     struct input_event ie;
-    int len = read(input, &ie, sizeof(struct input_event));
+    int len = read(input[controller_index], &ie, sizeof(struct input_event));
     while (len > 0)
     {
         if (ie.type == EV_KEY)
@@ -171,9 +205,9 @@ int Controller_get_button(uint64_t t, enum EButtons* button, enum EState* state)
     }
     for(int i = 0; i < C_MAX_XBTN; ++i)
     {
-        if (button_states[i] != 0 && (t - button_states[i]) > down_timeout)
+        if (button_states[controller_index][i] != 0 && (t - button_states[controller_index][i]) > down_timeout)
         {
-            button_states[i] = t;
+            button_states[controller_index][i] = t;
             *button = i;
             *state = BT_down;
             return 1;
@@ -181,6 +215,6 @@ int Controller_get_button(uint64_t t, enum EButtons* button, enum EState* state)
     }
     return 0;
 update: 
-    button_states[*button] = (*state == BT_pressed) ? t : 0;
+    button_states[controller_index][*button] = (*state == BT_pressed) ? t : 0;
     return 1;
 }

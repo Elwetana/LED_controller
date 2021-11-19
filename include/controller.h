@@ -2,11 +2,13 @@
 #define __CONTROLLER_H__
 
 /*
-* This is extremely limited library for reading Xbox Controller input on Windows and Linux. Currently it only reads button presses,
-* it ignores triggers and joysticks.
+* This is extremely limited library for reading Xbox Controller input on Windows and Linux. Currently it only reads button presses;
+* joysticks are converted to yes/no queries
 */
 
 #define C_BTN_OFFSET 300
+
+#define C_MAX_CONTROLLERS 4
 
 /*! The actual codes defined in linux/input.h start with 304 for BTN_A 
 * For better lookup we need codes to start from 0 */
@@ -48,7 +50,8 @@ enum EState
 
 void Controller_init();
 //Returns 1 when button was read, there may be potentially more buttons to read if they were pressed since last update
-int Controller_get_button(uint64_t t, enum EButtons* button, enum EState* state);
+int Controller_get_button(uint64_t t, enum EButtons* button, enum EState* state, int player_index);
 char* Controller_get_button_name(enum EButtons button);
+int Controller_get_n_players();
 
 #endif /* __CONTROLLER_H__ */

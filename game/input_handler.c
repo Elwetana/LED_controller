@@ -105,7 +105,7 @@ int InputHandler_process_input()
 {
     enum EButtons button;
     enum EState state;
-    int i = Controller_get_button(game_source.basic_source.current_time, &button, &state);
+    int i = Controller_get_button(game_source.basic_source.current_time, &button, &state, 0);
 #ifdef GAME_DEBUG
     if (i != 0) printf("controller button: %s, state: %i\n", Controller_get_button_name(button), state);
 #endif // GAME_DEBUG
