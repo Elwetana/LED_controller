@@ -26,7 +26,7 @@
 //#define GAME_DEBUG
 
 //handlers of the button events, the lower half is on_release
-static void(*button_handlers[2 * C_MAX_XBTN])();
+static void(*button_handlers[3 * C_MAX_XBTN])(); //there are three possible states of a button
 
 static void ButtonHandler_next_level()
 {
@@ -47,7 +47,7 @@ void InputHandler_init(enum GameModes game_mode)
 {
     Controller_init(); //TODO: this needs/should be called only once
 
-    for (int i = 0; i < 2 * C_MAX_XBTN; ++i) button_handlers[i] = NULL;
+    for (int i = 0; i < 3 * C_MAX_XBTN; ++i) button_handlers[i] = NULL;
 
     switch (game_mode)
     {
@@ -62,6 +62,8 @@ void InputHandler_init(enum GameModes game_mode)
         button_handlers[C_MAX_XBTN + DPAD_D] = PlayerObject_hide_below;
         button_handlers[C_MAX_XBTN + XBTN_LST_L] = PlayerObject_move_left;
         button_handlers[C_MAX_XBTN + XBTN_LST_R] = PlayerObject_move_right;
+        button_handlers[2 * C_MAX_XBTN + XBTN_LST_L] = PlayerObject_move_left;
+        button_handlers[2 * C_MAX_XBTN + XBTN_LST_R] = PlayerObject_move_right;
         //button_handlers[C_MAX_XBTN + XBTN_A] = GameObject_debug_win;
         //button_handlers[C_MAX_XBTN + XBTN_X] = ButtonHandler_debug_heal;
         button_handlers[C_MAX_XBTN + XBTN_Back] = ButtonHandler_debug_game_over;
@@ -73,6 +75,8 @@ void InputHandler_init(enum GameModes game_mode)
         button_handlers[C_MAX_XBTN + DPAD_R] = PlayerObject_move_right;
         button_handlers[C_MAX_XBTN + XBTN_LST_L] = PlayerObject_move_left;
         button_handlers[C_MAX_XBTN + XBTN_LST_R] = PlayerObject_move_right;
+        button_handlers[2 * C_MAX_XBTN + XBTN_LST_L] = PlayerObject_move_left;
+        button_handlers[2 * C_MAX_XBTN + XBTN_LST_R] = PlayerObject_move_right;
         button_handlers[C_MAX_XBTN + XBTN_A] = PlayerObject_fire_bullet_green;
         button_handlers[C_MAX_XBTN + XBTN_B] = PlayerObject_fire_bullet_red;
         button_handlers[C_MAX_XBTN + XBTN_X] = PlayerObject_fire_bullet_blue;
@@ -109,7 +113,6 @@ int InputHandler_process_input()
     {
         return 1;
     }
-    if(state == BT_down) state = BT_pressed;
     int button_index = state * C_MAX_XBTN + button;
     if (button_handlers[button_index])
     {
