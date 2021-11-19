@@ -93,6 +93,9 @@
     <ClCompile Include="..\game\callbacks.c">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="..\game_rad_source.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <None Include="packages.config" />
@@ -185,6 +188,9 @@
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="..\include\callbacks.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\include\game_rad_source.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>

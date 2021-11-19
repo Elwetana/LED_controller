@@ -176,6 +176,7 @@
     <ClCompile Include="..\game\player_object.c" />
     <ClCompile Include="..\game\pulse_object.c" />
     <ClCompile Include="..\game\stencil_handler.c" />
+    <ClCompile Include="..\game_rad_source.c" />
     <ClCompile Include="..\game_source.c" />
     <ClCompile Include="..\getopt.c" />
     <ClCompile Include="..\ini.c" />
@@ -216,6 +217,7 @@
     <ClInclude Include="..\include\fakesignal.h" />
     <ClInclude Include="..\include\faketime.h" />
     <ClInclude Include="..\include\fire_source.h" />
+    <ClInclude Include="..\include\game_rad_source.h" />
     <ClInclude Include="..\include\game_source.h" />
     <ClInclude Include="..\include\game_object.h" />
     <ClInclude Include="..\include\getopt.h" />
