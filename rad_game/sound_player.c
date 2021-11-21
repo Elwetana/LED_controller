@@ -180,7 +180,7 @@ void load_effects()
 {
     const int max_effect_length = 2; //!< in seconds
     char* tmp = (char*)malloc(samplerate * channels * max_effect_length * 2); //*2 for sample size
-    _getcwd(tmp, samplerate * channels * max_effect_length * 2);
+    //_getcwd(tmp, samplerate * channels * max_effect_length * 2);
     for (int i = 0; i < SE_N_EFFECTS; ++i)
     {
         FILE* feff = fopen("sound/reward2_2.wav", "rb");

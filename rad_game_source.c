@@ -149,26 +149,33 @@ int RadGameSource_update_leds(int frame, ws2811_t* ledstrip)
 
         if (A > S_coeff_threshold)
         {
-            if (S > S_coeff_threshold)
-            {
-                oscillators[0][led] *= 0.75;
-            }
-            else
+            if (S < S_coeff_threshold)
             {
                 in_sync++;
             }
+            else
+            {
+                oscillators[0][led] *= 0.5;
+            }
         }
-        if (frame % 50 == 0)
+        else
         {
-            printf("Leds in sync: %i\n", in_sync);
+            oscillators[0][led] = 0.0;
+            oscillators[1][led] = 0.0;
+            oscillators[2][led] = 0.0;
         }
-        //if (led == 1) printf("c %x\n", color);
+
+       //if (led == 1) printf("c %x\n", color);
     }
     for (int i = 0; i < rad_game_source.n_players; i++)
     {
         ledstrip->channel[0].leds[players[i]] = 0xFFFFFF;
     }
-
+    if (frame % 500 == 0)
+    {
+        printf("Leds in sync: %i\n", in_sync);
+    }
+ 
     return 1;
 }
 

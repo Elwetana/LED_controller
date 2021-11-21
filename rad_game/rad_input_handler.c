@@ -21,7 +21,7 @@
 #include "rad_input_handler.h"
 #include "controller.h"
 
-//this should go to rad_input_handler when it exists
+//#define GAME_DEBUG
 static void(*button_handlers[3 * C_MAX_XBTN])(int);
 
 void RadInputHandler_init()
