@@ -29,6 +29,7 @@ srcs = Split('''
     game/pulse_object.c
     game/callbacks.c
     game_rad_source.c
+    game_rad/sound_player.c
 ''')
 
 

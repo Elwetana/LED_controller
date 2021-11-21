@@ -2,5 +2,5 @@
 
 env = Environment()
 env.Append(LINKFLAGS=['-Wl,-rpath,"/usr/local/lib"', '-Wall'])
-env.Program('test.c', LIBS=['asound', 'aubio'], LIBPATH=['/usr/local/lib'])
+env.Program('test_play.c', LIBS=['asound', 'aubio'], LIBPATH=['/usr/local/lib'])
 

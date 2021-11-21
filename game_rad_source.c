@@ -18,16 +18,16 @@
 
 #include "common_source.h"
 #include "game_rad_source.h"
+#include "sound_player.h"
 #include "controller.h"
 
 //#define GAME_DEBUG
 
-//oscillator frequency in hz
-#define RAD_FREQ 1.0
-
+//oscillator frequency in Hz
+static double rad_freq;
 
 //this should go to rad_input_handler when it exists
-static void(*button_handlers[2 * C_MAX_XBTN])(int);
+static void(*button_handlers[3 * C_MAX_XBTN])(int);
 
 //array of oscillators
 // first is amplitude, second and third are C and S, such that C*C + S*S == 1
@@ -54,8 +54,8 @@ void Player_strike(int player_index)
 {
     uint64_t phase_ns = game_rad_source.basic_source.current_time - game_rad_source.start_time;
     double phase_seconds = (phase_ns / (long)1e3) / (double)1e6;
-    double impulse_C = cos(M_PI / 2.0 - 2.0 * M_PI * RAD_FREQ * phase_seconds);
-    double impulse_S = sin(M_PI / 2.0 - 2.0 * M_PI * RAD_FREQ * phase_seconds);
+    double impulse_C = cos(M_PI / 2.0 - 2.0 * M_PI * rad_freq * phase_seconds);
+    double impulse_S = sin(M_PI / 2.0 - 2.0 * M_PI * rad_freq * phase_seconds);
     int player_pos = players[player_index];
     for (int led = player_pos - 5; led < player_pos + 5; led++)
     {
@@ -109,10 +109,11 @@ int GameRadSource_update_leds(int frame, ws2811_t* ledstrip)
 {
     (void)frame;
     RadInputHandler_process_input();
+    SoundPlayer_play();
 
     double time_seconds = ((game_rad_source.basic_source.current_time -game_rad_source.start_time)  / (long)1e3) / (double)1e6;
-    double sinft = sin(2 * M_PI * RAD_FREQ * time_seconds);
-    double cosft = cos(2 * M_PI * RAD_FREQ * time_seconds);
+    double sinft = sin(2 * M_PI * rad_freq * time_seconds);
+    double cosft = cos(2 * M_PI * rad_freq * time_seconds);
     //printf("Time %f\n", time_seconds);
 
     for (int led = 0; led < game_rad_source.basic_source.n_leds; ++led)
@@ -166,13 +167,19 @@ void InitOscillators()
 void GameRadSource_init(int n_leds, int time_speed, uint64_t current_time)
 {
     BasicSource_init(&game_rad_source.basic_source, n_leds, time_speed, source_config.colors[CHASER_SOURCE], current_time); //TODO change colors
+
+    const double BPM = 72.02;
+    rad_freq = BPM / 60.0;
+
     game_rad_source.start_time = current_time;
     for(int i = 0; i < 3; ++i)
         oscillators[i] = malloc(sizeof(double) * n_leds);
     RadInputHandler_init();
     game_rad_source.n_players = Controller_get_n_players();
+    printf("Players detected: %i\n", game_rad_source.n_players);
     InitOscillators();
     InitPlayers();
+    SoundPlayer_init(44100, 2, 20000, "sound/GodRestYeMerryGentlemen.wav");
 }
 
 void GameRadSource_destruct()
