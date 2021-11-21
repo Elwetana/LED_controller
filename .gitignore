@@ -13,3 +13,8 @@ controller_test
 AubioTest/x64/
 geometry.xlsx
 *.swp
+*.tlog
+*.exe.recipe
+*.obj
+*.vcxproj.filters
+*.idb
