@@ -31,8 +31,10 @@ void RadInputHandler_init()
     button_handlers[C_MAX_XBTN + XBTN_LST_L] = Player_move_left;
     button_handlers[C_MAX_XBTN + XBTN_LST_R] = Player_move_right;
     button_handlers[C_MAX_XBTN + XBTN_A] = Player_strike;
-    button_handlers[C_MAX_XBTN + XBTN_LB] = Player_freq_dec;
-    button_handlers[C_MAX_XBTN + XBTN_RB] = Player_freq_inc;
+    button_handlers[C_MAX_XBTN + XBTN_L3] = Player_freq_dec;
+    button_handlers[C_MAX_XBTN + XBTN_R3] = Player_freq_inc;
+    button_handlers[C_MAX_XBTN + XBTN_LB] = Player_time_offset_dec;
+    button_handlers[C_MAX_XBTN + XBTN_RB] = Player_time_offset_inc;
 
     Controller_init();
 }

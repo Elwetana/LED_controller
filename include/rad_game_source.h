@@ -36,11 +36,12 @@ void Player_move_right(int player_index);
 void Player_strike(int player_index);
 void Player_freq_inc(int player_index);
 void Player_freq_dec(int player_index);
+void Player_time_offset_inc(int player_index);
+void Player_time_offset_dec(int player_index);
 
 typedef struct RadGameSource
 {
 	BasicSource basic_source;
-	int first_update;
 	uint64_t start_time;
 	int n_players;
 } RadGameSource;

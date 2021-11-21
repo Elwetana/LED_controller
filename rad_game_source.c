@@ -38,6 +38,9 @@ static int players[C_MAX_CONTROLLERS];
 //!should we start playing a new effect?
 static enum ESoundEffects new_effect;
 
+static long time_offset = 0; //< in ms
+static const double S_coeff_threshold = 0.1;
+
 void Player_move_left(int player_index)
 {
     players[player_index]--;
@@ -59,6 +62,7 @@ void Player_strike(int player_index)
     double impulse_C = cos(M_PI / 2.0 - 2.0 * M_PI * rad_freq * phase_seconds);
     double impulse_S = sin(M_PI / 2.0 - 2.0 * M_PI * rad_freq * phase_seconds);
     int player_pos = players[player_index];
+    int good_strikes = 0;
     for (int led = player_pos - 5; led < player_pos + 5; led++)
     {
         double unnormal_C = oscillators[0][led] * oscillators[1][led] + impulse_C * 1.0 / (1 + (led - player_pos) * (led - player_pos));
@@ -67,10 +71,14 @@ void Player_strike(int player_index)
         oscillators[0][led] = len;
         oscillators[1][led] = unnormal_C / len;
         oscillators[2][led] = unnormal_S / len;
+        if (oscillators[2][led] < S_coeff_threshold) good_strikes++;
 
         //printf("len %f\n", len);
     }
-    new_effect = SE_Reward;
+    if (good_strikes > 5)
+    {
+        new_effect = SE_Reward;
+    }
 }
 
 void Player_freq_inc(int player_index)
@@ -87,27 +95,73 @@ void Player_freq_dec(int player_index)
     printf("Frequence lowered to %f\n", rad_freq);
 }
 
+void Player_time_offset_inc(int player_index)
+{
+    (void)player_index;
+    time_offset += 50;
+    rad_game_source.start_time += 50 * 1e6;
+    printf("Time offset increased to %li ms\n", time_offset);
+}
+
+void Player_time_offset_dec(int player_index)
+{
+    (void)player_index;
+    time_offset -= 50;
+    rad_game_source.start_time -= 50 * 1e6;
+    printf("Time offset decreased to %li ms\n", time_offset);
+}
+
+/*int check_oscillators(int led, int** color)
+{
+
+}*/
+
 int RadGameSource_update_leds(int frame, ws2811_t* ledstrip)
 {
     (void)frame;
     new_effect = SE_N_EFFECTS;
     RadInputHandler_process_input();
-    SoundPlayer_play(new_effect);
+    long time_pos = SoundPlayer_play(new_effect);
+    if (time_pos == -1)
+    {
+        //TODO start a new song?
+        SoundPlayer_destruct();
+        SoundPlayer_init(44100, 2, 20000, "sound/GodRestYeMerryGentlemen.wav");
+    }
 
-    double time_seconds = ((rad_game_source.basic_source.current_time -rad_game_source.start_time)  / (long)1e3) / (double)1e6;
+    double time_seconds = ((rad_game_source.basic_source.current_time - rad_game_source.start_time)  / (long)1e3) / (double)1e6;
     double sinft = sin(2 * M_PI * rad_freq * time_seconds);
     double cosft = cos(2 * M_PI * rad_freq * time_seconds);
     //printf("Time %f\n", time_seconds);
 
+    int in_sync = 0;
     for (int led = 0; led < rad_game_source.basic_source.n_leds; ++led)
     {
         double A = oscillators[0][led];
+        double C = oscillators[1][led];
+        double S = oscillators[2][led];
         if (A > 1.0) A = 1.0;
-        double y = A * (oscillators[1][led] * sinft + oscillators[2][led] * cosft);
+        double y = A * (C * sinft + S * cosft);
         double absy = (y < 0) ? -y : y;
         int x = (int)(0xFF * absy);
         int color = (y < 0) ? x << 16 : x;
         ledstrip->channel[0].leds[led] = color;
+
+        if (A > S_coeff_threshold)
+        {
+            if (S > S_coeff_threshold)
+            {
+                oscillators[0][led] *= 0.75;
+            }
+            else
+            {
+                in_sync++;
+            }
+        }
+        if (frame % 50 == 0)
+        {
+            printf("Leds in sync: %i\n", in_sync);
+        }
         //if (led == 1) printf("c %x\n", color);
     }
     for (int i = 0; i < rad_game_source.n_players; i++)
@@ -174,6 +228,7 @@ void RadGameSource_destruct()
 {
     for (int i = 0; i < 3; ++i)
         free(oscillators[i]);
+    SoundPlayer_destruct();
 }
 
 void RadGameSource_construct()
@@ -188,7 +243,6 @@ void RadGameSource_construct()
 RadGameSource rad_game_source = {
     .basic_source.construct = RadGameSource_construct,
     //.heads = { 19, 246, 0, 38, 76, 114, 152, 190, 227, 265, 303, 341, 379, 417 }
-    .first_update = 0,
     .start_time = 0,
     .n_players = 0
 };

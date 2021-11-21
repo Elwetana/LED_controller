@@ -8,6 +8,7 @@
 #else
 #include "fakealsa.h"
 #include "faketime.h"
+#include <direct.h>
 #endif
 
 #include "sound_player.h"
@@ -110,11 +111,6 @@ static void init_hw()
     fprintf(stderr, "Parameters set to handle\n");
 #endif
 
-    snd_pcm_hw_params_free(hw_params);
-#ifdef DEBUG_SOUND
-    fprintf(stderr, "HW initialized\n");
-#endif
-
     if ((err = snd_pcm_prepare(pcm_handle)) < 0) {
         fprintf(stderr, "cannot prepare audio interface for use (%s)\n", snd_strerror(err));
         exit(1);
@@ -136,11 +132,18 @@ static void init_hw()
 	snd_pcm_hw_params_get_period_time(hw_params, &tmp, NULL);
     printf("Period time: %i, size %i\n", tmp, (int)period_size);
 #endif
+
+    snd_pcm_hw_params_free(hw_params);
+#ifdef DEBUG_SOUND
+    fprintf(stderr, "HW initialized\n");
+#endif
+
 }
 #else
 
 static void init_hw()
 {
+    period_size = 256;
 }
 #endif /* __linux__ */
 
@@ -160,8 +163,8 @@ static void start_playing(int frame_time, char* filename)
 	buff = (char*) malloc(samples_in_buffer * channels * 2);
 
     //open input file
-    //FILE* fin = fopen("GodRestYeMerryGentlemen.wav", "r");
-    fin = fopen(filename, "r");
+    //FILE* fin = fopen("GodRestYeMerryGentlemen.wav", "rb");
+    fin = fopen(filename, "rb");
     fseek(fin, 44, SEEK_SET);
     
     struct timespec start;
@@ -177,10 +180,11 @@ void load_effects()
 {
     const int max_effect_length = 2; //!< in seconds
     char* tmp = (char*)malloc(samplerate * channels * max_effect_length * 2); //*2 for sample size
+    _getcwd(tmp, samplerate * channels * max_effect_length * 2);
     for (int i = 0; i < SE_N_EFFECTS; ++i)
     {
-        FILE* feff = fopen("sound/reward2_2.wav", "r");
-        //FILE* feff = fopen("sound/test_sin.wav", "r");
+        FILE* feff = fopen("sound/reward2_2.wav", "rb");
+        //FILE* feff = fopen("sound/test_sin.wav", "rb");
         fseek(feff, 44, SEEK_SET);
         unsigned int samples_read = fread(tmp, channels * 2, samplerate * max_effect_length, feff);
         fclose(feff);
@@ -194,6 +198,7 @@ void load_effects()
         effects[i].n_samples = samples_read;
         effects[i].position = -1;
     }
+    free(tmp);
 }
 
 void SoundPlayer_init(unsigned int in_samplerate, unsigned int in_channels, int frame_time, char* filename)
@@ -297,4 +302,12 @@ long SoundPlayer_play(enum ESoundEffects new_effect)
     last_update_ns = current_ns;
 #endif
 	return time_running_us;
+}
+
+void SoundPlayer_destruct()
+{
+    for (int i = 0; i < SE_N_EFFECTS; ++i)
+    {
+        free(effects[i].data);
+    }
 }

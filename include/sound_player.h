@@ -23,4 +23,6 @@ void SoundPlayer_init(unsigned int samplerate, unsigned int channels, int frame_
  */
 long SoundPlayer_play(enum ESoundEffects new_effect);
 
+void SoundPlayer_destruct();
+
 #endif /* __SOUND_PLAYER_H */
