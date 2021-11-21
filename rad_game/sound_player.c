@@ -142,7 +142,7 @@ static void init_hw()
 static void init_hw()
 {
 }
-#endif __linux__
+#endif /* __linux__ */
 
 static void start_playing(int frame_time, char* filename)
 {
@@ -176,16 +176,17 @@ static void start_playing(int frame_time, char* filename)
 void load_effects()
 {
     const int max_effect_length = 2; //!< in seconds
-    char* tmp = (char)malloc(samplerate * channels * max_effect_length * 2); //*2 for sample size
+    char* tmp = (char*)malloc(samplerate * channels * max_effect_length * 2); //*2 for sample size
     for (int i = 0; i < SE_N_EFFECTS; ++i)
     {
         FILE* feff = fopen("sound/reward2_2.wav", "r");
+        //FILE* feff = fopen("sound/test_sin.wav", "r");
         fseek(feff, 44, SEEK_SET);
-        int samples_read = fread(tmp, channels * 2, samplerate * max_effect_length, feff);
+        unsigned int samples_read = fread(tmp, channels * 2, samplerate * max_effect_length, feff);
         fclose(feff);
         assert(sizeof(short) == 2);
         effects[i].data = (short*)malloc(sizeof(short) * samples_read * channels);
-        for (int sample = 0; i < samples_read * channels; i++)
+        for (unsigned int sample = 0; sample < samples_read * channels; sample++)
         {
             effects[i].data[sample] = tmp[sample * 2 + 1] << 8 | tmp[sample * 2];
         }
@@ -236,17 +237,21 @@ long SoundPlayer_play(enum ESoundEffects new_effect)
                 {
                     samples_to_modify = samples_read;
                 }
-                for (int sample = 0; sample < samples_to_modify * channels; sample++)
+                for (unsigned int sample = 0; sample < samples_to_modify * channels; sample++)
                 {
                     short orig = buff[sample * 2 + 1] << 8 | buff[sample * 2];
-                    short modified = (orig >> 1) + effects[current_effect].data[effect_offset + sample];
-                    buff[sample * 2] = (char)(modified && 0xFF);
-                    buff[sample * 2 + 1] = (char)((modified & 0xFF00) >> 8);
+                    short modified = (orig >> 2) + effects[current_effect].data[effect_offset * channels + sample];
+                    buff[sample * 2] = (char)(modified & 0xFF);
+                    buff[sample * 2 + 1] = (char)((modified >> 8) & 0xFF);
                 }
                 if (samples_to_modify < samples_read)
                 {
                     effects[current_effect].position = -1;
                     current_effect = SE_N_EFFECTS;
+                }
+                else
+                {
+                    effects[current_effect].position += samples_to_modify;
                 }
             }
 #ifdef __linux__
@@ -273,7 +278,7 @@ long SoundPlayer_play(enum ESoundEffects new_effect)
 #ifdef __linux__
              snd_pcm_drain(pcm_handle);
              snd_pcm_close(pcm_handle);
-#endif __linux__
+#endif
              free(buff);
              return -1;
         }
