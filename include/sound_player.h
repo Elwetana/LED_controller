@@ -1,6 +1,13 @@
 #ifndef __SOUND_PLAYER_H__
 #define __SOUND_PLAYER_H__
 
+
+enum ESoundEffects
+{
+	SE_Reward,
+	SE_N_EFFECTS
+};
+
 /*!
  * @brief Init hardware and start to play
  * @param samplerate sample per seconds, typicall 44100
@@ -14,6 +21,6 @@ void SoundPlayer_init(unsigned int samplerate, unsigned int channels, int frame_
  * @brief keep playing the current file
  * @return current timestamp (i.e. how much of the song was already played) in us
  */
-long SoundPlayer_play();
+long SoundPlayer_play(enum ESoundEffects new_effect);
 
 #endif /* __SOUND_PLAYER_H */

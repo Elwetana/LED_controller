@@ -19,7 +19,7 @@ enum SourceType {
     DISCO_SOURCE,
     XMAS_SOURCE,
     GAME_SOURCE,
-    GAME_RAD_SOURCE,
+    RAD_GAME_SOURCE,
     N_SOURCE_TYPES
 };
 

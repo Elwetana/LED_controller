@@ -1,197 +1,207 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
 <Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <ItemGroup>
-    <Filter Include="Source Files">
-      <UniqueIdentifier>{4FC737F1-C7A5-4376-A066-2A32D752A2FF}</UniqueIdentifier>
-      <Extensions>cpp;c;cc;cxx;c++;def;odl;idl;hpj;bat;asm;asmx</Extensions>
-    </Filter>
-    <Filter Include="Header Files">
-      <UniqueIdentifier>{93995380-89BD-4b04-88EB-625FBE52EBFB}</UniqueIdentifier>
-      <Extensions>h;hh;hpp;hxx;h++;hm;inl;inc;ipp;xsd</Extensions>
-    </Filter>
-    <Filter Include="Resource Files">
-      <UniqueIdentifier>{67DA6AB6-F800-4c08-8B7A-83BB121AAD01}</UniqueIdentifier>
-      <Extensions>rc;ico;cur;bmp;dlg;rc2;rct;bin;rgs;gif;jpg;jpeg;jpe;resx;tiff;tif;png;wav;mfcribbon-ms</Extensions>
-    </Filter>
-  </ItemGroup>
-  <ItemGroup>
-    <ClCompile Include="..\colours.c">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="..\fakeled.c">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="..\fire_source.c">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="..\getopt.c">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="..\led_main.c">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="..\listener.c">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="..\perlin_source.c">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="..\common_source.c">
-      <Filter>Source Files</Filter>
+    <ClCompile Include="..\game\callbacks.c">
+      <Filter>Games</Filter>
     </ClCompile>
     <ClCompile Include="..\color_source.c">
-      <Filter>Source Files</Filter>
+      <Filter>SourceCommon</Filter>
     </ClCompile>
-    <ClCompile Include="..\chaser_source.c">
-      <Filter>Source Files</Filter>
+    <ClCompile Include="..\colours.c">
+      <Filter>SourceCommon</Filter>
     </ClCompile>
-    <ClCompile Include="..\source_manager.c">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="..\morse_source.c">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="..\sound\test.c">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="..\disco_source.c">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="..\xmas_source.c">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="..\faketime.c">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="..\ini.c">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="..\game_source.c">
-      <Filter>Source Files</Filter>
+    <ClCompile Include="..\common_source.c">
+      <Filter>SourceCommon</Filter>
     </ClCompile>
     <ClCompile Include="..\game\controller.c">
-      <Filter>Source Files</Filter>
+      <Filter>Games</Filter>
     </ClCompile>
-    <ClCompile Include="..\game\moving_object.c">
-      <Filter>Source Files</Filter>
+    <ClCompile Include="..\disco_source.c">
+      <Filter>SourceCommon</Filter>
     </ClCompile>
-    <ClCompile Include="..\game\input_handler.c">
-      <Filter>Source Files</Filter>
+    <ClCompile Include="..\fakeled.c">
+      <Filter>SourceCommon</Filter>
     </ClCompile>
-    <ClCompile Include="..\game\player_object.c">
-      <Filter>Source Files</Filter>
+    <ClCompile Include="..\faketime.c">
+      <Filter>SourceCommon</Filter>
     </ClCompile>
-    <ClCompile Include="..\game\stencil_handler.c">
-      <Filter>Source Files</Filter>
+    <ClCompile Include="..\fire_source.c">
+      <Filter>SourceCommon</Filter>
     </ClCompile>
-    <ClCompile Include="..\game\pulse_object.c">
-      <Filter>Source Files</Filter>
+    <ClCompile Include="..\game_source.c">
+      <Filter>Games</Filter>
     </ClCompile>
     <ClCompile Include="..\game\game_object.c">
-      <Filter>Source Files</Filter>
+      <Filter>Games</Filter>
     </ClCompile>
-    <ClCompile Include="..\game\callbacks.c">
-      <Filter>Source Files</Filter>
+    <ClCompile Include="..\getopt.c">
+      <Filter>SourceCommon</Filter>
     </ClCompile>
-    <ClCompile Include="..\game_rad_source.c">
-      <Filter>Source Files</Filter>
+    <ClCompile Include="..\chaser_source.c">
+      <Filter>SourceCommon</Filter>
+    </ClCompile>
+    <ClCompile Include="..\ini.c">
+      <Filter>SourceCommon</Filter>
+    </ClCompile>
+    <ClCompile Include="..\game\input_handler.c">
+      <Filter>Games</Filter>
+    </ClCompile>
+    <ClCompile Include="..\led_main.c">
+      <Filter>SourceCommon</Filter>
+    </ClCompile>
+    <ClCompile Include="..\listener.c">
+      <Filter>SourceCommon</Filter>
+    </ClCompile>
+    <ClCompile Include="..\morse_source.c">
+      <Filter>SourceCommon</Filter>
+    </ClCompile>
+    <ClCompile Include="..\game\moving_object.c">
+      <Filter>Games</Filter>
+    </ClCompile>
+    <ClCompile Include="..\perlin_source.c">
+      <Filter>SourceCommon</Filter>
+    </ClCompile>
+    <ClCompile Include="..\game\player_object.c">
+      <Filter>Games</Filter>
+    </ClCompile>
+    <ClCompile Include="..\game\pulse_object.c">
+      <Filter>SourceCommon</Filter>
+    </ClCompile>
+    <ClCompile Include="..\rad_game\rad_input_handler.c">
+      <Filter>Games</Filter>
+    </ClCompile>
+    <ClCompile Include="..\rad_game\sound_player.c">
+      <Filter>Games</Filter>
+    </ClCompile>
+    <ClCompile Include="..\xmas_source.c">
+      <Filter>SourceCommon</Filter>
+    </ClCompile>
+    <ClCompile Include="..\rad_game_source.c">
+      <Filter>Games</Filter>
+    </ClCompile>
+    <ClCompile Include="..\game\stencil_handler.c">
+      <Filter>Games</Filter>
+    </ClCompile>
+    <ClCompile Include="..\source_manager.c">
+      <Filter>SourceCommon</Filter>
+    </ClCompile>
+    <ClCompile Include="..\sound\test.c">
+      <Filter>Games</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
-    <None Include="packages.config" />
+    <ClInclude Include="..\include\color_source.h">
+      <Filter>Include</Filter>
+    </ClInclude>
+    <ClInclude Include="..\include\colours.h">
+      <Filter>Include</Filter>
+    </ClInclude>
+    <ClInclude Include="..\include\common_source.h">
+      <Filter>Include</Filter>
+    </ClInclude>
+    <ClInclude Include="..\include\callbacks.h">
+      <Filter>Include</Filter>
+    </ClInclude>
+    <ClInclude Include="..\include\controller.h">
+      <Filter>Include</Filter>
+    </ClInclude>
+    <ClInclude Include="..\include\disco_source.h">
+      <Filter>Include</Filter>
+    </ClInclude>
+    <ClInclude Include="..\sound\fakealsa.h">
+      <Filter>Include</Filter>
+    </ClInclude>
+    <ClInclude Include="..\include\fakeinput.h">
+      <Filter>Include</Filter>
+    </ClInclude>
+    <ClInclude Include="..\include\fakeled.h">
+      <Filter>Include</Filter>
+    </ClInclude>
+    <ClInclude Include="..\include\fakesignal.h">
+      <Filter>Include</Filter>
+    </ClInclude>
+    <ClInclude Include="..\include\faketime.h">
+      <Filter>Include</Filter>
+    </ClInclude>
+    <ClInclude Include="..\include\fire_source.h">
+      <Filter>Include</Filter>
+    </ClInclude>
+    <ClInclude Include="..\include\game_object.h">
+      <Filter>Include</Filter>
+    </ClInclude>
+    <ClInclude Include="..\include\game_source.h">
+      <Filter>Include</Filter>
+    </ClInclude>
+    <ClInclude Include="..\include\getopt.h">
+      <Filter>Include</Filter>
+    </ClInclude>
+    <ClInclude Include="..\include\chaser_source.h">
+      <Filter>Include</Filter>
+    </ClInclude>
+    <ClInclude Include="..\include\ini.h">
+      <Filter>Include</Filter>
+    </ClInclude>
+    <ClInclude Include="..\include\input_handler.h">
+      <Filter>Include</Filter>
+    </ClInclude>
+    <ClInclude Include="..\include\led_main.h">
+      <Filter>Include</Filter>
+    </ClInclude>
+    <ClInclude Include="..\include\listener.h">
+      <Filter>Include</Filter>
+    </ClInclude>
+    <ClInclude Include="..\include\morse_source.h">
+      <Filter>Include</Filter>
+    </ClInclude>
+    <ClInclude Include="..\include\moving_object.h">
+      <Filter>Include</Filter>
+    </ClInclude>
+    <ClInclude Include="..\include\perlin_source.h">
+      <Filter>Include</Filter>
+    </ClInclude>
+    <ClInclude Include="..\include\player_object.h">
+      <Filter>Include</Filter>
+    </ClInclude>
+    <ClInclude Include="..\include\pulse_object.h">
+      <Filter>Include</Filter>
+    </ClInclude>
+    <ClInclude Include="..\include\rad_game_source.h">
+      <Filter>Include</Filter>
+    </ClInclude>
+    <ClInclude Include="..\include\rad_input_handler.h">
+      <Filter>Include</Filter>
+    </ClInclude>
+    <ClInclude Include="..\include\source_manager.h">
+      <Filter>Include</Filter>
+    </ClInclude>
+    <ClInclude Include="..\include\stencil_handler.h">
+      <Filter>Include</Filter>
+    </ClInclude>
+    <ClInclude Include="..\include\xmas_source.h">
+      <Filter>Include</Filter>
+    </ClInclude>
+    <ClInclude Include="..\include\sound_player.h">
+      <Filter>Include</Filter>
+    </ClInclude>
+  </ItemGroup>
+  <ItemGroup>
     <None Include="config.ini" />
+    <None Include="packages.config" />
   </ItemGroup>
   <ItemGroup>
     <Text Include="..\config" />
     <Text Include="..\geometry" />
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="..\include\color_source.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="..\include\colours.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="..\include\common_source.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="..\include\disco_source.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="..\include\fakeled.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="..\include\fakesignal.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="..\include\faketime.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="..\include\fire_source.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="..\include\getopt.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="..\include\chaser_source.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="..\include\led_main.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="..\include\listener.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="..\include\morse_source.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="..\include\perlin_source.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="..\include\source_manager.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="..\sound\fakealsa.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="..\include\xmas_source.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="..\include\ini.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="..\include\game_source.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="..\include\controller.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="..\include\fakeinput.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="..\include\moving_object.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="..\include\input_handler.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="..\include\player_object.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="..\include\stencil_handler.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="..\include\pulse_object.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="..\include\game_object.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="..\include\callbacks.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="..\include\game_rad_source.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
+    <Filter Include="Include">
+      <UniqueIdentifier>{c574570b-8239-4548-855f-2ced2416642a}</UniqueIdentifier>
+      <Extensions>h;hh</Extensions>
+    </Filter>
+    <Filter Include="SourceCommon">
+      <UniqueIdentifier>{baeda5ca-a483-421c-898f-da9972c0c3c5}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Games">
+      <UniqueIdentifier>{c24d9c38-a24d-454d-9c61-f98dd88ab5d6}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
 </Project>

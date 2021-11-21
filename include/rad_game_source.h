@@ -1,5 +1,5 @@
-#ifndef __GAME_RAD_SOURCE_H__
-#define __GAME_RAD_SOURCE_H__
+#ifndef __RAD_GAME_SOURCE_H__
+#define __RAD_GAME_SOURCE_H__
 
 /**
 * Description of game modes:
@@ -31,15 +31,21 @@
 * 
 */
 
-typedef struct GameRadSource
+void Player_move_left(int player_index);
+void Player_move_right(int player_index);
+void Player_strike(int player_index);
+void Player_freq_inc(int player_index);
+void Player_freq_dec(int player_index);
+
+typedef struct RadGameSource
 {
 	BasicSource basic_source;
 	int first_update;
 	uint64_t start_time;
 	int n_players;
-} GameRadSource;
+} RadGameSource;
 
-extern GameRadSource game_rad_source;
+extern RadGameSource rad_game_source;
 
 
-#endif /* __GAME_RAD_OURCE_H__ */
+#endif /* __RAD_GAME_SOURCE_H__ */

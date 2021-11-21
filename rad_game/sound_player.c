@@ -4,9 +4,20 @@
 #include <string.h>
 #include <time.h>
 #ifdef __linux__
-
 #include <alsa/asoundlib.h>
+#else
+#include "fakealsa.h"
+#include "faketime.h"
+#endif
+
 #include "sound_player.h"
+
+struct SoundEffect
+{
+    short* data;
+    int n_samples; //< this is not length of data; length of data is n_samples * channels
+    int position;
+};
 
 static unsigned int samplerate;
 static unsigned int channels;
@@ -20,6 +31,11 @@ static uint64_t delta_pcm_us = 0;
 static long samples_supplied = 0;
 static int samples_in_buffer;
 static FILE* fin;
+
+static struct SoundEffect effects[SE_N_EFFECTS];
+static enum ESoundEffects current_effect = SE_N_EFFECTS;
+
+#ifdef __linux__
 
 static void init_hw()
 {
@@ -121,7 +137,12 @@ static void init_hw()
     printf("Period time: %i, size %i\n", tmp, (int)period_size);
 #endif
 }
+#else
 
+static void init_hw()
+{
+}
+#endif __linux__
 
 static void start_playing(int frame_time, char* filename)
 {
@@ -131,7 +152,7 @@ static void start_playing(int frame_time, char* filename)
     // therefore we need to get
     //   (samplerate * channels * 2) / fps = (samplerate * channels * 2) * frame_time / 1e6 
     // samples to buffer per frame
-    int periods_per_frame = 1 + samplerate * frame_time / 1e6 / period_size;
+    unsigned int periods_per_frame = 1 + samplerate * frame_time / 1e6 / period_size;
 #ifdef DEBUG_SOUND
     printf("Multiplier set to: %i\n", periods_per_frame);
 #endif
@@ -152,17 +173,44 @@ static void start_playing(int frame_time, char* filename)
     samples_supplied = 0;
 }
 
+void load_effects()
+{
+    const int max_effect_length = 2; //!< in seconds
+    char* tmp = (char)malloc(samplerate * channels * max_effect_length * 2); //*2 for sample size
+    for (int i = 0; i < SE_N_EFFECTS; ++i)
+    {
+        FILE* feff = fopen("sound/reward2_2.wav", "r");
+        fseek(feff, 44, SEEK_SET);
+        int samples_read = fread(tmp, channels * 2, samplerate * max_effect_length, feff);
+        fclose(feff);
+        assert(sizeof(short) == 2);
+        effects[i].data = (short*)malloc(sizeof(short) * samples_read * channels);
+        for (int sample = 0; i < samples_read * channels; i++)
+        {
+            effects[i].data[sample] = tmp[sample * 2 + 1] << 8 | tmp[sample * 2];
+        }
+        //memcpy(effects[i].data, tmp, samples_read * channels * 2);
+        effects[i].n_samples = samples_read;
+        effects[i].position = -1;
+    }
+}
 
 void SoundPlayer_init(unsigned int in_samplerate, unsigned int in_channels, int frame_time, char* filename)
 {
     samplerate = in_samplerate;
     channels = in_channels;
     init_hw();
+    load_effects();
     start_playing(frame_time, filename);
 }
 
-long SoundPlayer_play()
+long SoundPlayer_play(enum ESoundEffects new_effect)
 {
+    if (new_effect != SE_N_EFFECTS)
+    {
+        current_effect = new_effect;
+        effects[current_effect].position = 0;
+    }
     int err;
     struct timespec now;
     clock_gettime(CLOCK_MONOTONIC_RAW, &now);
@@ -180,6 +228,28 @@ long SoundPlayer_play()
             delta_disk_us = (current_ns - last_update_ns) / (long)1e3;
             last_update_ns = current_ns;
 #endif
+            if (current_effect != SE_N_EFFECTS)
+            {
+                int effect_offset = effects[current_effect].position;
+                int samples_to_modify = effects[current_effect].n_samples - effect_offset;
+                if (samples_to_modify > samples_read)
+                {
+                    samples_to_modify = samples_read;
+                }
+                for (int sample = 0; sample < samples_to_modify * channels; sample++)
+                {
+                    short orig = buff[sample * 2 + 1] << 8 | buff[sample * 2];
+                    short modified = (orig >> 1) + effects[current_effect].data[effect_offset + sample];
+                    buff[sample * 2] = (char)(modified && 0xFF);
+                    buff[sample * 2 + 1] = (char)((modified & 0xFF00) >> 8);
+                }
+                if (samples_to_modify < samples_read)
+                {
+                    effects[current_effect].position = -1;
+                    current_effect = SE_N_EFFECTS;
+                }
+            }
+#ifdef __linux__
             if ((err = snd_pcm_writei(pcm_handle, buff, samples_read)) == -EPIPE) 
             {
                 printf("XRUN.\n");
@@ -189,6 +259,7 @@ long SoundPlayer_play()
             {
                 printf("ERROR. Can't write to PCM device. %s\n", snd_strerror(err));
             }
+#endif
             samples_supplied += samples_in_buffer; 
 #ifdef DEBUG_SOUND            
             clock_gettime(CLOCK_MONOTONIC_RAW, &now);
@@ -199,8 +270,10 @@ long SoundPlayer_play()
         else
         {
              printf("Player reached end of file.\n");
+#ifdef __linux__
              snd_pcm_drain(pcm_handle);
              snd_pcm_close(pcm_handle);
+#endif __linux__
              free(buff);
              return -1;
         }
@@ -220,5 +293,3 @@ long SoundPlayer_play()
 #endif
 	return time_running_us;
 }
-
-#endif // __linux__
