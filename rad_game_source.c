@@ -32,12 +32,12 @@ static double rad_freq;
 // first is amplitude, second and third are C and S, such that C*C + S*S == 1
 // ociallator equation is y = A * (C * sin(f t) + S * cos(f t))
 static double* oscillators[3];
-
+static const double out_of_sync_decay = 0.9; //!< how much will out of sync oscillator decay per each update (does not depend on actual time)
 
 struct Player
 {
     double position;
-    char moving_dir; //< 0 when not moving, +1 when moving right, -1 when moving left
+    signed char moving_dir; //< 0 when not moving, +1 when moving right, -1 when moving left
 };
 
 //! array of players
@@ -61,6 +61,7 @@ void Player_move_left(int player_index)
     {
         players[player_index].moving_dir = -1;
         players[player_index].position -= 0.0001;
+        printf("moving left\n");
     }
 }
 
@@ -84,7 +85,7 @@ void Player_strike(int player_index)
     double impulse_S = sin(M_PI / 2.0 - 2.0 * M_PI * rad_freq * phase_seconds);
     int player_pos = round(players[player_index].position);
     int good_strikes = 0;
-    for (int led = player_pos - single_strike_width; led < player_pos + single_strike_width; led++)
+    for (int led = player_pos - single_strike_width; led < player_pos + single_strike_width + 1; led++)
     {
         double unnormal_C = oscillators[0][led] * oscillators[1][led] + impulse_C;
         double unnormal_S = oscillators[0][led] * oscillators[2][led] + impulse_S;
@@ -140,7 +141,9 @@ void update_players()
             continue;
         double offset = (players[p].position - trunc(players[p].position)); //always positive
         double distance_moved = ((rad_game_source.basic_source.time_delta / (long)1e3) / (double)1e6) * player_speed;
+        printf("dir %i, dm %f, offset %f ", players[p].moving_dir, distance_moved, offset);
         offset += players[p].moving_dir * distance_moved;
+        printf("%f\n", offset);
         if (offset > 1.0)
         {
             players[p].position = trunc(players[p].position) + 1.0;
@@ -186,7 +189,7 @@ int render_oscillators(ws2811_t* ledstrip)
             }
             else
             {
-                oscillators[0][led] *= 0.5;
+                oscillators[0][led] *= out_of_sync_decay;
             }
         }
         else
@@ -207,7 +210,7 @@ void render_players(ws2811_t* ledstrip)
     {
         int color = 0xFFFFFF;
         uint64_t pulse_time = (rad_game_source.basic_source.current_time - rad_game_source.start_time) % player_period;
-        if ((pulse_time / 2 / player_pulse_width <= p) && //we are in the pulse, the question is which half
+        if ((pulse_time / 2 / player_pulse_width <= (unsigned int)p) && //we are in the pulse, the question is which half
             ((pulse_time / player_pulse_width) % 2 == 0))
         {
             color = 0x0;
