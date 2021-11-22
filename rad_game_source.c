@@ -21,6 +21,7 @@
 #include "rad_input_handler.h"
 #include "sound_player.h"
 #include "controller.h"
+#include "colours.h"
 
 //#define GAME_DEBUG
 
@@ -32,23 +33,43 @@ static double rad_freq;
 // ociallator equation is y = A * (C * sin(f t) + S * cos(f t))
 static double* oscillators[3];
 
+
+struct Player
+{
+    double position;
+    char moving_dir; //< 0 when not moving, +1 when moving right, -1 when moving left
+};
+
 //! array of players
-static int players[C_MAX_CONTROLLERS];
+static struct Player players[C_MAX_CONTROLLERS];
+
+static const double player_speed = 2.5;                     //!< player speed in LEDs/s
+static const long player_pulse_width = (long)1e8;           //!< the length of pulse in ns
+static const long long player_period = (long long)(3e9);    //!< how period (in ns) after the player's lead will blink
 
 //!should we start playing a new effect?
 static enum ESoundEffects new_effect;
 
 static long time_offset = 0; //< in ms
 static const double S_coeff_threshold = 0.1;
+static const int end_zone_width = 10;
+static const int single_strike_width = 1;
 
 void Player_move_left(int player_index)
 {
-    players[player_index]--;
+    if (!players[player_index].moving_dir && players[player_index].position > end_zone_width)
+    {
+        players[player_index].moving_dir = -1;
+        players[player_index].position -= 0.0001;
+    }
 }
 
 void Player_move_right(int player_index)
 {
-    players[player_index]++;
+    if (!players[player_index].moving_dir && players[player_index].position < rad_game_source.basic_source.n_leds - end_zone_width)
+    {
+        players[player_index].moving_dir = +1;
+    }
 }
 
 /*!
@@ -61,12 +82,12 @@ void Player_strike(int player_index)
     double phase_seconds = (phase_ns / (long)1e3) / (double)1e6;
     double impulse_C = cos(M_PI / 2.0 - 2.0 * M_PI * rad_freq * phase_seconds);
     double impulse_S = sin(M_PI / 2.0 - 2.0 * M_PI * rad_freq * phase_seconds);
-    int player_pos = players[player_index];
+    int player_pos = round(players[player_index].position);
     int good_strikes = 0;
-    for (int led = player_pos - 5; led < player_pos + 5; led++)
+    for (int led = player_pos - single_strike_width; led < player_pos + single_strike_width; led++)
     {
-        double unnormal_C = oscillators[0][led] * oscillators[1][led] + impulse_C * 1.0 / (1 + (led - player_pos) * (led - player_pos));
-        double unnormal_S = oscillators[0][led] * oscillators[2][led] + impulse_S * 1.0 / (1 + (led - player_pos) * (led - player_pos));
+        double unnormal_C = oscillators[0][led] * oscillators[1][led] + impulse_C;
+        double unnormal_S = oscillators[0][led] * oscillators[2][led] + impulse_S;
         double len = sqrt(unnormal_C * unnormal_C + unnormal_S * unnormal_S);
         oscillators[0][led] = len;
         oscillators[1][led] = unnormal_C / len;
@@ -75,7 +96,7 @@ void Player_strike(int player_index)
 
         //printf("len %f\n", len);
     }
-    if (good_strikes > 5)
+    if (good_strikes > single_strike_width)
     {
         new_effect = SE_Reward;
     }
@@ -111,25 +132,35 @@ void Player_time_offset_dec(int player_index)
     printf("Time offset decreased to %li ms\n", time_offset);
 }
 
-/*int check_oscillators(int led, int** color)
+void update_players()
 {
-
-}*/
-
-int RadGameSource_update_leds(int frame, ws2811_t* ledstrip)
-{
-    (void)frame;
-    new_effect = SE_N_EFFECTS;
-    RadInputHandler_process_input();
-    long time_pos = SoundPlayer_play(new_effect);
-    if (time_pos == -1)
+    for (int p = 0; p < rad_game_source.n_players; ++p)
     {
-        //TODO start a new song?
-        SoundPlayer_destruct();
-        SoundPlayer_init(44100, 2, 20000, "sound/GodRestYeMerryGentlemen.wav");
+        if (players[p].moving_dir == 0)
+            continue;
+        double offset = (players[p].position - trunc(players[p].position)); //always positive
+        double distance_moved = ((rad_game_source.basic_source.time_delta / (long)1e3) / (double)1e6) * player_speed;
+        offset += players[p].moving_dir * distance_moved;
+        if (offset > 1.0)
+        {
+            players[p].position = trunc(players[p].position) + 1.0;
+            players[p].moving_dir = 0;
+        }
+        else if (offset < 0.0)
+        {
+            players[p].position = trunc(players[p].position);
+            players[p].moving_dir = 0;
+        }
+        else
+        {
+            players[p].position = trunc(players[p].position) + offset;
+        }
     }
+}
 
-    double time_seconds = ((rad_game_source.basic_source.current_time - rad_game_source.start_time)  / (long)1e3) / (double)1e6;
+int render_oscillators(ws2811_t* ledstrip)
+{
+    double time_seconds = ((rad_game_source.basic_source.current_time - rad_game_source.start_time) / (long)1e3) / (double)1e6;
     double sinft = sin(2 * M_PI * rad_freq * time_seconds);
     double cosft = cos(2 * M_PI * rad_freq * time_seconds);
     //printf("Time %f\n", time_seconds);
@@ -165,17 +196,58 @@ int RadGameSource_update_leds(int frame, ws2811_t* ledstrip)
             oscillators[2][led] = 0.0;
         }
 
-       //if (led == 1) printf("c %x\n", color);
+        //if (led == 1) printf("c %x\n", color);
     }
-    for (int i = 0; i < rad_game_source.n_players; i++)
+    return in_sync;
+}
+
+void render_players(ws2811_t* ledstrip)
+{
+    for (int p = 0; p < rad_game_source.n_players; p++)
     {
-        ledstrip->channel[0].leds[players[i]] = 0xFFFFFF;
+        int color = 0xFFFFFF;
+        uint64_t pulse_time = (rad_game_source.basic_source.current_time - rad_game_source.start_time) % player_period;
+        if ((pulse_time / 2 / player_pulse_width <= p) && //we are in the pulse, the question is which half
+            ((pulse_time / player_pulse_width) % 2 == 0))
+        {
+            color = 0x0;
+        }
+        int pos = trunc(players[p].position);
+        if (players[p].moving_dir == 0)
+        {
+            ledstrip->channel[0].leds[pos] = color;
+        }
+        else
+        {
+            double offset = (players[p].position - trunc(players[p].position)); //always positive
+            int left_led = trunc(players[p].position);
+            ledstrip->channel[0].leds[left_led] = lerp_rgb(color, 0, offset);
+            ledstrip->channel[0].leds[left_led + 1] = lerp_rgb(0, color, offset);
+        }
+
     }
-    if (frame % 500 == 0)
+}
+
+int RadGameSource_update_leds(int frame, ws2811_t* ledstrip)
+{
+    (void)frame;
+    new_effect = SE_N_EFFECTS;
+    RadInputHandler_process_input();
+    long time_pos = SoundPlayer_play(new_effect);
+    if (time_pos == -1)
+    {
+        //TODO start a new song?
+        SoundPlayer_destruct();
+        SoundPlayer_init(44100, 2, 20000, "sound/GodRestYeMerryGentlemen.wav");
+    }
+    int in_sync = render_oscillators(ledstrip);
+    if (frame % 500 == 0) //TODO if in_sync = n_leds, players win
     {
         printf("Leds in sync: %i\n", in_sync);
     }
- 
+    update_players();
+    render_players(ledstrip);
+
     return 1;
 }
 
@@ -189,7 +261,8 @@ void InitPlayers()
     int l = rad_game_source.basic_source.n_leds / rad_game_source.n_players;
     for (int i = 0; i < rad_game_source.n_players; i++)
     {
-        players[i] = l / 2 + i * l;
+        players[i].position = l / 2 + i * l;
+        players[i].moving_dir = 0;
     }
 }
 
