@@ -260,6 +260,14 @@ void render_players(ws2811_t* ledstrip)
     }
 }
 
+void start_song_current_level()
+{
+    double bpm = rad_game_levels[current_level].bpms[0];
+    rad_freq = bpm / 60.0;
+    SoundPlayer_init(44100, 2, 20000, rad_game_levels[current_level].filename);
+}
+ 
+
 int RadGameSource_update_leds(int frame, ws2811_t* ledstrip)
 {
     static double completed = 0;
@@ -270,13 +278,12 @@ int RadGameSource_update_leds(int frame, ws2811_t* ledstrip)
     if (time_pos == -1)
     {
         SoundPlayer_destruct();
-        if (n_levels = current_level++)
+        if (n_levels == current_level++)
         {
             //TODO, game completed
             current_level = 0;
         }
-        rad_freq = rad_game_levels[current_level].bpms[0];
-        SoundPlayer_init(44100, 2, 20000, rad_game_levels[current_level].filename);
+        start_song_current_level();
     }
     //todo else -- check if bpm freq had not changed
     int in_sync = render_oscillators(ledstrip, completed);
@@ -361,7 +368,7 @@ static void read_rad_game_config()
     {
         skip_comments_in_config(buf, config);
         char fn[64];
-        n = sscanf(buf, "%s", &fn);
+        n = sscanf(buf, "%s", fn);
         if (n != 1) { printf("Error reading filename in R&D game config for level %i\n", level); exit(10); }
         int l = strnlen(fn, 64);
         rad_game_levels[level].filename = malloc(6 + l + 1);
@@ -375,7 +382,7 @@ static void read_rad_game_config()
         for (int bpm = 0; bpm < rad_game_levels[level].n_bpms; bpm++)
         {
             skip_comments_in_config(buf, config);
-            n = sscanf(buf, "%lf %i", &rad_game_levels[level].bpms[bpm], &rad_game_levels[level].bpm_switch[bpm]);
+            n = sscanf(buf, "%lf %li", &rad_game_levels[level].bpms[bpm], &rad_game_levels[level].bpm_switch[bpm]);
             if (n != 2) { printf("Error reading n_bmps in R&D game config for level %i\n", level); exit(10); }
         }
     }
@@ -385,9 +392,6 @@ static void read_rad_game_config()
 void RadGameSource_init(int n_leds, int time_speed, uint64_t current_time)
 {
     BasicSource_init(&rad_game_source.basic_source, n_leds, time_speed, source_config.colors[RAD_GAME_SOURCE], current_time);
-
-    const double BPM = 72.02;
-    rad_freq = BPM / 60.0;
 
     rad_game_source.start_time = current_time;
     for(int i = 0; i < 3; ++i)
@@ -399,8 +403,7 @@ void RadGameSource_init(int n_leds, int time_speed, uint64_t current_time)
     InitPlayers();
     read_rad_game_config();
     current_level = 0;
-    rad_freq = rad_game_levels[current_level].bpms[0];
-    SoundPlayer_init(44100, 2, 20000, rad_game_levels[current_level].filename);
+    start_song_current_level();
 }
 
 void RadGameSource_destruct()
