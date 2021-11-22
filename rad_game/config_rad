@@ -1,0 +1,15 @@
+# keyword levels followed by number of levels
+levels 3
+#each level starts with filename
+GodRestYeMerryGentlemen.wav
+#followed by list of bpms and their timestamps (in ms), the first number is number of bmps in the list
+1
+72.02 0
+# level 2
+ElBurritoSabaneroNCdO.wav
+1
+80.0 0
+# level 3
+WellermanNE.wav
+1
+96 0

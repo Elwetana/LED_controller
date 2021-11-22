@@ -25,6 +25,18 @@
 
 //#define GAME_DEBUG
 
+struct RadGameLevels
+{
+    char* filename;
+    double* bpms;
+    long* bpm_switch; //!< time in ms from the start of the song
+    int n_bpms;
+};
+
+static struct RadGameLevels* rad_game_levels;
+static int n_levels;
+static int current_level;
+
 //oscillator frequency in Hz
 static double rad_freq;
 
@@ -257,10 +269,16 @@ int RadGameSource_update_leds(int frame, ws2811_t* ledstrip)
     long time_pos = SoundPlayer_play(new_effect);
     if (time_pos == -1)
     {
-        //TODO start a new song?
         SoundPlayer_destruct();
-        SoundPlayer_init(44100, 2, 20000, "sound/GodRestYeMerryGentlemen.wav");
+        if (n_levels = current_level++)
+        {
+            //TODO, game completed
+            current_level = 0;
+        }
+        rad_freq = rad_game_levels[current_level].bpms[0];
+        SoundPlayer_init(44100, 2, 20000, rad_game_levels[current_level].filename);
     }
+    //todo else -- check if bpm freq had not changed
     int in_sync = render_oscillators(ledstrip, completed);
     completed = (double)(in_sync - 2 * end_zone_width) / (rad_game_source.basic_source.n_leds - 2 * end_zone_width);
     if (frame % 500 == 0) //TODO if in_sync = n_leds, players win
@@ -312,6 +330,58 @@ void InitOscillators()
     }
 }
 
+
+static void skip_comments_in_config(char* buf, FILE* config)
+{
+    fgets(buf, 1024, config);
+    while (strnlen(buf, 2) > 0 && (buf[0] == ';' || buf[0] == '#'))
+    {
+        fgets(buf, 1024, config);
+    }
+}
+
+static void read_rad_game_config()
+{
+    FILE* config = fopen("rad_game/config_rad", "r");
+    if (config == NULL) {
+        printf("R&D game config not found\n");
+        exit(-4);
+    }
+    char buf[1024];
+    skip_comments_in_config(buf, config);
+    char keyword[16];
+    int n = sscanf(buf, "%s %i", keyword, &n_levels);
+    if (n != 2) {
+        printf("Error reading R&D game config\n");
+        exit(-5);
+    }
+    //todo check that the keyword is "Levels"
+    rad_game_levels = malloc(sizeof(struct RadGameLevels) * n_levels);
+    for(int level = 0; level < n_levels; ++level)
+    {
+        skip_comments_in_config(buf, config);
+        char fn[64];
+        n = sscanf(buf, "%s", &fn);
+        if (n != 1) { printf("Error reading filename in R&D game config for level %i\n", level); exit(10); }
+        int l = strnlen(fn, 64);
+        rad_game_levels[level].filename = malloc(6 + l + 1);
+        strncpy(rad_game_levels[level].filename, "sound/", 7);
+        strncat(rad_game_levels[level].filename, fn, l + 1);
+        skip_comments_in_config(buf, config);
+        n = sscanf(buf, "%i", &rad_game_levels[level].n_bpms);
+        if (n != 1) { printf("Error reading n_bmps in R&D game config for level %i\n", level); exit(10); }
+        rad_game_levels[level].bpms = malloc(sizeof(double) * rad_game_levels[level].n_bpms);
+        rad_game_levels[level].bpm_switch = malloc(sizeof(long) * rad_game_levels[level].n_bpms);
+        for (int bpm = 0; bpm < rad_game_levels[level].n_bpms; bpm++)
+        {
+            skip_comments_in_config(buf, config);
+            n = sscanf(buf, "%lf %i", &rad_game_levels[level].bpms[bpm], &rad_game_levels[level].bpm_switch[bpm]);
+            if (n != 2) { printf("Error reading n_bmps in R&D game config for level %i\n", level); exit(10); }
+        }
+    }
+}
+
+
 void RadGameSource_init(int n_leds, int time_speed, uint64_t current_time)
 {
     BasicSource_init(&rad_game_source.basic_source, n_leds, time_speed, source_config.colors[RAD_GAME_SOURCE], current_time);
@@ -327,7 +397,10 @@ void RadGameSource_init(int n_leds, int time_speed, uint64_t current_time)
     printf("Players detected: %i\n", rad_game_source.n_players);
     InitOscillators();
     InitPlayers();
-    SoundPlayer_init(44100, 2, 20000, "sound/GodRestYeMerryGentlemen.wav");
+    read_rad_game_config();
+    current_level = 0;
+    rad_freq = rad_game_levels[current_level].bpms[0];
+    SoundPlayer_init(44100, 2, 20000, rad_game_levels[current_level].filename);
 }
 
 void RadGameSource_destruct()
