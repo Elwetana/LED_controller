@@ -16,3 +16,5 @@ XMAS 18
 GAME 17
 ;0:index R-1:index G -2:index B  -3:index C  -4:index M  -5:index Y  -6:index W  -7:index K  -8:P low   -9:P mid  -10:P hgh  -11:P healthy-12:P sick  -13:game over-14:stargate-17:SG deco-18:boss head
 0xFF0000  1 0x00FF00  1 0x0000FF  1 0x00FFFF  1 0xFF00FF  1 0xFFFF00  1 0xFFFFFF  1 0x000000  1 0xff008c 1 0xA2A1A0 1 0x00adff 1 0x606000   1 0x201000  1 0x150040   1 0x020005  4 0x5200db 0 0xff8000   1 0x0
+RAD_GAME 2
+0xcc0010 11 0xe68b00 8 0x166600

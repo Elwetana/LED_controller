@@ -34,6 +34,10 @@ static double rad_freq;
 static double* oscillators[3];
 static const double out_of_sync_decay = 0.9; //!< how much will out of sync oscillator decay per each update (does not depend on actual time)
 
+static const int grad_length = 19;
+static hsl_t grad_colors[19];
+static const double grad_speed = 0.5; //leds per beat
+
 struct Player
 {
     double position;
@@ -61,7 +65,6 @@ void Player_move_left(int player_index)
     {
         players[player_index].moving_dir = -1;
         players[player_index].position -= 0.0001;
-        printf("moving left\n");
     }
 }
 
@@ -141,9 +144,7 @@ void update_players()
             continue;
         double offset = (players[p].position - trunc(players[p].position)); //always positive
         double distance_moved = ((rad_game_source.basic_source.time_delta / (long)1e3) / (double)1e6) * player_speed;
-        printf("dir %i, dm %f, offset %f ", players[p].moving_dir, distance_moved, offset);
         offset += players[p].moving_dir * distance_moved;
-        printf("%f\n", offset);
         if (offset > 1.0)
         {
             players[p].position = trunc(players[p].position) + 1.0;
@@ -161,12 +162,18 @@ void update_players()
     }
 }
 
-int render_oscillators(ws2811_t* ledstrip)
+int render_oscillators(ws2811_t* ledstrip, double unhide_pattern)
 {
     double time_seconds = ((rad_game_source.basic_source.current_time - rad_game_source.start_time) / (long)1e3) / (double)1e6;
     double sinft = sin(2 * M_PI * rad_freq * time_seconds);
     double cosft = cos(2 * M_PI * rad_freq * time_seconds);
     //printf("Time %f\n", time_seconds);
+
+    int pattern_length = (int)((2 * grad_length - 2) * unhide_pattern);
+    if (pattern_length < 2) pattern_length = 2;
+    int beats_count = trunc(time_seconds * rad_freq);
+    double grad_shift = fmod(beats_count * grad_speed, pattern_length); // from 0 to pattern_length-1
+    double offset = grad_shift - trunc(grad_shift); //from 0 to 1
 
     int in_sync = 0;
     for (int led = 0; led < rad_game_source.basic_source.n_leds; ++led)
@@ -176,10 +183,20 @@ int render_oscillators(ws2811_t* ledstrip)
         double S = oscillators[2][led];
         if (A > 1.0) A = 1.0;
         double y = A * (C * sinft + S * cosft);
-        double absy = (y < 0) ? -y : y;
-        int x = (int)(0xFF * absy);
+        if (y < 0) y = 0;   //negative half-wave will not be shown at all
+                
+        int grad_pos = (led + (int)grad_shift) % pattern_length;    //from 0 to pattern_length-1, we have to take in account that the second half of the gradient is the reverse of the first one
+        hsl_t col_hsl;
+        if(grad_pos < grad_length - 1)
+            lerp_hsl(&grad_colors[grad_pos], &grad_colors[grad_pos + 1], offset, &col_hsl);
+        else
+            lerp_hsl(&grad_colors[pattern_length - grad_pos], &grad_colors[pattern_length - grad_pos - 1], 1 - offset, &col_hsl);
+        ws2811_led_t c = hsl2rgb(&col_hsl);
+        ledstrip->channel[0].leds[led] = multiply_rgb_color(c, y);
+
+        /*int x = (int)(0xFF * y);
         int color = (y < 0) ? x << 16 : x;
-        ledstrip->channel[0].leds[led] = color;
+        ledstrip->channel[0].leds[led] = color;*/
 
         if (A > S_coeff_threshold)
         {
@@ -233,6 +250,7 @@ void render_players(ws2811_t* ledstrip)
 
 int RadGameSource_update_leds(int frame, ws2811_t* ledstrip)
 {
+    static double completed = 0;
     (void)frame;
     new_effect = SE_N_EFFECTS;
     RadInputHandler_process_input();
@@ -243,7 +261,8 @@ int RadGameSource_update_leds(int frame, ws2811_t* ledstrip)
         SoundPlayer_destruct();
         SoundPlayer_init(44100, 2, 20000, "sound/GodRestYeMerryGentlemen.wav");
     }
-    int in_sync = render_oscillators(ledstrip);
+    int in_sync = render_oscillators(ledstrip, completed);
+    completed = (double)(in_sync - 2 * end_zone_width) / (rad_game_source.basic_source.n_leds - 2 * end_zone_width);
     if (frame % 500 == 0) //TODO if in_sync = n_leds, players win
     {
         printf("Leds in sync: %i\n", in_sync);
@@ -273,7 +292,7 @@ void InitOscillators()
 {
     for (int led = 0; led < rad_game_source.basic_source.n_leds; ++led)
     {
-        if (led > 5 && led < rad_game_source.basic_source.n_leds - 5)
+        if (led >= end_zone_width && led < rad_game_source.basic_source.n_leds - end_zone_width)
         {
             for (int i = 0; i < 3; ++i)
             {
@@ -287,11 +306,15 @@ void InitOscillators()
             oscillators[2][led] = 0.0;
         }
     }
+    for (int i = 0; i < grad_length; ++i)
+    {
+        rgb2hsl(rad_game_source.basic_source.gradient.colors[i], &grad_colors[i]);
+    }
 }
 
 void RadGameSource_init(int n_leds, int time_speed, uint64_t current_time)
 {
-    BasicSource_init(&rad_game_source.basic_source, n_leds, time_speed, source_config.colors[CHASER_SOURCE], current_time); //TODO change colors
+    BasicSource_init(&rad_game_source.basic_source, n_leds, time_speed, source_config.colors[RAD_GAME_SOURCE], current_time);
 
     const double BPM = 72.02;
     rad_freq = BPM / 60.0;
