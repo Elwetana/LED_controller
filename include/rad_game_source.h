@@ -2,48 +2,52 @@
 #define __RAD_GAME_SOURCE_H__
 
 /**
+* RaD = Rhythm & Dance
+* 
 * Description of game modes:
-*	RaD = Rhythm & Dance
-* 
-* every LED is an oscillator, with frequency f
-* 
-* 
-*	A sin(f t + p) = A sin(f t) cos(p) + A cos(f t) sin(p) = C sin(f t) + S cos(f t)
-*   where C = A cos(p) and S = A sin(p)
-* 
-*	Wave interference:
-* 
-*	A1 sin(f t + p1) + A2 sin(f t + p2) = 
-*   A1 sin(f t) cos(p1) + A1 cos(f t) sin(p1) + A2 sin(f t) cos(p2) + A2 cos(f t) sin(p2) =
-*   (A1 cos(p1) + A2 cos(p2)) sin(f t) + (A1 sin(p1) + A2 sin(p2)) cos(f t) = 
-*   (C1 + C2) sin(f t) + (S1 + S2) cos(f t) = 
-*   CC * sin(f t) + SS * cos(f t)
-* 
-*	let AA = sqrt(CC CC + SS SS)
-* 
-*   then we can write
-*	= AA (CC/AA sin(f t) + SS/AA cos(f t))
-* 
-*	let PP = acos(CC/AA) = asin(SS/AA)
 *
-*	we get:	
-*   = AA sin(f t + PP)
+* Oscillators:
+*	- every LED is an oscillator, with frequency f
+* 
+*		(1)		A sin(f t + p) = A sin(f t) cos(p) + A cos(f t) sin(p) = A (C sin(f t) + S cos(f t))
+* 
+*		where C = cos(p) and S = sin(p)
+*		note that C and S are normalized, i.e. C^2 + S^2 = 1
+* 
+*		When calculating interference -- that's what we do when player hits a button -- we add the 
+*       respective C's and S's and normalize them:
+*
+*		A_new = sqrt( (A1 C1 + A2 C2)^2 + (A1 S1 + A2 S2)^2)
+*		C_new = (A1 C1 + A2 C2) / A_new
+*		S_new = (A1 S1 + A2 S2) / A_new 
 * 
 */
+enum ERadGameModes
+{
+	RGM_Oscillators,    //!< goal is to make the whole led chain blink to rhythm
+	RGM_DDR,            //!< just like Dance Dance Revolution
+	RGM_N_MODES
+};
+
 
 void Player_move_left(int player_index);
 void Player_move_right(int player_index);
-void Player_strike(int player_index);
 void Player_freq_inc(int player_index);
 void Player_freq_dec(int player_index);
 void Player_time_offset_inc(int player_index);
 void Player_time_offset_dec(int player_index);
+void Player_hit_red(int player_index);
+void Player_hit_green(int player_index);
+void Player_hit_blue(int player_index);
+void Player_hit_yellow(int player_index);
+
 
 typedef struct RadGameSource
 {
 	BasicSource basic_source;
 	uint64_t start_time;
 	int n_players;
+	enum ERadGameModes game_mode;
 } RadGameSource;
 
 extern RadGameSource rad_game_source;

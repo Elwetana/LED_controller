@@ -25,13 +25,6 @@
 
 //#define GAME_DEBUG
 
-enum ERadGameModes
-{
-    RGM_Oscillators,    //!< goal is to make the whole led chain blink to rhythm
-    RGM_DDR,            //!< just like Dance Dance Revolution
-    RGM_N_MODES
-};
-
 #pragma region Songs
 
 /* ***************** Songs *******************
@@ -48,12 +41,79 @@ struct RadGameSong
 static struct
 {
     struct RadGameSong* songs;
+    double freq; //!< frequency (in Hz) of the current song
     int n_songs;
     int current_song;
 } rad_game_songs;
 
+void start_current_song()
+{
+    double bpm = rad_game_songs.songs[rad_game_songs.current_song].bpms[0];
+    rad_game_songs.freq = bpm / 60.0;
+    SoundPlayer_init(44100, 2, 20000, rad_game_songs.songs[rad_game_songs.current_song].filename);
+}
+
 #pragma endregion
 
+#pragma region MovingObject
+
+static struct RadMovingObject
+{
+    double position;
+    double speed; //!< in leds/s
+    int custom_data; //!< user defined
+    signed char moving_dir; //< 0 when not moving, +1 when moving right, -1 when moving left
+};
+
+void RadMovingObject_render(struct RadMovingObject* mo, int color, ws2811_t* ledstrip)
+{
+    if (mo->moving_dir == 0)
+    {
+        ledstrip->channel[0].leds[(int)mo->position] = color;
+    }
+    else
+    {
+        double offset = (mo->position - trunc(mo->position)); //always positive
+        int left_led = trunc(mo->position);
+        ledstrip->channel[0].leds[left_led] = lerp_rgb(color, 0, offset);
+        ledstrip->channel[0].leds[left_led + 1] = lerp_rgb(0, color, offset);
+    }
+}
+
+#pragma endregion
+
+#pragma region PlayerInput
+
+enum ERAD_COLOURS
+{
+    DC_RED,
+    DC_GREEN,
+    DC_BLUE,
+    DC_YELLOW
+};
+
+void (*Player_hit_color)(int, enum ERAD_COLOURS);
+void Player_hit_red(int player_index)
+{
+    Player_hit_color(player_index, DC_RED);
+}
+
+void Player_hit_green(int player_index)
+{
+    Player_hit_color(player_index, DC_GREEN);
+}
+
+void Player_hit_blue(int player_index)
+{
+    Player_hit_color(player_index, DC_BLUE);
+}
+
+void Player_hit_yellow(int player_index)
+{
+    Player_hit_color(player_index, DC_YELLOW);
+}
+
+#pragma endregion
 
 #pragma region Oscillators
 
@@ -66,7 +126,6 @@ static struct
     // first is amplitude, second and third are C and S, such that C*C + S*S == 1
     // ociallator equation is y = A * (C * sin(f t) + S * cos(f t))
     double* phases[3];
-    double freq;    //!< oscillator frequency in Hz
     enum ESoundEffects new_effect;  //!< should we start playing a new effect?
     const double S_coeff_threshold;
     const double out_of_sync_decay; //!< how much will out of sync oscillator decay per each update (does not depend on actual time)
@@ -76,13 +135,14 @@ static struct
     const int end_zone_width;
 } oscillators =
 {
-    .freq = 1,
     .S_coeff_threshold = 0.1,
     .out_of_sync_decay = 0.95,
     .grad_length = 19,
     .grad_speed = 0.5,
     .end_zone_width = 10
 };
+
+void Player_strike(int player_index, enum ERAD_COLOURS colour);
 
 void Oscillators_init()
 {
@@ -106,18 +166,19 @@ void Oscillators_init()
     {
         rgb2hsl(rad_game_source.basic_source.gradient.colors[i], &oscillators.grad_colors[i]);
     }
+    Player_hit_color = Player_strike;
 }
 
 int Oscillators_render(ws2811_t* ledstrip, double unhide_pattern)
 {
     double time_seconds = ((rad_game_source.basic_source.current_time - rad_game_source.start_time) / (long)1e3) / (double)1e6;
-    double sinft = sin(2 * M_PI * oscillators.freq * time_seconds);
-    double cosft = cos(2 * M_PI * oscillators.freq * time_seconds);
+    double sinft = sin(2 * M_PI * rad_game_songs.freq * time_seconds);
+    double cosft = cos(2 * M_PI * rad_game_songs.freq * time_seconds);
     //printf("Time %f\n", time_seconds);
 
     int pattern_length = (int)((2 * oscillators.grad_length - 2) * unhide_pattern);
     if (pattern_length < 2) pattern_length = 2;
-    int beats_count = trunc(time_seconds * oscillators.freq);
+    int beats_count = trunc(time_seconds * rad_game_songs.freq);
     double grad_shift = fmod(beats_count * oscillators.grad_speed, pattern_length); // from 0 to pattern_length-1
     double offset = grad_shift - trunc(grad_shift); //from 0 to 1
 
@@ -169,17 +230,11 @@ int Oscillators_render(ws2811_t* ledstrip, double unhide_pattern)
 
 #pragma endregion
 
-#pragma region Player
-
-static struct Player
-{
-    double position;
-    signed char moving_dir; //< 0 when not moving, +1 when moving right, -1 when moving left
-};
+#pragma region OscPlayer
 
 static struct
 {
-    struct Player pos[C_MAX_CONTROLLERS]; //!< array of players
+    struct RadMovingObject pos[C_MAX_CONTROLLERS]; //!< array of players
     long time_offset;                     //< in ms
     const double player_speed;            //!< player speed in LEDs/s
     const long player_pulse_width;        //!< the length of pulse in ns
@@ -219,12 +274,12 @@ void Player_move_right(int player_index)
 * Player strikes at time t0. This creates oscillation with equation:
 *   y = sin(2 pi f * (t - t0) + pi/2) = sin(2 pi f t + pi/2 - 2 pi f t0) = cos(pi/2 - 2 pi f t0) sin (2 pi f t) + sin(pi/2 - 2 pi f t0) cos (2 pi f t)
 */
-void Player_strike(int player_index)
+void Player_strike(int player_index, enum ERAD_COLOURS colour)
 {
     uint64_t phase_ns = rad_game_source.basic_source.current_time - rad_game_source.start_time;
     double phase_seconds = (phase_ns / (long)1e3) / (double)1e6;
-    double impulse_C = cos(M_PI / 2.0 - 2.0 * M_PI * oscillators.freq * phase_seconds);
-    double impulse_S = sin(M_PI / 2.0 - 2.0 * M_PI * oscillators.freq * phase_seconds);
+    double impulse_C = cos(M_PI / 2.0 - 2.0 * M_PI * rad_game_songs.freq * phase_seconds);
+    double impulse_S = sin(M_PI / 2.0 - 2.0 * M_PI * rad_game_songs.freq * phase_seconds);
     int player_pos = round(osc_players.pos[player_index].position);
     int good_strikes = 0;
     for (int led = player_pos - osc_players.single_strike_width; led < player_pos + osc_players.single_strike_width + 1; led++)
@@ -248,15 +303,15 @@ void Player_strike(int player_index)
 void Player_freq_inc(int player_index)
 {
     (void)player_index;
-    oscillators.freq += 0.01;
-    printf("Frequence increased to %f\n", oscillators.freq);
+    rad_game_songs.freq += 0.01;
+    printf("Frequence increased to %f\n", rad_game_songs.freq);
 }
 
 void Player_freq_dec(int player_index)
 {
     (void)player_index;
-    oscillators.freq -= 0.01;
-    printf("Frequence lowered to %f\n", oscillators.freq);
+    rad_game_songs.freq -= 0.01;
+    printf("Frequence lowered to %f\n", rad_game_songs.freq);
 }
 
 void Player_time_offset_inc(int player_index)
@@ -323,7 +378,7 @@ void Players_update()
  * If the player is moving, his color is interpolated between two leds
  * @param ledstrip 
 */
-void render_players(ws2811_t* ledstrip)
+void Players_render(ws2811_t* ledstrip)
 {
     for (int p = 0; p < rad_game_source.n_players; p++)
     {
@@ -334,32 +389,16 @@ void render_players(ws2811_t* ledstrip)
         {
             color = 0x0;
         }
-        int pos = trunc(osc_players.pos[p].position);
-        if (osc_players.pos[p].moving_dir == 0)
-        {
-            ledstrip->channel[0].leds[pos] = color;
-        }
-        else
-        {
-            double offset = (osc_players.pos[p].position - trunc(osc_players.pos[p].position)); //always positive
-            int left_led = trunc(osc_players.pos[p].position);
-            ledstrip->channel[0].leds[left_led] = lerp_rgb(color, 0, offset);
-            ledstrip->channel[0].leds[left_led + 1] = lerp_rgb(0, color, offset);
-        }
-
+        RadMovingObject_render(&osc_players.pos[p], color, ledstrip);
     }
 }
 
-#pragma endregion
-
-void start_current_song()
+void RGM_Oscillators_init()
 {
-    double bpm = rad_game_songs.songs[rad_game_songs.current_song].bpms[0];
-    oscillators.freq = bpm / 60.0;
-    SoundPlayer_init(44100, 2, 20000, rad_game_songs.songs[rad_game_songs.current_song].filename);
+
 }
- 
-int RadGameSource_update_leds(int frame, ws2811_t* ledstrip)
+
+int RGM_update_leds(int frame, ws2811_t* ledstrip)
 {
     static double completed = 0;
     (void)frame;
@@ -384,9 +423,115 @@ int RadGameSource_update_leds(int frame, ws2811_t* ledstrip)
         printf("Leds in sync: %i\n", in_sync);
     }
     Players_update();
-    render_players(ledstrip);
+    Players_render(ledstrip);
 
     return 1;
+}
+
+#pragma endregion
+
+#pragma region DDR
+
+#define C_MAX_DDR_BULLETS 8
+
+struct DdrEmitor
+{
+    int emitor_pos; //!< start of the emitor
+    int player_pos; //!< player position, this does not change
+    int reward_pos; //!< reward strip start, this position also does not changes
+    int emitor_len; //!< over the course of the game, emitors gets longer
+    double reward_progress;
+    struct RadMovingObject bullets[C_MAX_DDR_BULLETS];
+    int n_bullets;
+};
+
+static struct 
+{
+    struct DdrEmitor data[C_MAX_CONTROLLERS];
+    int last_beat;
+    const int reward_len;
+    const int player_col_index;
+} 
+ddr_emitors =
+{
+    .last_beat = 0,
+    .reward_len = 8,
+    .player_col_index = 19
+};
+
+void Player_hit_color_ddr(int player_index, enum EDDR_COLOURS colour)
+{
+
+}
+
+void DDR_game_mode_init()
+{
+    srand(100);
+    int field_len = rad_game_source.basic_source.n_leds / rad_game_source.n_players; //for 200 leds and 3 player = 66
+    int offset = (rad_game_source.basic_source.n_leds % field_len) / 2;
+    for (int em = 0; em < rad_game_source.n_players; ++em)
+    {
+        ddr_emitors.data[em].emitor_pos = offset + em * field_len;
+        ddr_emitors.data[em].player_pos = offset + (em + 1) * field_len - ddr_emitors.reward_len - 2;
+        ddr_emitors.data[em].reward_pos = offset + (em + 1) * field_len - ddr_emitors.reward_len;
+        ddr_emitors.data[em].n_bullets = 0;
+        ddr_emitors.data[em].reward_progress = 0.0;
+    }
+    Player_hit_color = Player_hit_color_ddr;
+}
+
+
+
+/*!
+ * @brief will fire a bullet for all players, all of them with the same color
+ * @param beats how many beats to reach the player
+*/
+void DdrEmitors_fire_bullet(int beats)
+{
+    int col = (int)(random_01() * 4); //enum EDDR_COLOURS
+    for (int p = 0; p < rad_game_source.n_players; ++p)
+    {
+        if (ddr_emitors.data[p].n_bullets < C_MAX_DDR_BULLETS)
+        {
+            int dist = ddr_emitors.data[p].player_pos - ddr_emitors.data[p].emitor_pos - ddr_emitors.data[p].emitor_len - 1;
+            double time_to_reach = (double)beats / rad_game_songs.freq;
+            ddr_emitors.data[p].bullets[ddr_emitors.data[p].n_bullets++].position = ddr_emitors.data[p].emitor_pos + ddr_emitors.data[p].emitor_len + 1;
+            ddr_emitors.data[p].bullets[ddr_emitors.data[p].n_bullets++].moving_dir = +1;
+            ddr_emitors.data[p].bullets[ddr_emitors.data[p].n_bullets++].custom_data = col;
+            ddr_emitors.data[p].bullets[ddr_emitors.data[p].n_bullets++].speed = (double)dist / time_to_reach;
+        }
+    }
+}
+
+void DdrEmitors_update()
+{
+    //check whether we want to emit a new bullet
+    double time_seconds = ((rad_game_source.basic_source.current_time - rad_game_source.start_time) / (long)1e3) / (double)1e6;
+    double beat = time_seconds * rad_game_songs.freq;
+    //todo -- emit bullets in other phases of the beat?
+    if ((int)beat > ddr_emitors.last_beat)
+    {
+        ddr_emitors.last_beat = (int)beat;
+        if (random_01() > 0.1f)
+        {
+            DdrEmitors_fire_bullet(6);
+        }
+    }
+}
+
+
+
+#pragma endregion 
+
+int(*get_update_function())(int, ws2811_t)
+{
+    switch (rad_game_source.game_mode)
+    {
+    case RGM_Oscillators:
+        return RGM_update_leds;
+    default:
+        break;
+    }
 }
 
 //****************************** INIT, DESTRUCT, PROCESS_MESSAGE, READ_CONFIG *********************************************
@@ -455,6 +600,8 @@ void RadGameSource_init(int n_leds, int time_speed, uint64_t current_time)
     RadInputHandler_init();
     rad_game_source.n_players = Controller_get_n_players();
     printf("Players detected: %i\n", rad_game_source.n_players);
+
+    //TODO move following to osc_init()
     Oscillators_init();
     Players_init();
     read_rad_game_config();
@@ -482,7 +629,7 @@ void RadGameSource_construct()
 {
     BasicSource_construct(&rad_game_source.basic_source);
     rad_game_source.basic_source.init = RadGameSource_init;
-    rad_game_source.basic_source.update = RadGameSource_update_leds;
+    rad_game_source.basic_source.update = get_update_function();
     rad_game_source.basic_source.destruct = RadGameSource_destruct;
     //game_source.basic_source.process_message = GameSource_process_message;
 }
