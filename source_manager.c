@@ -169,6 +169,12 @@ void process_source_message(const char* param)
 
 void SourceManager_reload_color_config();
 
+/*!
+ * @brief Parses and acts on message from HTTP server. There are three types of messages:
+ *  LED SOURCE <source> -- will be processed by `process_source_message` function and new source will be set
+ *  LED MSG <url_encoded_message> -- will be processed by active source's `process_message` function
+ *  LED RELOAD -- will call `SourceManager_reload_color_config` and, hopefully, reload color config
+*/
 void check_message()
 {
     char* msg = Listener_poll_message();

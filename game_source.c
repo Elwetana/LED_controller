@@ -26,7 +26,7 @@
 #include "input_handler.h"
 #include "stencil_handler.h"
 
-#define GAME_DEBUG
+//#define GAME_DEBUG
 
 /*! Init all game objects and modes */
 void Game_source_init_objects()
