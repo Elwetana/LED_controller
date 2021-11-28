@@ -116,6 +116,8 @@ void Player_hit_yellow(int player_index)
     Player_hit_color(player_index, DC_YELLOW);
 }
 
+static int cur_frame;
+
 #pragma endregion
 
 #pragma region Oscillators
@@ -578,7 +580,8 @@ void DdrPlayer_action(int player_index, enum EDDR_HIT_INTERVAL hit)
     double reaction_len = 1000 / rad_game_songs.freq / ddr_emitors.reaction_ratio; //reaction length in ms
     ddr_emitors.data[player_index].reaction_progress = reaction_len;
     ddr_emitors.data[player_index].reaction = hit;
-    printf("Player %i made hit %i, score %i, streak %i\n", player_index, hit, ddr_emitors.data[player_index].points, ddr_emitors.data[player_index].streak);
+    if(hit != 0)
+        printf("Player %i made hit %i, score %i, streak %i\n", player_index, hit, ddr_emitors.data[player_index].points, ddr_emitors.data[player_index].streak);
 }
 
 void DdrEmitors_delete_bullet(int player_index, int bullet_index)
@@ -662,7 +665,7 @@ void DdrEmitors_update()
         ddr_emitors.last_beat = (int)beat;
         if (random_01() > 0.1f)
         {
-            DdrEmitors_fire_bullet(32);
+            DdrEmitors_fire_bullet(48);
         }
     }
     //check reactions
@@ -681,6 +684,7 @@ void Player_hit_color_ddr(int player_index, enum ERAD_COLOURS colour)
     int fb = ddr_emitors.data[player_index].furthest_bullet;
     if ((enum ERAD_COLOURS)ddr_emitors.data[player_index].bullets[fb].custom_data != colour)
     {
+        printf("Player %i pressed button %i\n", player_index, colour);
         return; //this is not right colour, if the bullet is missed, we will find about it in the update_bullets function
     }
 
@@ -689,6 +693,7 @@ void Player_hit_color_ddr(int player_index, enum ERAD_COLOURS colour)
     double beat_ratio = dist_from_player / beat_length;
     int is_hit = DHI_MISS; //0
     while (is_hit < DHI_N_COUNT && beat_ratio < ddr_emitors.hit_intervals[is_hit]) is_hit++;
+    printf("In frame %i player %i pressed button %i distance in leds %f, beat position %f\n", cur_frame, player_index, colour, dist_from_player, beat_ratio);
     if (is_hit > 0)
     {
         DdrPlayer_action(player_index, (enum EDDR_HIT_INTERVAL)is_hit);
@@ -796,7 +801,7 @@ void DdrEmitors_render_reactions(ws2811_t* ledstrip)
 
 int RGM_DDR_update_leds(int frame, ws2811_t* ledstrip)
 {
-    (void)frame;
+    cur_frame = frame;
     for (int led = 0; led < rad_game_source.basic_source.n_leds; ++led)
     {
         ledstrip->channel[0].leds[led] = 0x0;
@@ -823,10 +828,10 @@ int RGM_DDR_update_leds(int frame, ws2811_t* ledstrip)
 
     //render emitor
     DdrEmitors_render_emitors(ledstrip);
-    //render bullets
-    DdrEmitors_render_bullets(ledstrip);
     //render player
     DdrEmitors_render_players(ledstrip);
+    //render bullets
+    DdrEmitors_render_bullets(ledstrip);
     //render reaction
     DdrEmitors_render_reactions(ledstrip);
     return 1;
