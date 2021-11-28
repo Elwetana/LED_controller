@@ -318,7 +318,7 @@ void Player_time_offset_inc(int player_index)
 {
     (void)player_index;
     osc_players.time_offset += 50;
-    rad_game_source.start_time += 50 * 1e6;
+    rad_game_source.start_time += 50 * 1000000;
     printf("Time offset increased to %li ms\n", osc_players.time_offset);
 }
 
@@ -326,7 +326,7 @@ void Player_time_offset_dec(int player_index)
 {
     (void)player_index;
     osc_players.time_offset -= 50;
-    rad_game_source.start_time -= 50 * 1e6;
+    rad_game_source.start_time -= 50 * 1000000;
     printf("Time offset decreased to %li ms\n", osc_players.time_offset);
 }
 
@@ -393,12 +393,16 @@ void Players_render(ws2811_t* ledstrip)
     }
 }
 
-void RGM_Oscillators_init()
+void RGM_Oscillators_init(int n_leds, uint64_t current_time)
 {
-
+    rad_game_source.start_time = current_time;
+    for (int i = 0; i < 3; ++i)
+        oscillators.phases[i] = malloc(sizeof(double) * n_leds);
+    Oscillators_init();
+    Players_init();
 }
 
-int RGM_update_leds(int frame, ws2811_t* ledstrip)
+int RGM_Oscillators_update_leds(int frame, ws2811_t* ledstrip)
 {
     static double completed = 0;
     (void)frame;
@@ -434,36 +438,65 @@ int RGM_update_leds(int frame, ws2811_t* ledstrip)
 
 #define C_MAX_DDR_BULLETS 8
 
+enum EDDR_HIT_INTERVAL
+{
+    DHI_MISS,
+    DHI_GOOD,
+    DHI_GREAT,
+    DHI_PERFECT,
+    DHI_N_COUNT
+};
+
 struct DdrEmitor
 {
     int emitor_pos; //!< start of the emitor
     int player_pos; //!< player position, this does not change
     int reward_pos; //!< reward strip start, this position also does not changes
-    int emitor_len; //!< over the course of the game, emitors gets longer
-    double reward_progress;
+    double reaction_progress;
+    enum EDDR_HIT_INTERVAL reaction;
     struct RadMovingObject bullets[C_MAX_DDR_BULLETS];
     int n_bullets;
+    int furthest_bullet; //!< index of the most distant bullet, usually 0
+    int points;
+    int streak;
 };
 
 static struct 
 {
     struct DdrEmitor data[C_MAX_CONTROLLERS];
     int last_beat;
-    const int reward_len;
-    const int player_col_index;
-} 
+    const int reaction_len;   //how many leds will be used to show reactions and streak
+    const int reaction_ratio; //part of the beat that will be reward
+    //const int player_col_index;
+    const double hit_intervals[DHI_N_COUNT]; //!< if player is off by more than intervals[DHI_MISS] part of beat, it's a miss
+    hsl_t grad_colors[19];
+    const int bullet_colors_offset;
+    const int grad_colors_offset;
+    const int grad_length;
+    const int reaction_colors_offset;
+    const int streak_grad_offset;
+    const int streak_grad_len;
+    const double points_to_size_amp; //see get_emitor_length for usage
+    const int points_per_color; //see fire bullet for usage
+}
 ddr_emitors =
 {
     .last_beat = 0,
-    .reward_len = 8,
-    .player_col_index = 19
+    .reaction_len = 8,
+    .reaction_ratio = 8,
+    //.player_col_index = 19,
+    .hit_intervals = {0.5, 0.25, 0.1, 0.0}, // (oo, 0.5> -- miss, (0.5, 0.25> -- good, (0.25, 0.1> -- great, (0.1, 0> -- perfect
+    .bullet_colors_offset = 19,
+    .grad_colors_offset = 23,
+    .grad_length = 10,
+    .reaction_colors_offset = 33,
+    .streak_grad_offset = 37,
+    .streak_grad_len = 6,
+    .points_to_size_amp = 0.25,
+    .points_per_color = 100000
 };
 
-void Player_hit_color_ddr(int player_index, enum EDDR_COLOURS colour)
-{
-
-}
-
+void Player_hit_color_ddr(int player_index, enum EDDR_COLOURS colour);
 void DDR_game_mode_init()
 {
     srand(100);
@@ -472,15 +505,86 @@ void DDR_game_mode_init()
     for (int em = 0; em < rad_game_source.n_players; ++em)
     {
         ddr_emitors.data[em].emitor_pos = offset + em * field_len;
-        ddr_emitors.data[em].player_pos = offset + (em + 1) * field_len - ddr_emitors.reward_len - 2;
-        ddr_emitors.data[em].reward_pos = offset + (em + 1) * field_len - ddr_emitors.reward_len;
+        ddr_emitors.data[em].player_pos = offset + (em + 1) * field_len - ddr_emitors.reaction_len - 2;
+        ddr_emitors.data[em].reward_pos = offset + (em + 1) * field_len - ddr_emitors.reaction_len;
         ddr_emitors.data[em].n_bullets = 0;
-        ddr_emitors.data[em].reward_progress = 0.0;
+        ddr_emitors.data[em].reaction_progress = 0.0;
+        ddr_emitors.data[em].points = 1;
+        ddr_emitors.data[em].streak = 0;
     }
     Player_hit_color = Player_hit_color_ddr;
+    for (int i = 0; i < ddr_emitors.grad_length; ++i)
+    {
+        rgb2hsl(rad_game_source.basic_source.gradient.colors[ddr_emitors.grad_colors_offset + i], &ddr_emitors.grad_colors[i]);
+    }
 }
 
+double DdrEmitors_get_length(int player_index)
+{
+    return 1 + ddr_emitors.points_to_size_amp * log(ddr_emitors.data[player_index].points);
+}
 
+/*!
+ * @brief Does three things:
+ *  -- update streak
+ *  -- update score
+ *  -- starts reaction
+ */
+void DdrPlayer_action(int player_index, enum EDDR_HIT_INTERVAL hit)
+{
+    //update streak
+    if (hit < DHI_GREAT)
+    {
+        ddr_emitors.data[player_index].streak = 0;
+    }
+    else
+    {
+        ddr_emitors.data[player_index].streak++;
+    }
+    //update score
+    /*
+    The scoring system for DDR versions 1 and 2 (including the Plus remixes) is as follows: For every step:
+    Multiplier (M) = (# of steps in your current combo / 4) rounded down "Good" step = M * 100 (and this ends your combo) "Great" step = M * M * 100 "Perfect" step = M * M * 300
+    e.g. When you get a 259 combo, the 260th step will earn you:
+    M = (260 / 4) rounded down = 65 Great step = M x M X 100 = 65 x 65 x 100 = 422,500 Perfect step = Great step score x 3 = 422,500 x 3 = 1,267,500 
+    https://remywiki.com/DanceDanceRevolution_Scoring_System
+    */
+    int M = (ddr_emitors.data[player_index].streak / 4) + 1;
+    int points_earned = 0;
+    switch (hit)
+    {
+    case DHI_MISS:
+        points_earned = -100;
+        break;
+    case DHI_GOOD:
+        points_earned = M * 100;
+        break;
+    case DHI_GREAT:
+        points_earned = M * M * 100;
+        break;
+    case DHI_PERFECT:
+        points_earned = M * M * 300;
+        break;
+    case DHI_N_COUNT:
+        break;
+    }
+    ddr_emitors.data[player_index].points += points_earned;
+    if (ddr_emitors.data[player_index].points < 1) ddr_emitors.data[player_index].points = 1;
+    //start reaction
+    double reaction_len = 1000 / rad_game_songs.freq / ddr_emitors.reaction_ratio; //reaction length in ms
+    ddr_emitors.data[player_index].reaction_progress = reaction_len;
+    ddr_emitors.data[player_index].reaction = hit;
+    printf("Player hit %i, score %i, streak %i\n", hit, ddr_emitors.data[player_index].points, ddr_emitors.data[player_index].streak);
+}
+
+void DdrEmitors_delete_bullet(int player_index, int bullet_index)
+{
+    ddr_emitors.data[player_index].n_bullets--;
+    for (int b = bullet_index; b < ddr_emitors.data[player_index].n_bullets; ++b)
+    {
+        ddr_emitors.data[player_index].bullets[b] = ddr_emitors.data[player_index].bullets[b + 1];
+    }
+}
 
 /*!
  * @brief will fire a bullet for all players, all of them with the same color
@@ -488,23 +592,63 @@ void DDR_game_mode_init()
 */
 void DdrEmitors_fire_bullet(int beats)
 {
-    int col = (int)(random_01() * 4); //enum EDDR_COLOURS
+    int total_points = 0;
+    for (int p = 0; p < rad_game_source.n_players; ++p)
+    {
+        total_points += ddr_emitors.data[p].points;
+    }
+    int max_colors = 1 + total_points / ddr_emitors.points_per_color;
+    if (max_colors > 4) max_colors = 4;
+    int col = (int)(random_01() * max_colors); //enum EDDR_COLOURS
     for (int p = 0; p < rad_game_source.n_players; ++p)
     {
         if (ddr_emitors.data[p].n_bullets < C_MAX_DDR_BULLETS)
         {
-            int dist = ddr_emitors.data[p].player_pos - ddr_emitors.data[p].emitor_pos - ddr_emitors.data[p].emitor_len - 1;
+            double emitor_len = DdrEmitors_get_length(p);
+            int dist = ddr_emitors.data[p].player_pos - ddr_emitors.data[p].emitor_pos - emitor_len - 1;
             double time_to_reach = (double)beats / rad_game_songs.freq;
-            ddr_emitors.data[p].bullets[ddr_emitors.data[p].n_bullets++].position = ddr_emitors.data[p].emitor_pos + ddr_emitors.data[p].emitor_len + 1;
-            ddr_emitors.data[p].bullets[ddr_emitors.data[p].n_bullets++].moving_dir = +1;
-            ddr_emitors.data[p].bullets[ddr_emitors.data[p].n_bullets++].custom_data = col;
-            ddr_emitors.data[p].bullets[ddr_emitors.data[p].n_bullets++].speed = (double)dist / time_to_reach;
+            ddr_emitors.data[p].bullets[ddr_emitors.data[p].n_bullets].position = (double)ddr_emitors.data[p].emitor_pos + emitor_len + 1;
+            ddr_emitors.data[p].bullets[ddr_emitors.data[p].n_bullets].moving_dir = +1;
+            ddr_emitors.data[p].bullets[ddr_emitors.data[p].n_bullets].custom_data = col;
+            ddr_emitors.data[p].bullets[ddr_emitors.data[p].n_bullets].speed = (double)dist / time_to_reach;
+            ddr_emitors.data[p].n_bullets++;
+        }
+    }
+}
+
+void DdrEmitors_update_bullets()
+{
+    double time_elapsed = ((rad_game_source.basic_source.time_delta / (long)1e3) / (double)1e6);
+    for (int p = 0; p < rad_game_source.n_players; ++p)
+    {
+        double furthest_pos = 0;
+        int b = 0;
+        while(b < ddr_emitors.data[p].n_bullets)
+        {
+            double distance_moved = time_elapsed * ddr_emitors.data[p].bullets[b].speed;
+            double miss_distance = ddr_emitors.data[p].bullets[b].speed / rad_game_songs.freq * ddr_emitors.hit_intervals[DHI_MISS];
+            if ((ddr_emitors.data[p].bullets[b].position + distance_moved) > (ddr_emitors.data[p].player_pos + miss_distance))
+            {
+                DdrPlayer_action(p, DHI_MISS);
+                DdrEmitors_delete_bullet(p, b); //this will decrease n_bullets
+            }
+            else
+            {
+                ddr_emitors.data[p].bullets[b].position += distance_moved;
+                if (ddr_emitors.data[p].bullets[b].position > furthest_pos)
+                {
+                    furthest_pos = ddr_emitors.data[p].bullets[b].position;
+                    ddr_emitors.data[p].furthest_bullet = b;
+                }
+                b++;
+            }
         }
     }
 }
 
 void DdrEmitors_update()
 {
+    DdrEmitors_update_bullets();
     //check whether we want to emit a new bullet
     double time_seconds = ((rad_game_source.basic_source.current_time - rad_game_source.start_time) / (long)1e3) / (double)1e6;
     double beat = time_seconds * rad_game_songs.freq;
@@ -514,21 +658,186 @@ void DdrEmitors_update()
         ddr_emitors.last_beat = (int)beat;
         if (random_01() > 0.1f)
         {
-            DdrEmitors_fire_bullet(6);
+            DdrEmitors_fire_bullet(32);
+        }
+    }
+    //check reactions
+    double delta_ms = (rad_game_source.basic_source.time_delta / (long)1e6);
+    for (int p = 0; p < rad_game_source.n_players; ++p)
+    {
+        if(ddr_emitors.data[p].reaction_progress > 0)
+            ddr_emitors.data[p].reaction_progress -= delta_ms;
+        if (ddr_emitors.data[p].reaction_progress < 0)
+            ddr_emitors.data[p].reaction_progress = 0;
+    }
+}
+
+void Player_hit_color_ddr(int player_index, enum EDDR_COLOURS colour)
+{
+    int fb = ddr_emitors.data[player_index].furthest_bullet;
+    if (ddr_emitors.data[player_index].bullets[fb].custom_data != colour)
+    {
+        return; //this is not right colour, if the bullet is missed, we will find about it in the update_bullets function
+    }
+
+    double dist_from_player = fabs(ddr_emitors.data[player_index].player_pos - ddr_emitors.data[player_index].bullets[fb].position);
+    double beat_length = ddr_emitors.data[player_index].bullets[fb].speed / rad_game_songs.freq;
+    double beat_ratio = dist_from_player / beat_length;
+    int is_hit = DHI_MISS; //0
+    while (is_hit < DHI_N_COUNT && beat_ratio < ddr_emitors.hit_intervals[is_hit]) is_hit++;
+    if (is_hit > 0)
+    {
+        DdrPlayer_action(player_index, (enum EDDR_HIT_INTERVAL)is_hit);
+        DdrEmitors_delete_bullet(player_index, fb);
+    }
+}
+
+void DdrEmitors_render_emitors(ws2811_t* ledstrip)
+{
+    int grad_speed = 0.5;
+
+    double time_seconds = ((rad_game_source.basic_source.current_time - rad_game_source.start_time) / (long)1e3) / (double)1e6;
+    double y = sin(2 * M_PI * rad_game_songs.freq * time_seconds);
+    if (y < 0) y = 0;
+
+    for (int p = 0; p < rad_game_source.n_players; ++p)
+    {
+        double emitor_len = DdrEmitors_get_length(p);
+        int pattern_length = (int)emitor_len;
+        if (pattern_length < 2) pattern_length = 2;
+        if (pattern_length > (2 * ddr_emitors.grad_length - 2)) pattern_length = 2 * ddr_emitors.grad_length - 2;
+        int beats_count = trunc(time_seconds * rad_game_songs.freq);
+        double grad_shift = fmod(beats_count * grad_speed, pattern_length); // from 0 to pattern_length-1
+        double offset = grad_shift - trunc(grad_shift); //from 0 to 1
+
+        for (int led = 0; led < pattern_length; ++led)
+        {
+            int grad_pos = (led + (int)grad_shift) % pattern_length;    //from 0 to pattern_length-1, we have to take in account that the second half of the gradient is the reverse of the first one
+            hsl_t col_hsl;
+            if (grad_pos < ddr_emitors.grad_length - 1)
+                lerp_hsl(&ddr_emitors.grad_colors[grad_pos], &ddr_emitors.grad_colors[grad_pos + 1], offset, &col_hsl);
+            else
+                lerp_hsl(&ddr_emitors.grad_colors[pattern_length - grad_pos], &ddr_emitors.grad_colors[pattern_length - grad_pos - 1], 1 - offset, &col_hsl);
+            ws2811_led_t c = hsl2rgb(&col_hsl);
+            ledstrip->channel[0].leds[led + ddr_emitors.data[p].emitor_pos] = multiply_rgb_color(c, y);
         }
     }
 }
 
+void DdrEmitors_render_bullets(ws2811_t* ledstrip)
+{
+    for (int p = 0; p < rad_game_source.n_players; ++p)
+    {
+        for (int b = 0; b < ddr_emitors.data[p].n_bullets; ++b)
+        {
+            int color = rad_game_source.basic_source.gradient.colors[ddr_emitors.data[p].bullets[b].custom_data + ddr_emitors.bullet_colors_offset];
+            RadMovingObject_render(&ddr_emitors.data[p].bullets[b], color, ledstrip);
+        }
+    }
+}
 
+void DdrEmitors_render_players(ws2811_t* ledstrip)
+{
+    for (int p = 0; p < rad_game_source.n_players; ++p)
+    {
+        ledstrip->channel[0].leds[ddr_emitors.data[p].player_pos] = 0xFFFFFF;
+    }
+}
+
+/*!
+* @brief If reaction is active, render that, otherwise render streak
+* Streak has its own gradient that we show one by one
+*/
+void DdrEmitors_render_reactions(ws2811_t* ledstrip)
+{
+    for (int p = 0; p < rad_game_source.n_players; ++p)
+    {
+        int color1 = 0x0;
+        int color2 = 0x0;
+        int col2_start = ddr_emitors.reaction_len;
+
+        if (ddr_emitors.data[p].reaction_progress > 0)
+        {
+            color1 = rad_game_source.basic_source.gradient.colors[ddr_emitors.data[p].reaction + ddr_emitors.reaction_colors_offset];
+        }
+        else if(ddr_emitors.data[p].streak > 0)
+        {
+            int grad_index = ddr_emitors.data[p].streak / ddr_emitors.reaction_len;
+            if (grad_index < ddr_emitors.streak_grad_len)
+            {
+                col2_start = ddr_emitors.data[p].streak % ddr_emitors.reaction_len;
+                color1 = rad_game_source.basic_source.gradient.colors[ddr_emitors.streak_grad_offset + grad_index];
+                if (grad_index > 0)
+                    color2 = rad_game_source.basic_source.gradient.colors[ddr_emitors.streak_grad_offset + grad_index - 1];
+            }
+            else
+            {
+                double A = ddr_emitors.streak_grad_len / grad_index;
+                double y = A + (1 - A) * sin(M_PI * rad_game_songs.freq * ((rad_game_source.basic_source.current_time - rad_game_source.start_time) / (long)1e3) / (double)1e6);
+                //the pulsing gets more intense as streak grows
+                if (y < y) y = -y;
+                color1 = multiply_rgb_color(rad_game_source.basic_source.gradient.colors[ddr_emitors.streak_grad_offset + ddr_emitors.streak_grad_len - 1], y);
+            }
+        }
+        for (int led = ddr_emitors.data[p].reward_pos; led < ddr_emitors.data[p].reward_pos + col2_start; ++led)
+        {
+            ledstrip->channel[0].leds[led] = color1;
+        }
+        for (int led = ddr_emitors.data[p].reward_pos + col2_start; led < ddr_emitors.data[p].reward_pos + ddr_emitors.reaction_len; ++led)
+        {
+            ledstrip->channel[0].leds[led] = color2;
+        }
+    }
+}
+
+int RGM_DDR_update_leds(int frame, ws2811_t* ledstrip)
+{
+    (void)frame;
+    for (int led = 0; led < rad_game_source.basic_source.n_leds; ++led)
+    {
+        ledstrip->channel[0].leds[led] = 0x0;
+    }
+    //get input -- TODO -- this is a common part of update
+    RadInputHandler_process_input();
+    //update player
+    long time_pos = SoundPlayer_play(SE_N_EFFECTS);
+    if (time_pos == -1)
+    {
+        SoundPlayer_destruct();
+        if (rad_game_songs.n_songs == rad_game_songs.current_song++)
+        {
+            //TODO, game completed
+            rad_game_songs.current_song = 0;
+        }
+        start_current_song();
+    }
+    //todo else -- check if bpm freq had not changed
+    //update emitors
+    DdrEmitors_update();
+    //update bullets
+    DdrEmitors_update_bullets();
+
+    //render emitor
+    DdrEmitors_render_emitors(ledstrip);
+    //render bullets
+    DdrEmitors_render_bullets(ledstrip);
+    //render player
+    DdrEmitors_render_players(ledstrip);
+    //render reaction
+    DdrEmitors_render_reactions(ledstrip);
+    return 1;
+}
 
 #pragma endregion 
 
-int(*get_update_function())(int, ws2811_t)
+int(*get_update_function())(int, ws2811_t*)
 {
     switch (rad_game_source.game_mode)
     {
     case RGM_Oscillators:
-        return RGM_update_leds;
+        return RGM_Oscillators_update_leds;
+    case RGM_DDR:
+        return RGM_DDR_update_leds;
     default:
         break;
     }
@@ -593,20 +902,17 @@ static void read_rad_game_config()
 void RadGameSource_init(int n_leds, int time_speed, uint64_t current_time)
 {
     BasicSource_init(&rad_game_source.basic_source, n_leds, time_speed, source_config.colors[RAD_GAME_SOURCE], current_time);
-
-    rad_game_source.start_time = current_time;
-    for(int i = 0; i < 3; ++i)
-        oscillators.phases[i] = malloc(sizeof(double) * n_leds);
     RadInputHandler_init();
     rad_game_source.n_players = Controller_get_n_players();
     printf("Players detected: %i\n", rad_game_source.n_players);
 
-    //TODO move following to osc_init()
-    Oscillators_init();
-    Players_init();
     read_rad_game_config();
     rad_game_songs.current_song = 0;
     start_current_song();
+    RGM_Oscillators_init(n_leds, current_time);
+    DDR_game_mode_init();
+    rad_game_source.game_mode = RGM_DDR;
+    rad_game_source.basic_source.update = get_update_function();
 }
 
 void RadGameSource_destruct()

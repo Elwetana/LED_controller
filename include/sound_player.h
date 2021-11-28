@@ -5,6 +5,10 @@
 enum ESoundEffects
 {
 	SE_Reward,
+	SE_Player1,
+	SE_Player2,
+	SE_Player3,
+	SE_Player4,
 	SE_N_EFFECTS
 };
 

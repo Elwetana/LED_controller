@@ -35,6 +35,14 @@ static FILE* fin;
 
 static struct SoundEffect effects[SE_N_EFFECTS];
 static enum ESoundEffects current_effect = SE_N_EFFECTS;
+static char* effect_files[] = 
+{ 
+    "sound/reward2_2.wav", 
+    "sound/playerOne.wav",
+    "sound/playerTwo.wav",
+    "sound/playerThree.wav",
+    "sound/playerFour.wav"
+};
 
 #ifdef __linux__
 
@@ -183,8 +191,7 @@ void load_effects()
     //_getcwd(tmp, samplerate * channels * max_effect_length * 2);
     for (int i = 0; i < SE_N_EFFECTS; ++i)
     {
-        FILE* feff = fopen("sound/reward2_2.wav", "rb");
-        //FILE* feff = fopen("sound/test_sin.wav", "rb");
+        FILE* feff = fopen(effect_files[i], "rb");
         fseek(feff, 44, SEEK_SET);
         unsigned int samples_read = fread(tmp, channels * 2, samplerate * max_effect_length, feff);
         fclose(feff);
