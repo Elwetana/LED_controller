@@ -1,4 +1,7 @@
 #define _CRT_SECURE_NO_WARNINGS
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wunknown-pragmas"
+
 
 #include <stdint.h>
 #include <stdio.h>
@@ -57,7 +60,7 @@ void start_current_song()
 
 #pragma region MovingObject
 
-static struct RadMovingObject
+struct RadMovingObject
 {
     double position;
     double speed; //!< in leds/s
@@ -276,6 +279,7 @@ void Player_move_right(int player_index)
 */
 void Player_strike(int player_index, enum ERAD_COLOURS colour)
 {
+    (void)colour;
     uint64_t phase_ns = rad_game_source.basic_source.current_time - rad_game_source.start_time;
     double phase_seconds = (phase_ns / (long)1e3) / (double)1e6;
     double impulse_C = cos(M_PI / 2.0 - 2.0 * M_PI * rad_game_songs.freq * phase_seconds);
@@ -496,7 +500,7 @@ ddr_emitors =
     .points_per_color = 100000
 };
 
-void Player_hit_color_ddr(int player_index, enum EDDR_COLOURS colour);
+void Player_hit_color_ddr(int player_index, enum ERAD_COLOURS colour);
 void DDR_game_mode_init()
 {
     srand(100);
@@ -574,7 +578,7 @@ void DdrPlayer_action(int player_index, enum EDDR_HIT_INTERVAL hit)
     double reaction_len = 1000 / rad_game_songs.freq / ddr_emitors.reaction_ratio; //reaction length in ms
     ddr_emitors.data[player_index].reaction_progress = reaction_len;
     ddr_emitors.data[player_index].reaction = hit;
-    printf("Player hit %i, score %i, streak %i\n", hit, ddr_emitors.data[player_index].points, ddr_emitors.data[player_index].streak);
+    printf("Player %i made hit %i, score %i, streak %i\n", player_index, hit, ddr_emitors.data[player_index].points, ddr_emitors.data[player_index].streak);
 }
 
 void DdrEmitors_delete_bullet(int player_index, int bullet_index)
@@ -599,7 +603,7 @@ void DdrEmitors_fire_bullet(int beats)
     }
     int max_colors = 1 + total_points / ddr_emitors.points_per_color;
     if (max_colors > 4) max_colors = 4;
-    int col = (int)(random_01() * max_colors); //enum EDDR_COLOURS
+    int col = (int)(random_01() * max_colors); //enum ERAD_COLOURS
     for (int p = 0; p < rad_game_source.n_players; ++p)
     {
         if (ddr_emitors.data[p].n_bullets < C_MAX_DDR_BULLETS)
@@ -672,10 +676,10 @@ void DdrEmitors_update()
     }
 }
 
-void Player_hit_color_ddr(int player_index, enum EDDR_COLOURS colour)
+void Player_hit_color_ddr(int player_index, enum ERAD_COLOURS colour)
 {
     int fb = ddr_emitors.data[player_index].furthest_bullet;
-    if (ddr_emitors.data[player_index].bullets[fb].custom_data != colour)
+    if ((enum ERAD_COLOURS)ddr_emitors.data[player_index].bullets[fb].custom_data != colour)
     {
         return; //this is not right colour, if the bullet is missed, we will find about it in the update_bullets function
     }
@@ -838,9 +842,10 @@ int(*get_update_function())(int, ws2811_t*)
         return RGM_Oscillators_update_leds;
     case RGM_DDR:
         return RGM_DDR_update_leds;
-    default:
-        break;
+    case RGM_N_MODES:
+        exit(-1);
     }
+    exit(-2);
 }
 
 //****************************** INIT, DESTRUCT, PROCESS_MESSAGE, READ_CONFIG *********************************************
@@ -946,3 +951,6 @@ RadGameSource rad_game_source = {
     .start_time = 0,
     .n_players = 0
 };
+
+#pragma GCC diagnostic pop
+
