@@ -442,7 +442,7 @@ int RGM_Oscillators_update_leds(int frame, ws2811_t* ledstrip)
 
 #pragma region DDR
 
-#define C_MAX_DDR_BULLETS 8
+#define C_MAX_DDR_BULLETS 32
 
 enum EDDR_HIT_INTERVAL
 {
@@ -484,12 +484,13 @@ static struct
     const int streak_grad_len;
     const double points_to_size_amp; //see get_emitor_length for usage
     const int points_per_color; //see fire bullet for usage
+    const int beats_to_target;
 }
 ddr_emitors =
 {
     .last_beat = 0,
     .reaction_len = 8,
-    .reaction_ratio = 8,
+    .reaction_ratio = 4,
     //.player_col_index = 19,
     .hit_intervals = {0.5, 0.25, 0.1, 0.0}, // (oo, 0.5> -- miss, (0.5, 0.25> -- good, (0.25, 0.1> -- great, (0.1, 0> -- perfect
     .bullet_colors_offset = 19,
@@ -499,7 +500,8 @@ ddr_emitors =
     .streak_grad_offset = 37,
     .streak_grad_len = 6,
     .points_to_size_amp = 0.25,
-    .points_per_color = 100000
+    .points_per_color = 100000,
+    .beats_to_target = 24
 };
 
 void Player_hit_color_ddr(int player_index, enum ERAD_COLOURS colour);
@@ -663,9 +665,9 @@ void DdrEmitors_update()
     if ((int)beat > ddr_emitors.last_beat)
     {
         ddr_emitors.last_beat = (int)beat;
-        if (random_01() > 0.1f)
+        if (random_01() > -0.1f)
         {
-            DdrEmitors_fire_bullet(48);
+            DdrEmitors_fire_bullet(ddr_emitors.beats_to_target);
         }
     }
     //check reactions
