@@ -38,6 +38,7 @@ void RadInputHandler_init()
     button_handlers[C_MAX_XBTN + XBTN_R3] = Player_freq_inc;
     button_handlers[C_MAX_XBTN + XBTN_LB] = Player_time_offset_dec;
     button_handlers[C_MAX_XBTN + XBTN_RB] = Player_time_offset_inc;
+    button_handlers[C_MAX_XBTN + XBTN_Start] = Player_start_pressed;
 
     Controller_init();
 }

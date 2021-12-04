@@ -57,7 +57,7 @@ void Player_hit_red(int player_index);
 void Player_hit_green(int player_index);
 void Player_hit_blue(int player_index);
 void Player_hit_yellow(int player_index);
-
+void Player_start_pressed(int player_index);
 
 typedef struct RadGameSource
 {
@@ -80,10 +80,10 @@ struct RadGameSong
 typedef struct SRadGameSongs
 {
 	struct RadGameSong* songs;
-	double freq; //!< frequency (in Hz) of the current song
+	double freq;		//!< frequency (in Hz) of the current song
 	int n_songs;
 	int current_song;
-	long time_offset;                     //< in ms
+	long time_offset;	//< in ms
 } RadGameSongs;
 
 extern RadGameSongs rad_game_songs;
@@ -93,11 +93,18 @@ void start_current_song();
 typedef struct SRadMovingObject
 {
 	double position;
-	double speed; //!< in leds/s
-	int custom_data; //!< user defined
+	double speed;		//!< in leds/s
+	int custom_data;	//!< user defined
 	signed char moving_dir; //< 0 when not moving, +1 when moving right, -1 when moving left
 } RadMovingObject;
 
 void RadMovingObject_render(RadMovingObject* mo, int color, ws2811_t* ledstrip);
+
+//return current ready player, if there is none, return 0xF
+int Ready_get_current_player();
+void Ready_clear_current_player();
+int Ready_get_ready_players();
+uint64_t Ready_get_effect_start();
+void Ready_set_effect_start(uint64_t t);
 
 #endif /* __RAD_GAME_SOURCE_H__ */

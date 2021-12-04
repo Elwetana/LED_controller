@@ -12,6 +12,8 @@ enum ESoundEffects
 	SE_N_EFFECTS
 };
 
+static const int C_PlayerOneIndex = 1;
+
 /*!
  * @brief Init hardware and start to play
  * @param samplerate sample per seconds, typicall 44100
@@ -19,7 +21,9 @@ enum ESoundEffects
  * @param frame_time desired length of one update in us
  * @param fileToPlay path to the file to starty playing
  */
-void SoundPlayer_init(unsigned int samplerate, unsigned int channels, int frame_time, char* filename);
+void SoundPlayer_start(char* filename);
+
+void SoundPlayer_init(int frame_time);
 
 /*!
  * @brief keep playing the current file

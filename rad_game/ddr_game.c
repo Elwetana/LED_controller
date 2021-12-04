@@ -125,7 +125,7 @@ static double DdrEmitors_get_length(int player_index)
  *  -- update score
  *  -- starts reaction
  */
-static void DdrPlayer_action(int player_index, enum EDDR_HIT_INTERVAL hit)
+static void DdrPlayer_action(int player_index, enum EDDR_HIT_INTERVAL hit, enum ERAD_COLOURS colour)
 {
     //update streak
     if (hit < DHI_GREAT)
@@ -146,19 +146,20 @@ static void DdrPlayer_action(int player_index, enum EDDR_HIT_INTERVAL hit)
     */
     int M = (ddr_emitors.data[player_index].streak / 4) + 1;
     int points_earned = 0;
+    int bullet_value = (int[]){ 100, 1000, 10000, 100000 } [colour] ;
     switch (hit)
     {
     case DHI_MISS:
-        points_earned = -100;
+        points_earned = -bullet_value / 10;
         break;
     case DHI_GOOD:
-        points_earned = M * 100;
+        points_earned = M * bullet_value;
         break;
     case DHI_GREAT:
-        points_earned = M * M * 100;
+        points_earned = M * M * bullet_value;
         break;
     case DHI_PERFECT:
-        points_earned = M * M * 300;
+        points_earned = M * M * 3 * bullet_value;
         break;
     case DHI_N_COUNT:
         break;
@@ -225,7 +226,7 @@ static void DdrEmitors_update_bullets()
             double miss_distance = ddr_emitors.data[p].bullets[b].speed / rad_game_songs.freq * ddr_emitors.hit_intervals[DHI_MISS];
             if ((ddr_emitors.data[p].bullets[b].position + distance_moved) > (ddr_emitors.data[p].player_pos + miss_distance))
             {
-                DdrPlayer_action(p, DHI_MISS);
+                DdrPlayer_action(p, DHI_MISS, ddr_emitors.data[p].bullets[b].custom_data);
                 DdrEmitors_delete_bullet(p, b); //this will decrease n_bullets
             }
             else
@@ -285,7 +286,7 @@ void RGM_DDR_player_hit(int player_index, enum ERAD_COLOURS colour)
     printf("In frame %i player %i pressed button %i distance in leds %f, beat position %f\n", rad_game_source.cur_frame, player_index, colour, dist_from_player, beat_ratio);
     if (is_hit > 0)
     {
-        DdrPlayer_action(player_index, (enum EDDR_HIT_INTERVAL)is_hit);
+        DdrPlayer_action(player_index, (enum EDDR_HIT_INTERVAL)is_hit, colour);
         DdrEmitors_delete_bullet(player_index, fb);
     }
 }
@@ -436,6 +437,44 @@ int RGM_DDR_update_leds(ws2811_t* ledstrip)
 
 int RGM_DDR_Ready_update_leds(ws2811_t* ledstrip)
 {
+    for (int led = 0; led < rad_game_source.basic_source.n_leds; ++led)
+        ledstrip->channel[0].leds[led] = 0x0;
+    static const double effect_freq = 2.0; //Hz
+    int cur_player = Ready_get_current_player();
+    uint64_t start_time = Ready_get_effect_start();
+    if (start_time == 0 && cur_player != 0xf)
+    {
+        //we have to start a new effect
+        Ready_set_effect_start(rad_game_source.basic_source.current_time);
+        SoundPlayer_play(C_PlayerOneIndex + cur_player);
+        //we could start updatint leds, but it will wait till next frame
+    }
+    if (start_time > 0 && cur_player != 0xf)
+    {
+        //we have effect in progress
+        int n = SoundPlayer_play(SE_N_EFFECTS);
+        if (n == -1)
+        {
+            //we are finished
+            Ready_clear_current_player();
+        }
+        double time_delta = (rad_game_source.basic_source.current_time - start_time) / (long)1e3 / (double)(1e6);
+        double sinft = fabs(sin(2 * M_PI * effect_freq * time_delta));
+        int colour = multiply_rgb_color(0xFFFFFF, sinft);
+        for (int led = ddr_emitors.data[cur_player].emitor_pos; led < ddr_emitors.data[cur_player].reward_pos + ddr_emitors.reaction_len + 1; ++led)
+        {
+            ledstrip->channel[0].leds[led] = colour;
+        }
+    }
+    if (start_time == 0 && cur_player == 0xf)
+    {
+        //we could have all players ready and their effect finished
+        int all_ready = Ready_get_ready_players(); //this is a bit mask, n_players bits must be set
+        if (all_ready == ((1 << rad_game_source.n_players) - 1))
+        {
+            printf("Everyone is ready to play DDR mode\n");
+        }
+    }
     return 1;
 }
 
