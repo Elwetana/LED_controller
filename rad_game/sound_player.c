@@ -32,6 +32,7 @@ static uint64_t delta_pcm_us = 0;
 static long samples_supplied = 0;
 static int samples_in_buffer;
 static FILE* fin;
+static unsigned char is_playing = 0;
 
 static struct SoundEffect effects[SE_N_EFFECTS];
 static enum ESoundEffects current_effect = SE_N_EFFECTS;
@@ -182,6 +183,7 @@ static void start_playing(int frame_time, char* filename)
     delta_disk_us = 0; 
     delta_pcm_us = 0;
     samples_supplied = 0;
+    is_playing = 1;
 }
 
 void load_effects()
@@ -217,12 +219,44 @@ void SoundPlayer_init(unsigned int in_samplerate, unsigned int in_channels, int 
     start_playing(frame_time, filename);
 }
 
+
+void SoundPlayer_mix_effect(int samples_read)
+{
+    int effect_offset = effects[current_effect].position;
+    int samples_to_modify = effects[current_effect].n_samples - effect_offset;
+    if (samples_to_modify > samples_read)
+    {
+        samples_to_modify = samples_read;
+    }
+    for (unsigned int sample = 0; sample < samples_to_modify * channels; sample++)
+    {
+        short orig = buff[sample * 2 + 1] << 8 | buff[sample * 2];
+        short modified = (orig >> 2) + effects[current_effect].data[effect_offset * channels + sample];
+        buff[sample * 2] = (char)(modified & 0xFF);
+        buff[sample * 2 + 1] = (char)((modified >> 8) & 0xFF);
+    }
+    if (samples_to_modify < samples_read)
+    {
+        effects[current_effect].position = -1;
+        current_effect = SE_N_EFFECTS;
+    }
+    else
+    {
+        effects[current_effect].position += samples_to_modify;
+    }
+}
+
+
 long SoundPlayer_play(enum ESoundEffects new_effect)
 {
     if (new_effect != SE_N_EFFECTS)
     {
         current_effect = new_effect;
         effects[current_effect].position = 0;
+    }
+    if (!is_playing && current_effect == SE_N_EFFECTS)
+    {
+        return -1;
     }
     int err;
     struct timespec now;
@@ -232,7 +266,17 @@ long SoundPlayer_play(enum ESoundEffects new_effect)
     long samples_consumed = time_running_us * samplerate / 1e6;
     if(samples_supplied - samples_consumed < samples_in_buffer) 
     {
-        int samples_read = fread(buff, channels * 2, samples_in_buffer, fin);
+        int samples_read;
+        if (is_playing)
+        {
+            samples_read = fread(buff, channels * 2, samples_in_buffer, fin);
+        }
+        else
+        {
+            assert(current_effect != SE_N_EFFECTS);
+            samples_read = samples_in_buffer * channels * 2;
+            for (int i = 0; i < samples_read; ++i) buff[i] = 0;
+        }
         if (samples_read > 0) 
         {
 #ifdef DEBUG_SOUND
@@ -243,28 +287,7 @@ long SoundPlayer_play(enum ESoundEffects new_effect)
 #endif
             if (current_effect != SE_N_EFFECTS)
             {
-                int effect_offset = effects[current_effect].position;
-                int samples_to_modify = effects[current_effect].n_samples - effect_offset;
-                if (samples_to_modify > samples_read)
-                {
-                    samples_to_modify = samples_read;
-                }
-                for (unsigned int sample = 0; sample < samples_to_modify * channels; sample++)
-                {
-                    short orig = buff[sample * 2 + 1] << 8 | buff[sample * 2];
-                    short modified = (orig >> 2) + effects[current_effect].data[effect_offset * channels + sample];
-                    buff[sample * 2] = (char)(modified & 0xFF);
-                    buff[sample * 2 + 1] = (char)((modified >> 8) & 0xFF);
-                }
-                if (samples_to_modify < samples_read)
-                {
-                    effects[current_effect].position = -1;
-                    current_effect = SE_N_EFFECTS;
-                }
-                else
-                {
-                    effects[current_effect].position += samples_to_modify;
-                }
+                SoundPlayer_mix_effect(samples_read);
             }
 #ifdef __linux__
             if ((err = snd_pcm_writei(pcm_handle, buff, samples_read)) == -EPIPE) 
@@ -292,7 +315,11 @@ long SoundPlayer_play(enum ESoundEffects new_effect)
              snd_pcm_close(pcm_handle);
 #endif
              free(buff);
-             return -1;
+             is_playing = 0;
+             if (current_effect != SE_N_EFFECTS)
+                 return -2;
+             else
+                return -1;
         }
     }
     else
@@ -308,6 +335,11 @@ long SoundPlayer_play(enum ESoundEffects new_effect)
     current_ns = now.tv_sec * (long long)1e9 + now.tv_nsec;
     last_update_ns = current_ns;
 #endif
+    if (!is_playing)
+        if (current_effect != SE_N_EFFECTS)
+            return -2;  //still playing effects
+        else
+            return -1;
 	return time_running_us;
 }
 

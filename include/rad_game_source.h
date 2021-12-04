@@ -21,14 +21,31 @@
 *		C_new = (A1 C1 + A2 C2) / A_new
 *		S_new = (A1 S1 + A2 S2) / A_new 
 * 
+*	*	*	*
+* 
+* Game progress 
+* 
+*   -- get ready - press start to play -- every player has to press "Start" button
+*   -- play the level
+*   -- finish level 
+*	-- show score and if you reach the the required points, say the code for the next level
+*		--if you reach the the required points go to next level
+*		-- otherwise repeat the current one
+*   -- either way, go back to get ready mode
+* 
+* Game script:
+*	List of (song to play, mode to use, score to reach)
+* 
 */
 enum ERadGameModes
 {
 	RGM_Oscillators,    //!< goal is to make the whole led chain blink to rhythm
 	RGM_DDR,            //!< just like Dance Dance Revolution
+	RGM_Osc_Ready,		//!< getting ready to play Osciallators
+	RGM_DDR_Ready,		//!< getting ready to play DDR
+	RGM_Show_Score,		//!< after finishing level
 	RGM_N_MODES
 };
-
 
 void Player_move_left(int player_index);
 void Player_move_right(int player_index);
@@ -47,7 +64,6 @@ typedef struct RadGameSource
 	BasicSource basic_source;
 	uint64_t start_time;
 	int n_players;
-	enum ERadGameModes game_mode;
 } RadGameSource;
 
 extern RadGameSource rad_game_source;
