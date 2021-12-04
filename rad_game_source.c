@@ -98,14 +98,6 @@ void RadMovingObject_render(RadMovingObject* mo, int color, ws2811_t* ledstrip)
 
 /* ***************** Player input *******************/
 
-enum ERAD_COLOURS
-{
-    DC_RED,
-    DC_GREEN,
-    DC_BLUE,
-    DC_YELLOW
-};
-
 static void (*Player_hit_color)(int, enum ERAD_COLOURS);
 static void (*Player_move)(int, signed char);
 static void (*Player_start)(int) = 0x0;
@@ -194,9 +186,10 @@ void Ready_player_hit(int player_index, enum ERAD_COLOURS colour)
     (void)colour;
 }
 
-void Ready_player_move(int player_index)
+void Ready_player_move(int player_index, signed char dir)
 {
     (void)player_index;
+    (void)dir;
 }
 
 int Ready_get_current_player()
@@ -250,11 +243,13 @@ static void set_update_functions()
         current_mode_update_leds = RGM_DDR_update_leds;
         break;
     case RGM_DDR_Ready:
+    case RGM_Osc_Ready:
         Player_hit_color = Ready_player_hit;
         Player_move = Ready_player_move;
         Player_start = Ready_player_start;
         current_mode_update_leds = RGM_DDR_Ready_update_leds;
         break;
+    case RGM_Show_Score:
     case RGM_N_MODES:
         exit(-1);
     }
@@ -321,7 +316,7 @@ static void read_levels_config(FILE* config, int n_levels)
     for (int level = 0; level < n_levels; ++level)
     {
         skip_comments_in_config(buf, config);
-        int n = sscanf(buf, "%i %i %i", &rad_game_levels.levels[level].song_index, &rad_game_levels.levels[level].game_mode, &rad_game_levels.levels[level].target_score);
+        int n = sscanf(buf, "%i %i %i", &rad_game_levels.levels[level].song_index, (int*)&rad_game_levels.levels[level].game_mode, &rad_game_levels.levels[level].target_score);
         if (n != 3)
         {
             printf("Invalid level definition\n");
@@ -408,5 +403,4 @@ RadGameSource rad_game_source = {
     .n_players = 0
 };
 
-#pragma GCC diagnostic pop
 

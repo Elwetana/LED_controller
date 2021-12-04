@@ -21,7 +21,6 @@
 #include "sound_player.h"
 #include "ddr_game.h"
 
-#pragma region DDR
 
 #define C_MAX_DDR_BULLETS 32
 
@@ -478,5 +477,4 @@ int RGM_DDR_Ready_update_leds(ws2811_t* ledstrip)
     return 1;
 }
 
-#pragma endregion 
 

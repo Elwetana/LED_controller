@@ -20,8 +20,8 @@ struct SoundEffect
     int position;
 };
 
-static const unsigned int samplerate = 44100;
-static const unsigned int channels = 2;
+static unsigned int samplerate = 44100; //cannot be const int because it could be adjusted by pcm
+static const int channels = 2;
 static snd_pcm_t *pcm_handle;
 static snd_pcm_uframes_t period_size;
 static char* buff;
@@ -35,6 +35,7 @@ static long samples_supplied = 0;
 static int samples_in_buffer;
 static FILE* fin;
 static unsigned char is_playing = 0;    //0 not playing at all, 1 playing song, 2 playing effect only
+static unsigned char is_hw_init = 0;
 
 static struct SoundEffect effects[SE_N_EFFECTS];
 static enum ESoundEffects current_effect = SE_N_EFFECTS;
@@ -148,6 +149,7 @@ static void init_hw()
 #ifdef DEBUG_SOUND
     fprintf(stderr, "HW initialized\n");
 #endif
+    is_hw_init = 1;
 
 }
 #else
@@ -155,6 +157,7 @@ static void init_hw()
 static void init_hw()
 {
     period_size = 256;
+    is_hw_init = 1;
 }
 #endif /* __linux__ */
 
@@ -167,7 +170,7 @@ void SoundPlayer_mix_effect(int samples_read)
     {
         samples_to_modify = samples_read;
     }
-    for (unsigned int sample = 0; sample < samples_to_modify / channels; sample++)
+    for (int sample = 0; sample < samples_to_modify * channels; sample++)
     {
         short orig = buff[sample * 2 + 1] << 8 | buff[sample * 2];
         short modified = (orig >> 2) + effects[current_effect].data[effect_offset * channels + sample];
@@ -218,6 +221,8 @@ void SoundPlayer_init_for_effect()
     assert(buff == 0);
     is_playing = 2;
     buff = (char*)malloc(samples_in_buffer * channels * 2);
+    if(is_hw_init == 0)
+        init_hw();
     SoundPlayer_init_timers();
 }
 
@@ -261,8 +266,8 @@ long SoundPlayer_play(enum ESoundEffects new_effect)
             assert(is_playing == 2);
             if (current_effect != SE_N_EFFECTS) 
             {
-                samples_read = samples_in_buffer * channels * 2;
-                for (int i = 0; i < samples_read; ++i)
+                samples_read = samples_in_buffer;
+                for (int i = 0; i < samples_read * channels * 2; ++i)
                 {
                     buff[i] = 0;
                 }
@@ -314,6 +319,7 @@ long SoundPlayer_play(enum ESoundEffects new_effect)
              snd_pcm_drain(pcm_handle);
              snd_pcm_close(pcm_handle);
 #endif
+             is_hw_init = 0;
              free(buff);
              buff = 0;
              is_playing = 0;
@@ -347,11 +353,11 @@ void load_effects()
     {
         FILE* feff = fopen(effect_files[i], "rb");
         fseek(feff, 44, SEEK_SET);
-        unsigned int samples_read = fread(tmp, channels * 2, samplerate * max_effect_length, feff);
+        int samples_read = fread(tmp, channels * 2, samplerate * max_effect_length, feff);
         fclose(feff);
         assert(sizeof(short) == 2);
         effects[i].data = (short*)malloc(sizeof(short) * samples_read * channels);
-        for (unsigned int sample = 0; sample < samples_read * channels; sample++)
+        for (int sample = 0; sample < samples_read * channels; sample++)
         {
             effects[i].data[sample] = tmp[sample * 2 + 1] << 8 | tmp[sample * 2];
         }
@@ -372,7 +378,7 @@ void SoundPlayer_init(int frame_time)
     // therefore we need to get
     //   (samplerate * channels * 2) / fps = (samplerate * channels * 2) * frame_time / 1e6 
     // samples to buffer per frame
-    unsigned int periods_per_frame = 1 + samplerate * frame_time / 1e6 / period_size;
+    int periods_per_frame = 1 + samplerate * frame_time / 1e6 / period_size;
 #ifdef DEBUG_SOUND
     printf("Multiplier set to: %i\n", periods_per_frame);
 #endif
