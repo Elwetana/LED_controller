@@ -18,3 +18,7 @@ geometry.xlsx
 *.obj
 *.vcxproj.filters
 *.idb
+sound/*.wav
+LEDs/sound/
+LEDs/rad_game/config_rad
+TempoTracker/x64/

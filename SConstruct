@@ -31,6 +31,8 @@ srcs = Split('''
     rad_game_source.c
     rad_game/sound_player.c
     rad_game/rad_input_handler.c
+    rad_game/oscillators.c
+    rad_game/ddr_game.c
 ''')
 
 

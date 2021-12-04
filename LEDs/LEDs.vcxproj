@@ -176,6 +176,8 @@
     <ClCompile Include="..\game\player_object.c" />
     <ClCompile Include="..\game\pulse_object.c" />
     <ClCompile Include="..\game\stencil_handler.c" />
+    <ClCompile Include="..\rad_game\ddr_game.c" />
+    <ClCompile Include="..\rad_game\oscillators.c" />
     <ClCompile Include="..\rad_game\rad_input_handler.c" />
     <ClCompile Include="..\rad_game\sound_player.c" />
     <ClCompile Include="..\rad_game_source.c" />
@@ -213,12 +215,14 @@
     <ClInclude Include="..\include\colours.h" />
     <ClInclude Include="..\include\common_source.h" />
     <ClInclude Include="..\include\controller.h" />
+    <ClInclude Include="..\include\ddr_game.h" />
     <ClInclude Include="..\include\disco_source.h" />
     <ClInclude Include="..\include\fakeinput.h" />
     <ClInclude Include="..\include\fakeled.h" />
     <ClInclude Include="..\include\fakesignal.h" />
     <ClInclude Include="..\include\faketime.h" />
     <ClInclude Include="..\include\fire_source.h" />
+    <ClInclude Include="..\include\oscillators.h" />
     <ClInclude Include="..\include\rad_game_source.h" />
     <ClInclude Include="..\include\game_source.h" />
     <ClInclude Include="..\include\game_object.h" />
