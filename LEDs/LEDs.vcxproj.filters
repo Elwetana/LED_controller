@@ -94,6 +94,9 @@
     <ClCompile Include="..\rad_game\ddr_game.c">
       <Filter>Games</Filter>
     </ClCompile>
+    <ClCompile Include="..\rad_game\nonplaying_states.c">
+      <Filter>Games</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\include\color_source.h">
@@ -193,6 +196,9 @@
       <Filter>Include</Filter>
     </ClInclude>
     <ClInclude Include="..\include\ddr_game.h">
+      <Filter>Include</Filter>
+    </ClInclude>
+    <ClInclude Include="..\include\nonplaying_states.h">
       <Filter>Include</Filter>
     </ClInclude>
   </ItemGroup>

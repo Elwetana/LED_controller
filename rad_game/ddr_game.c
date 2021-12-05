@@ -113,11 +113,6 @@ void RGM_DDR_init()
     RGM_DDR_clear();
 }
 
-static double DdrEmitors_get_length(int player_index)
-{
-    return 1 + ddr_emitors.points_to_size_amp * log(ddr_emitors.data[player_index].points);
-}
-
 /*!
  * @brief Does three things:
  *  -- update streak
@@ -200,7 +195,7 @@ static void DdrEmitors_fire_bullet(int beats)
     {
         if (ddr_emitors.data[p].n_bullets < C_MAX_DDR_BULLETS)
         {
-            double emitor_len = DdrEmitors_get_length(p);
+            int emitor_len = 6;
             int dist = ddr_emitors.data[p].player_pos - ddr_emitors.data[p].emitor_pos - emitor_len - 1;
             double time_to_reach = (double)beats / rad_game_songs.freq;
             ddr_emitors.data[p].bullets[ddr_emitors.data[p].n_bullets].position = (double)ddr_emitors.data[p].emitor_pos + emitor_len + 1;
@@ -252,13 +247,13 @@ static void DdrEmitors_update()
     if ((int)beat > ddr_emitors.last_beat)
     {
         ddr_emitors.last_beat = (int)beat;
-        if (random_01() > -0.1f)
+        if (random_01() > 0.1f)
         {
             DdrEmitors_fire_bullet(ddr_emitors.beats_to_target);
         }
     }
     //check reactions
-    double delta_ms = (rad_game_source.basic_source.time_delta / (long)1e6);
+    double delta_ms = (rad_game_source.basic_source.time_delta / 1e6);
     for (int p = 0; p < rad_game_source.n_players; ++p)
     {
         if (ddr_emitors.data[p].reaction_progress > 0)
@@ -296,34 +291,39 @@ void RGM_DDR_player_move(int player_index, signed char dir)
     (void)dir;
 }
 
+/*!
+ * @brief Render score on emtitor position in the following way:
+ *      0 -- this is emitor_pos -- white
+ *      1 millions
+ *      2 hundred th.
+ *      3 tens th.
+ *      4 thousands
+ *      5 hundreds
+ *      6 white
+ *  The colours for 5 to 2 correspond to the colours of bullets, colour for millions is 0x888888
+ *  The value is displayed in brightness: 0 -> 0, 1 -> 0.5, 5 -> 1, 9 -> 1.5;
+ *  There is no blinking
+ * @param ledstrip 
+*/
 static void DdrEmitors_render_emitors(ws2811_t* ledstrip)
 {
-    int grad_speed = 0.5;
-
-    double time_seconds = ((rad_game_source.basic_source.current_time - rad_game_source.start_time) / (long)1e3) / (double)1e6;
-    double y = sin(2 * M_PI * rad_game_songs.freq * time_seconds);
-    if (y < 0) y = 0;
-
     for (int p = 0; p < rad_game_source.n_players; ++p)
     {
-        double emitor_len = DdrEmitors_get_length(p);
-        int pattern_length = (int)emitor_len;
-        if (pattern_length < 2) pattern_length = 2;
-        if (pattern_length > (2 * ddr_emitors.grad_length - 2)) pattern_length = 2 * ddr_emitors.grad_length - 2;
-        int beats_count = trunc(time_seconds * rad_game_songs.freq);
-        double grad_shift = fmod(beats_count * grad_speed, pattern_length); // from 0 to pattern_length-1
-        double offset = grad_shift - trunc(grad_shift); //from 0 to 1
-
-        for (int led = 0; led < pattern_length; ++led)
+        int short_score = ddr_emitors.data[p].points / 100;
+        int digits[5];
+        int magnitude = 1;
+        for (int i = 0; i < 5; ++i)
         {
-            int grad_pos = (led + (int)grad_shift) % pattern_length;    //from 0 to pattern_length-1, we have to take in account that the second half of the gradient is the reverse of the first one
-            hsl_t col_hsl;
-            if (grad_pos < ddr_emitors.grad_length - 1)
-                lerp_hsl(&ddr_emitors.grad_colors[grad_pos], &ddr_emitors.grad_colors[grad_pos + 1], offset, &col_hsl);
-            else
-                lerp_hsl(&ddr_emitors.grad_colors[pattern_length - grad_pos], &ddr_emitors.grad_colors[pattern_length - grad_pos - 1], 1 - offset, &col_hsl);
-            ws2811_led_t c = hsl2rgb(&col_hsl);
-            ledstrip->channel[0].leds[led + ddr_emitors.data[p].emitor_pos] = multiply_rgb_color(c, y);
+            digits[4 - i] = (short_score % (magnitude * 10)) / magnitude;
+            magnitude *= 10;
+        }
+        ledstrip->channel[0].leds[ddr_emitors.data[p].emitor_pos] = 0xFFFFFF;
+        ledstrip->channel[0].leds[ddr_emitors.data[p].emitor_pos + 6] = 0xFFFFFF;
+        for (int i = 0; i < 5; ++i)
+        {
+            double brightness = digits[i] == 0 ? 0.0 : 1.0 + ((double)digits[i] - 5) / 8.0;
+            int colour = i > 0 ? rad_game_source.basic_source.gradient.colors[ddr_emitors.bullet_colors_offset + 4 - i] : 0x888888;
+            ledstrip->channel[0].leds[ddr_emitors.data[p].emitor_pos + 1 + i] = multiply_rgb_color(colour, brightness);
         }
     }
 }
@@ -434,47 +434,26 @@ int RGM_DDR_update_leds(ws2811_t* ledstrip)
     (void)1;
 }*/
 
-int RGM_DDR_Ready_update_leds(ws2811_t* ledstrip)
+
+void RGM_DDR_render_ready(ws2811_t* ledstrip)
 {
     for (int led = 0; led < rad_game_source.basic_source.n_leds; ++led)
+    {
         ledstrip->channel[0].leds[led] = 0x0;
-    static const double effect_freq = 2.0; //Hz
-    int cur_player = Ready_get_current_player();
-    uint64_t start_time = Ready_get_effect_start();
-    if (start_time == 0 && cur_player != 0xf)
-    {
-        //we have to start a new effect
-        Ready_set_effect_start(rad_game_source.basic_source.current_time);
-        SoundPlayer_play(C_PlayerOneIndex + cur_player);
-        //we could start updatint leds, but it will wait till next frame
     }
-    if (start_time > 0 && cur_player != 0xf)
-    {
-        //we have effect in progress
-        int n = SoundPlayer_play(SE_N_EFFECTS);
-        if (n == -1)
-        {
-            //we are finished
-            Ready_clear_current_player();
-        }
-        double time_delta = (rad_game_source.basic_source.current_time - start_time) / (long)1e3 / (double)(1e6);
-        double sinft = fabs(sin(2 * M_PI * effect_freq * time_delta));
-        int colour = multiply_rgb_color(0xFFFFFF, sinft);
-        for (int led = ddr_emitors.data[cur_player].emitor_pos; led < ddr_emitors.data[cur_player].reward_pos + ddr_emitors.reaction_len + 1; ++led)
-        {
-            ledstrip->channel[0].leds[led] = colour;
-        }
-    }
-    if (start_time == 0 && cur_player == 0xf)
-    {
-        //we could have all players ready and their effect finished
-        int all_ready = Ready_get_ready_players(); //this is a bit mask, n_players bits must be set
-        if (all_ready == ((1 << rad_game_source.n_players) - 1))
-        {
-            printf("Everyone is ready to play DDR mode\n");
-        }
-    }
-    return 1;
+    //render emitor
+    for (int p = 0; p < rad_game_source.n_players; ++p) ddr_emitors.data[p].points = 5555500;
+    DdrEmitors_render_emitors(ledstrip);
+    for (int p = 0; p < rad_game_source.n_players; ++p) ddr_emitors.data[p].points = 0;
+    //render player
+    DdrEmitors_render_players(ledstrip);
+    //render reaction
+    DdrEmitors_render_reactions(ledstrip);
+
 }
 
-
+void RGM_DDR_get_ready_interval(int player_index, int* left_led, int* right_led)
+{
+    *left_led = ddr_emitors.data[player_index].emitor_pos;
+    *right_led = ddr_emitors.data[player_index].reward_pos + ddr_emitors.reaction_len - 1;
+}

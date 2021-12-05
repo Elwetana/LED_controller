@@ -308,3 +308,24 @@ void RGM_Oscillators_destruct()
         free(oscillators.phases[i]);
     }
 }
+
+void RGM_Oscillators_render_ready(ws2811_t* ledstrip)
+{
+    for (int led = 0; led < rad_game_source.basic_source.n_leds; ++led)
+    {
+        int colour = 0x0;
+        if (led < oscillators.end_zone_width || led >= rad_game_source.basic_source.n_leds - oscillators.end_zone_width)
+        {
+            colour = hsl2rgb(&oscillators.grad_colors[0]);
+        }
+        ledstrip->channel[0].leds[led] = colour;
+    }
+    Players_update();
+    Players_render(ledstrip);
+}
+
+void RGM_Oscillators_get_ready_interval(int player_index, int* left_led, int* right_led)
+{
+    *left_led = round(osc_players.pos[player_index].position) - 3;
+    *right_led = round(osc_players.pos[player_index].position) + 3;
+}

@@ -1,12 +1,13 @@
 #define _CRT_SECURE_NO_WARNINGS
 /*
  * TODO
- * [ ] score for DDR
+ * [x] score for DDR
  * [ ] state machine
  * [ ] finish Oscillator gameplay
  * [x] sound_player -- effect without song
  * [ ] start_time should be reset in *_clear() functions -- or elsewhere, when we are starting a new song
- * [ ] ready states -- show players where they are
+ * [x] ready states -- show players where they are
+ * [x] display playing field outline in ready state
  * 
  */
 
@@ -35,6 +36,7 @@
 #include "controller.h"
 #include "oscillators.h"
 #include "ddr_game.h"
+#include "nonplaying_states.h"
 
 //#define GAME_DEBUG
 
@@ -169,7 +171,7 @@ void Player_time_offset_dec(int player_index)
 
 /****************** Common ready states stuff *******************/
 
-void Ready_player_start(int player_index)
+void GameMode_player_pressed_start(int player_index)
 {
     int lock = rad_game_mode.player & 0xF0;
     if (lock == 0xF0)
@@ -180,40 +182,39 @@ void Ready_player_start(int player_index)
     }
 }
 
-void Ready_player_hit(int player_index, enum ERAD_COLOURS colour)
-{
-    (void)player_index;
-    (void)colour;
-}
-
-void Ready_player_move(int player_index, signed char dir)
-{
-    (void)player_index;
-    (void)dir;
-}
-
-int Ready_get_current_player()
+int GameMode_get_current_player()
 {
     return (rad_game_mode.player & 0xF0) >> 4;
 }
-void Ready_clear_current_player()
+void GameMode_clear_current_player()
 {
     rad_game_mode.player |= 0xF0;
     rad_game_mode.effect_start = 0;
 }
-int Ready_get_ready_players()
+int GameMode_get_ready_players()
 {
     return rad_game_mode.player & 0x0F;
 }
-uint64_t Ready_get_effect_start()
+uint64_t GameMode_get_effect_start()
 {
     return rad_game_mode.effect_start;
 }
-void Ready_set_effect_start(uint64_t t)
+void GameMode_set_effect_start(uint64_t t)
 {
     rad_game_mode.effect_start = t;
 }
 
+int RGM_DDR_Ready_update_leds(ws2811_t* ledstrip)
+{
+    RGM_DDR_render_ready(ledstrip);
+    return Ready_update_leds(ledstrip, RGM_DDR_get_ready_interval);
+}
+
+int RGM_Oscillators_Ready_update_leds(ws2811_t* ledstrip)
+{
+    RGM_Oscillators_render_ready(ledstrip);
+    return Ready_update_leds(ledstrip, RGM_Oscillators_get_ready_interval);
+}
 
 /****************** Actual RadGameSource update *******************/
 
@@ -227,7 +228,6 @@ int RadGameSource_update_leds(int frame, ws2811_t* ledstrip)
 
 static void set_update_functions()
 {
-
     switch (rad_game_mode.cur_mode)
     {
     case RGM_Oscillators:
@@ -243,11 +243,16 @@ static void set_update_functions()
         current_mode_update_leds = RGM_DDR_update_leds;
         break;
     case RGM_DDR_Ready:
-    case RGM_Osc_Ready:
         Player_hit_color = Ready_player_hit;
         Player_move = Ready_player_move;
-        Player_start = Ready_player_start;
+        Player_start = GameMode_player_pressed_start;
         current_mode_update_leds = RGM_DDR_Ready_update_leds;
+        break;
+    case RGM_Osc_Ready:
+        Player_hit_color = Ready_player_hit;
+        Player_move = RGM_Oscillators_player_move;
+        Player_start = GameMode_player_pressed_start;
+        current_mode_update_leds = RGM_Oscillators_Ready_update_leds;
         break;
     case RGM_Show_Score:
     case RGM_N_MODES:
@@ -286,10 +291,9 @@ static void read_songs_config(FILE* config, int n_songs)
         int n = sscanf(buf, "%s", fn);
         if (n != 1) { printf("Error reading filename in R&D game config for level %i\n", song); exit(10); }
         fn[63] = 0x0;
-        int l = strnlen(fn, 64);
+        long l = strnlen(fn, 64);
         rad_game_songs.songs[song].filename = (char*)malloc((size_t)6 + l + 1);
-        strncpy(rad_game_songs.songs[song].filename, "sound/", 7);
-        strncat(rad_game_songs.songs[song].filename, fn, (size_t)l + 1);
+        snprintf(rad_game_songs.songs[song].filename, l + 6 + 1, "sound/%s", fn);
         skip_comments_in_config(buf, config);
         n = sscanf(buf, "%i", &rad_game_songs.songs[song].n_bpms);
         if (n != 1) { printf("Error reading n_bmps in R&D game config for level %i\n", song); exit(10); }
@@ -370,7 +374,7 @@ void RadGameSource_init(int n_leds, int time_speed, uint64_t current_time)
     SoundPlayer_init(20000); //TODO -- this is a parameter visible in led_main
     RGM_Oscillators_init();
     RGM_DDR_init();
-    rad_game_mode.cur_mode = RGM_DDR_Ready;
+    rad_game_mode.cur_mode = RGM_Osc_Ready;
     set_update_functions();
 }
 

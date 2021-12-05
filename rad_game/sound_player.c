@@ -176,7 +176,6 @@ void SoundPlayer_mix_effect(int samples_read)
         short modified = (orig >> 2) + effects[current_effect].data[effect_offset * channels + sample];
         buff[sample * 2] = (char)(modified & 0xFF);
         buff[sample * 2 + 1] = (char)((modified >> 8) & 0xFF);
-        printf("%i ", sample * 2 + 1);
     }
     if (samples_to_modify < samples_read)
     {
@@ -206,6 +205,8 @@ void SoundPlayer_start(char* filename)
 {
     assert(buff == 0);
     buff = (char*) malloc(samples_in_buffer * channels * 2);
+    if (is_hw_init == 0)
+        init_hw();
 
     //open input file
     //FILE* fin = fopen("GodRestYeMerryGentlemen.wav", "rb");
@@ -219,11 +220,11 @@ void SoundPlayer_start(char* filename)
 void SoundPlayer_init_for_effect()
 {
     assert(buff == 0);
-    is_playing = 2;
     buff = (char*)malloc(samples_in_buffer * channels * 2);
     if(is_hw_init == 0)
         init_hw();
     SoundPlayer_init_timers();
+    is_playing = 2;
 }
 
 //check if we are playing
