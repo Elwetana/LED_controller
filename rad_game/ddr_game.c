@@ -403,14 +403,13 @@ int RGM_DDR_update_leds(ws2811_t* ledstrip)
     //update player
     long time_pos = SoundPlayer_play(SE_N_EFFECTS);
     if (time_pos == -1)
+    //if (time_pos > 30e6)
     {
-        SoundPlayer_destruct();
-        if (rad_game_songs.n_songs == rad_game_songs.current_song++)
-        {
-            //TODO, game completed
-            rad_game_songs.current_song = 0;
-        }
-        start_current_song();
+        long total_score = 0;
+        for (int p = 0; p < rad_game_source.n_players; ++p) total_score += ddr_emitors.data[p].points;
+        printf("DDR game finished with total score of %li\n", total_score);
+        RadGameLevel_level_finished(total_score);
+        return 1;
     }
     //todo else -- check if bpm freq had not changed
     //update emitors

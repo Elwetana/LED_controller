@@ -45,7 +45,8 @@ static char* effect_files[] =
     "sound/playerOne.wav",
     "sound/playerTwo.wav",
     "sound/playerThree.wav",
-    "sound/playerFour.wav"
+    "sound/playerFour.wav",
+    "sound/getReady.wav"
 };
 
 #ifdef __linux__
@@ -310,12 +311,12 @@ long SoundPlayer_play(enum ESoundEffects new_effect)
         }
         else
         {
-             printf("Player reached end of file.\n");
              if (current_effect != SE_N_EFFECTS)
              {
                  is_playing = 2;
                  return -2;
              }
+             printf("Player reached end of file.\n");
 #ifdef __linux__
              snd_pcm_drain(pcm_handle);
              snd_pcm_close(pcm_handle);

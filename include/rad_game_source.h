@@ -102,11 +102,18 @@ typedef struct SRadMovingObject
 
 void RadMovingObject_render(RadMovingObject* mo, int color, ws2811_t* ledstrip);
 
-//return current ready player, if there is none, return 0xF
+void GameMode_clear();
 int GameMode_get_current_player();
 void GameMode_clear_current_player();
+void GameMode_lock_current_player();
 int GameMode_get_ready_players();
 uint64_t GameMode_get_effect_start();
 void GameMode_set_effect_start(uint64_t t);
+long GameMode_get_score();
+
+void RadGameLevel_ready_finished();
+void RadGameLevel_level_finished(long points);
+void RadGameLevel_score_finished();
+
 
 #endif /* __RAD_GAME_SOURCE_H__ */

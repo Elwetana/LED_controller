@@ -9,6 +9,7 @@ enum ESoundEffects
 	SE_Player2,
 	SE_Player3,
 	SE_Player4,
+	SE_GetReady,
 	SE_N_EFFECTS
 };
 

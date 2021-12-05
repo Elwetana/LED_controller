@@ -5,7 +5,7 @@
  * [ ] state machine
  * [ ] finish Oscillator gameplay
  * [x] sound_player -- effect without song
- * [ ] start_time should be reset in *_clear() functions -- or elsewhere, when we are starting a new song
+ * [x] start_time should be reset in *_clear() functions -- or elsewhere, when we are starting a new song
  * [x] ready states -- show players where they are
  * [x] display playing field outline in ready state
  * [ ] show score state
@@ -69,9 +69,10 @@ Players Won state:
 static struct
 {
     enum ERadGameModes cur_mode;
-    int score;	        	//!< only used in show_score mode
-    unsigned char player;	//!< only used in ready modes -- lower four bits are bit mask of players that pressed start, upper four bits show if message display is in progress -- it's the player's index (if nothing is in progress, all upper four bits are set)
-    uint64_t effect_start;  //!< used in non-playing modes
+    long score;	        	    //!< only used in show_score mode
+    int player;	                //!< only used in ready modes, active player, -1 if there is not active player
+    unsigned int ready_players; //!< bit mask of players that pressed Start
+    uint64_t effect_start;      //!< used in non-playing modes
 } rad_game_mode =
 {
     .player = 0xF0,
@@ -96,11 +97,20 @@ static struct {
     .last_level_result = 1
 };
 
+/*!
+ * @brief Every mode has to override the following functions:
+ *      _clear() -- this is called once, when the mode is switched into
+ *      _player_hit, _player_move, _player_start -- how to handle player input
+ *      _update_leds -- the main update/render loop
+ * @param game_mode Mode to switch into
+*/
 static void RadGameMode_switch_mode(enum ERadGameModes game_mode);
 
 void RadGameLevel_ready_finished()
 {
+    rad_game_songs.current_song = rad_game_levels.levels[rad_game_levels.cur_level].song_index;
     RadGameMode_switch_mode(rad_game_levels.levels[rad_game_levels.cur_level].game_mode);
+    start_current_song();
 }
 
 /*!
@@ -109,8 +119,9 @@ void RadGameLevel_ready_finished()
  * @param result 0 for failure, 1 for success
  * @param score 
 */
-void RadGameLevel_level_finished(int result, int points)
+void RadGameLevel_level_finished(long points)
 {
+    int result = rad_game_levels.levels[rad_game_levels.cur_level].target_score <= points ? 1 : 0;
     rad_game_levels.last_level_result = result;
     rad_game_mode.score = points;
     RadGameMode_switch_mode(RGM_Show_Score);
@@ -124,6 +135,7 @@ void RadGameLevel_score_finished()
         //players won, what now?
         return;
     }
+    rad_game_levels.cur_level = next_level;
     if (rad_game_levels.levels[next_level].game_mode == RGM_DDR)
     {
         RadGameMode_switch_mode(RGM_DDR_Ready);
@@ -249,27 +261,35 @@ void Player_time_offset_dec(int player_index)
 
 void GameMode_player_pressed_start(int player_index)
 {
-    int lock = rad_game_mode.player & 0xF0;
-    if (lock == 0xF0)
+    if (rad_game_mode.player == -1)
     {
-        rad_game_mode.player |= 1 << player_index;
-        rad_game_mode.player &= 0x0F;
-        rad_game_mode.player |= player_index << 4;
+        rad_game_mode.ready_players |= 1 << player_index;
+        rad_game_mode.player = player_index;
     }
 }
 
+void GameMode_clear()
+{
+    rad_game_mode.player = -1;
+    rad_game_mode.ready_players = 0;
+    rad_game_mode.effect_start = 0;
+}
 int GameMode_get_current_player()
 {
-    return (rad_game_mode.player & 0xF0) >> 4;
+    return rad_game_mode.player;
 }
 void GameMode_clear_current_player()
 {
-    rad_game_mode.player |= 0xF0;
+    rad_game_mode.player = -1;
     rad_game_mode.effect_start = 0;
+}
+void GameMode_lock_current_player()
+{
+    rad_game_mode.player = -2;
 }
 int GameMode_get_ready_players()
 {
-    return rad_game_mode.player & 0x0F;
+    return rad_game_mode.ready_players;
 }
 uint64_t GameMode_get_effect_start()
 {
@@ -279,17 +299,9 @@ void GameMode_set_effect_start(uint64_t t)
 {
     rad_game_mode.effect_start = t;
 }
-
-int RGM_DDR_Ready_update_leds(ws2811_t* ledstrip)
+long GameMode_get_score()
 {
-    RGM_DDR_render_ready(ledstrip);
-    return Ready_update_leds(ledstrip, RGM_DDR_get_ready_interval);
-}
-
-int RGM_Oscillators_Ready_update_leds(ws2811_t* ledstrip)
-{
-    RGM_Oscillators_render_ready(ledstrip);
-    return Ready_update_leds(ledstrip, RGM_Oscillators_get_ready_interval);
+    return rad_game_mode.score;
 }
 
 /****************** Actual RadGameSource update *******************/
@@ -305,34 +317,46 @@ int RadGameSource_update_leds(int frame, ws2811_t* ledstrip)
 static void RadGameMode_switch_mode(enum ERadGameModes game_mode)
 {
     rad_game_mode.cur_mode = game_mode;
+    rad_game_source.start_time = rad_game_source.basic_source.current_time;
     switch (game_mode)
     {
     case RGM_Oscillators:
+        RGM_Oscillators_clear();
         Player_hit_color = RGM_Oscillators_player_hit;
         Player_move = RGM_Oscillators_player_move;
         Player_start = 0x0;
         current_mode_update_leds = RGM_Oscillators_update_leds;
         break;
     case RGM_DDR:
+        RGM_DDR_clear();
         Player_hit_color = RGM_DDR_player_hit;
         Player_move = RGM_DDR_player_move;
         Player_start = 0x0;
         current_mode_update_leds = RGM_DDR_update_leds;
         break;
     case RGM_DDR_Ready:
+        RGM_DDR_Ready_clear();
         Player_hit_color = Ready_player_hit;
         Player_move = Ready_player_move;
         Player_start = GameMode_player_pressed_start;
         current_mode_update_leds = RGM_DDR_Ready_update_leds;
         break;
     case RGM_Osc_Ready:
+        RGM_Osc_Ready_clear();
         Player_hit_color = Ready_player_hit;
         Player_move = RGM_Oscillators_player_move;
         Player_start = GameMode_player_pressed_start;
         current_mode_update_leds = RGM_Oscillators_Ready_update_leds;
         break;
     case RGM_Show_Score:
+        RGM_Show_Score_clear();
+        Player_hit_color = Ready_player_hit;
+        Player_move = Ready_player_move;
+        Player_start = GameMode_player_pressed_start;
+        current_mode_update_leds = RGM_Show_Score_update_leds;
+        break;
     case RGM_N_MODES:
+        printf("Unknown game mode\n");
         exit(-1);
     }
 }
@@ -368,8 +392,8 @@ static void read_songs_config(FILE* config, int n_songs)
         int n = sscanf(buf, "%s", fn);
         if (n != 1) { printf("Error reading filename in R&D game config for level %i\n", song); exit(10); }
         fn[63] = 0x0;
-        long l = strnlen(fn, 64);
-        rad_game_songs.songs[song].filename = (char*)malloc((size_t)6 + l + 1);
+        size_t l = strnlen(fn, 64);
+        rad_game_songs.songs[song].filename = (char*)malloc(l + 6 + 1);
         snprintf(rad_game_songs.songs[song].filename, l + 6 + 1, "sound/%s", fn);
         skip_comments_in_config(buf, config);
         n = sscanf(buf, "%i", &rad_game_songs.songs[song].n_bpms);
