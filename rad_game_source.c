@@ -8,6 +8,7 @@
  * [ ] start_time should be reset in *_clear() functions -- or elsewhere, when we are starting a new song
  * [x] ready states -- show players where they are
  * [x] display playing field outline in ready state
+ * [ ] show score state
  * 
  */
 
@@ -41,27 +42,37 @@
 //#define GAME_DEBUG
 
 
-/* ***************** Songs *******************/
+/****************** Game mode *******************/
+/*
+The flow of the game is:
 
-RadGameSongs rad_game_songs =
-{
-    .time_offset = 0
-};
+    1. Level (see level flow below)
+    2. If Level is passed, continue, otherwise repeat it
+    3. Start next level and go to 2 if there is one
+    4. If there is no next level, players won
 
-void start_current_song()
-{
-    double bpm = rad_game_songs.songs[rad_game_songs.current_song].bpms[0];
-    rad_game_songs.freq = bpm / 60.0;
-    SoundPlayer_start(rad_game_songs.songs[rad_game_songs.current_song].filename);
-}
+The single level flow is:
+    1. "Get ready" announcement
+    2. Wait for players to press Start button on their controllers
+    3. "Let's go" announcement
+    4. Playing state -- core gameplay
+    5. Result announcement: "Level fail" or "Level cleared"
+    6. Disclose level code (passphrase)
+    7. Show score
+    8. Wait until players either press Start buttons or wait for timeout
+
+Players Won state:
+    1. play cryptic message
+
+*/
 
 static struct
 {
     enum ERadGameModes cur_mode;
     int score;	        	//!< only used in show_score mode
     unsigned char player;	//!< only used in ready modes -- lower four bits are bit mask of players that pressed start, upper four bits show if message display is in progress -- it's the player's index (if nothing is in progress, all upper four bits are set)
-    uint64_t effect_start;
-} rad_game_mode = 
+    uint64_t effect_start;  //!< used in non-playing modes
+} rad_game_mode =
 {
     .player = 0xF0,
     .effect_start = 0
@@ -77,10 +88,75 @@ struct RadGameLevel
 static struct {
     struct RadGameLevel* levels;
     int n_levels;
-} rad_game_levels;
+    int cur_level;
+    int last_level_result;
+} rad_game_levels =
+{
+    .cur_level = -1,
+    .last_level_result = 1
+};
+
+static void RadGameMode_switch_mode(enum ERadGameModes game_mode);
+
+void RadGameLevel_ready_finished()
+{
+    RadGameMode_switch_mode(rad_game_levels.levels[rad_game_levels.cur_level].game_mode);
+}
+
+/*!
+ * @brief Called when one of the "proper" game modes is finished
+ *      It will then display the score, play You win/You lose jingle
+ * @param result 0 for failure, 1 for success
+ * @param score 
+*/
+void RadGameLevel_level_finished(int result, int points)
+{
+    rad_game_levels.last_level_result = result;
+    rad_game_mode.score = points;
+    RadGameMode_switch_mode(RGM_Show_Score);
+}
+
+void RadGameLevel_score_finished()
+{
+    int next_level = rad_game_levels.last_level_result == 0 ? rad_game_levels.cur_level : rad_game_levels.cur_level + 1;
+    if (next_level == rad_game_levels.n_levels)
+    {
+        //players won, what now?
+        return;
+    }
+    if (rad_game_levels.levels[next_level].game_mode == RGM_DDR)
+    {
+        RadGameMode_switch_mode(RGM_DDR_Ready);
+        return;
+    }
+    else if (rad_game_levels.levels[next_level].game_mode == RGM_Oscillators)
+    {
+        RadGameMode_switch_mode(RGM_Osc_Ready);
+        return;
+    }
+    else
+    {
+        printf("Invalid game mode in level %i\n", next_level);
+        exit(-1);
+    }
+}
+
+/****************** Songs *******************/
+
+RadGameSongs rad_game_songs =
+{
+    .time_offset = 0
+};
+
+void start_current_song()
+{
+    double bpm = rad_game_songs.songs[rad_game_songs.current_song].bpms[0];
+    rad_game_songs.freq = bpm / 60.0;
+    SoundPlayer_start(rad_game_songs.songs[rad_game_songs.current_song].filename);
+}
 
 
-/* ***************** Moving Object *******************/
+/****************** Moving Object *******************/
  
 void RadMovingObject_render(RadMovingObject* mo, int color, ws2811_t* ledstrip)
 {
@@ -226,9 +302,10 @@ int RadGameSource_update_leds(int frame, ws2811_t* ledstrip)
     return current_mode_update_leds(ledstrip);
 }
 
-static void set_update_functions()
+static void RadGameMode_switch_mode(enum ERadGameModes game_mode)
 {
-    switch (rad_game_mode.cur_mode)
+    rad_game_mode.cur_mode = game_mode;
+    switch (game_mode)
     {
     case RGM_Oscillators:
         Player_hit_color = RGM_Oscillators_player_hit;
@@ -374,8 +451,7 @@ void RadGameSource_init(int n_leds, int time_speed, uint64_t current_time)
     SoundPlayer_init(20000); //TODO -- this is a parameter visible in led_main
     RGM_Oscillators_init();
     RGM_DDR_init();
-    rad_game_mode.cur_mode = RGM_Osc_Ready;
-    set_update_functions();
+    RadGameLevel_score_finished();    
 }
 
 void RadGameSource_destruct()
