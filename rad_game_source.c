@@ -122,6 +122,7 @@ void RadGameLevel_ready_finished()
 void RadGameLevel_level_finished(long points)
 {
     int result = rad_game_levels.levels[rad_game_levels.cur_level].target_score <= points ? 1 : 0;
+    printf("The level result was %i\n", result);
     rad_game_levels.last_level_result = result;
     rad_game_mode.score = points;
     RadGameMode_switch_mode(RGM_Show_Score);
@@ -133,6 +134,7 @@ void RadGameLevel_score_finished()
     if (next_level == rad_game_levels.n_levels)
     {
         //players won, what now?
+        printf("Players won\n");
         return;
     }
     rad_game_levels.cur_level = next_level;

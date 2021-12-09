@@ -92,6 +92,7 @@ int Ready_update_leds(ws2811_t* ledstrip, void (*get_intervals)(int, int*, int*)
         if (all_ready == ((1 << rad_game_source.n_players) - 1))
         {
             printf("Everyone is ready to play\n");
+            //TODO play "Let's go"
             RadGameLevel_ready_finished();
         }
     }
@@ -128,6 +129,8 @@ void RGM_Show_Score_clear()
 
 int RGM_Show_Score_update_leds(ws2811_t* ledstrip)
 {
+    //TODO first play "you win"/"you lose"
+
     static const double score_speed = 0.5; //LEDs/s
     static const int bullet_colors_offset = 19;
 
