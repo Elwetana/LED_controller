@@ -138,6 +138,7 @@ static double Oscillators_render_and_count(ws2811_t* ledstrip, double unhide_pat
 static struct
 {
     RadMovingObject pos[C_MAX_CONTROLLERS]; //!< array of players
+    int last_strike_beat[C_MAX_CONTROLLERS];//!< last beat 
     const double player_speed;              //!< player speed in LEDs/s
     const long player_pulse_width;          //!< the length of pulse in ns
     const long long player_period;          //!< how period (in ns) after the player's lead will blink
@@ -166,8 +167,17 @@ void RGM_Oscillators_player_move(int player_index, signed char dir)
 }
 
 /*!
-* Player strikes at time t0. This creates oscillation with equation:
-*   y = sin(2 pi f * (t - t0) + pi/2) = sin(2 pi f t + pi/2 - 2 pi f t0) = cos(pi/2 - 2 pi f t0) sin (2 pi f t) + sin(pi/2 - 2 pi f t0) cos (2 pi f t)
+* Player strikes at time t0. 
+*
+* The rules for processing the hit are following:
+*   - we check if the hit is in sync
+*       - if not we create an oscillation with equation:
+*           y = sin(2 pi f * (t - t0) + pi/2) = sin(2 pi f t + pi/2 - 2 pi f t0) = cos(pi/2 - 2 pi f t0) sin (2 pi f t) + sin(pi/2 - 2 pi f t0) cos (2 pi f t)
+*         that will decay quickly
+*       - if yes, we create a more permanent oscillation that is in sync (we ignore the inaccuracy) in the leds surronding the player:
+*           1 led on each side always
+*           2-4 leds on each side when two-four players match the same beat and are within striking distance -- this is transitive, so if the striking distance is D, 
+*               the distance between the furthest left and right players will be 3*D
 */
 void RGM_Oscillators_player_hit(int player_index, enum ERAD_COLOURS colour)
 {

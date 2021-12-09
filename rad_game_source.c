@@ -53,12 +53,12 @@ The flow of the game is:
 
 The single level flow is:
     1. "Get ready" announcement
-    2. Wait for players to press Start button on their controllers
+    2. Wait for players to press Start button on their controllers - done
     3. "Let's go" announcement
     4. Playing state -- core gameplay
     5. Result announcement: "Level fail" or "Level cleared"
     6. Disclose level code (passphrase)
-    7. Show score
+    7. Show score - done
     8. Wait until players either press Start buttons or wait for timeout
 
 Players Won state:
