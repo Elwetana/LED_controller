@@ -164,13 +164,15 @@ static struct
     const long player_pulse_width;          //!< the length of pulse in ns
     const long long player_period;          //!< how period (in ns) after the player's lead will blink
     const int single_strike_width;
+    const int resonance_distance;
 }
 osc_players =
 {
     .player_speed = 2.5,
     .player_pulse_width = (long)1e8,
     .player_period = (long long)(3e9),
-    .single_strike_width = 1
+    .single_strike_width = 1,
+    .resonance_distance = 9
 };
 
 //! array of players
@@ -194,6 +196,40 @@ int compare_player_pos(void* p1, void* p2)
     if (pos1 > pos2) return  1;
     if (pos1 < pos2) return -1;
     return 0;
+}
+
+void fill_affected_leds(int* same_beat_n, int* same_beat_players, int* affected_leds, int player_pos)
+{
+    qsort(same_beat_players, *same_beat_n, sizeof(int), compare_player_pos);
+    //check if the players are within the striking distance of each other
+    int pp = 0;
+    while (pp < *same_beat_n && player_pos < round(osc_players.pos[same_beat_players[pp]].position)) pp++;
+    //now we have to check the players to the right of us and left of us if they are within resonance distance.
+    //this is transitive, so if player immediately to the right is within resonance distance from, the next must
+    //be withing distance from that player and so on
+    int rp = pp;
+    int rpos = player_pos;
+    while (rp < *same_beat_n)
+    {
+        if(round(osc_players.pos[same_beat_players[rp + 1]].position) - rpos)
+    }
+
+    for (int sbp = 0; sbp < *same_beat_n; sbp++)
+    {
+        int p = same_beat_players[sbp]; //the player
+        int p_pos = round(osc_players.pos[p].position);
+        int left_led = p_pos - *same_beat_n * osc_players.single_strike_width;
+        int affected_led_index = 0;
+        while (affected_leds[affected_led_index] != 0 && affected_leds[affected_led_index] < left_led) affected_led_index++;
+        for (int i = 0; i < 2 * *same_beat_n * osc_players.single_strike_width + 1; ++i)
+        {
+            int led = left_led + i;
+            if (led >= oscillators.end_zone_width && led < rad_game_source.basic_source.n_leds - oscillators.end_zone_width)
+            {
+                affected_leds[affected_led_index++] = led;
+            }
+        }
+    }
 }
 
 /*!
@@ -223,6 +259,8 @@ void RGM_Oscillators_player_hit(int player_index, enum ERAD_COLOURS colour)
     double phase_seconds = (phase_ns / (long)1e3) / (double)1e6;
     double impulse_C = cos(M_PI / 2.0 - 2.0 * M_PI * rad_game_songs.freq * phase_seconds);
     double impulse_S = sin(M_PI / 2.0 - 2.0 * M_PI * rad_game_songs.freq * phase_seconds);
+    int player_pos = round(osc_players.pos[player_index].position);
+
     //check if we matched the beat and colour
     //TODO colour match
     if (impulse_S * impulse_S < oscillators.S_coeff_threshold) //good strike
@@ -238,24 +276,9 @@ void RGM_Oscillators_player_hit(int player_index, enum ERAD_COLOURS colour)
         }
         printf("same beat %i  %i %i %i\n", same_beat, osc_players.last_strike_beat[0], osc_players.last_strike_beat[1], oscillators.cur_beat);
         //now we sort it
-        qsort(same_beat_players, same_beat, sizeof(int), compare_player_pos);
-        //first we undo their amplitude boost
-        for (int sbp = 0; sbp < same_beat; sbp++)
-        {
-            int p = same_beat_players[sbp]; //the player
-            int p_pos = round(osc_players.pos[p].position);
-            int left_led = p_pos - same_beat * osc_players.single_strike_width;
-            int affected_led_index = 0;
-            while (affected_leds[affected_led_index] != 0 && affected_leds[affected_led_index] < left_led) affected_led_index++;
-            for (int i = 0; i < 2 * same_beat * osc_players.single_strike_width + 1; ++i)
-            {
-                int led = left_led + i;
-                if (led >= oscillators.end_zone_width && led < rad_game_source.basic_source.n_leds - oscillators.end_zone_width)
-                {
-                    affected_leds[affected_led_index++] = led;
-                }
-            }
-        }
+        fill_affected_leds(&same_beat, same_beat_players, affected_leds, player_pos);
+
+
         //now the affected_leds contain all previously affected leds and we can proceed with undo and immediately apply the new boost
         double old_boost = hit_boost[same_beat];
         double new_boost = hit_boost[same_beat + 1];
@@ -267,9 +290,8 @@ void RGM_Oscillators_player_hit(int player_index, enum ERAD_COLOURS colour)
             oscillators.phases[0][led] = (A < 1) ? new_boost : A * new_boost;
         }
         //and finally update my own leds
-        int my_pos = round(osc_players.pos[player_index].position);
         osc_players.last_strike_beat[player_index] = oscillators.cur_beat;
-        int left_led = my_pos - (same_beat + 1) * osc_players.single_strike_width;
+        int left_led = player_pos - (same_beat + 1) * osc_players.single_strike_width;
         int affected_led_index = 0;
         while (affected_leds[affected_led_index] != 0 && affected_leds[affected_led_index] < left_led) affected_led_index++;
         for (int i = 0; i < 2 * (same_beat + 1) * osc_players.single_strike_width + 1; ++i)
