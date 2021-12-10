@@ -19,7 +19,7 @@
 #include "source_manager.h"
 #include "led_main.h"
 
-#define PRINT_FPS
+//#define PRINT_FPS
 
 static uint8_t running = 1;
 

@@ -440,7 +440,7 @@ struct TestParams
     int trail;
 };
 
-int run_test(struct TestParams tp, double expected_position, int expected_colors[10])
+static int run_test(struct TestParams tp, double expected_position, int expected_colors[10])
 {
     ws2811_led_t leds[200]; //this must be the same as n_leds
     Canvas_clear(leds);

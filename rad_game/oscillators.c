@@ -21,6 +21,7 @@
 #include "sound_player.h"
 #include "oscillators.h"
 
+//#define OSC_UNIT_TESTS
 
 /* ***************** Oscillators *************
  * Make the whole chain blink game mode     */
@@ -47,7 +48,8 @@ static struct
     .out_of_sync_decay = 0.66,
     .grad_length = 19,
     .grad_speed = 0.5,
-    .end_zone_width = 10
+    .end_zone_width = 10,
+    .beats_to_halve = 20
 };
 
 static void Oscillators_clear()
@@ -79,12 +81,13 @@ static void Oscillators_init()
     Oscillators_clear();
     double ln05 = -0.6931471805599453; //ln(0.5)
     oscillators.decay = exp(ln05 / oscillators.beats_to_halve);
+    printf("Decay %f\n", oscillators.decay);
 }
 
 static int Oscillators_update_and_count()
 {
     double time_seconds = ((rad_game_source.basic_source.current_time - rad_game_source.start_time) / (long)1e3) / (double)1e6;
-    long beat = round(rad_game_songs.freq * time_seconds);
+    long beat = (long)(rad_game_songs.freq * time_seconds);
     
     int in_sync = -1;
     if (oscillators.cur_beat < beat)
@@ -97,7 +100,7 @@ static int Oscillators_update_and_count()
             double S = oscillators.phases[2][o];
 
             if (A > 1 && S == 0) in_sync++;
-            oscillators.phases[0][o] *= (S == 0) ? /*oscillators.decay*/ 1 : oscillators.out_of_sync_decay;
+            oscillators.phases[0][o] *= (S == 0) ? oscillators.decay : oscillators.out_of_sync_decay;
             if (A < oscillators.S_coeff_threshold)
             {
                 oscillators.phases[0][o] = 0.0;
@@ -105,8 +108,9 @@ static int Oscillators_update_and_count()
                 oscillators.phases[2][o] = 0.0;
             }
         }
+        oscillators.cur_beat = beat;
+        //printf("\nnew beat %li\n", beat);
     }
-    oscillators.cur_beat = beat;
     return in_sync;
 }
 
@@ -203,17 +207,44 @@ void fill_affected_leds(int* same_beat_n, int* same_beat_players, int* affected_
     qsort(same_beat_players, *same_beat_n, sizeof(int), compare_player_pos);
     //check if the players are within the striking distance of each other
     int pp = 0;
-    while (pp < *same_beat_n && player_pos < round(osc_players.pos[same_beat_players[pp]].position)) pp++;
+    while (pp < *same_beat_n && player_pos > round(osc_players.pos[same_beat_players[pp]].position)) pp++;
+    //pp is now equal to the index of the first player that is to the right of us or equal to same_beat_n
+
     //now we have to check the players to the right of us and left of us if they are within resonance distance.
     //this is transitive, so if player immediately to the right is within resonance distance from, the next must
     //be withing distance from that player and so on
+    
+    //first right side
     int rp = pp;
     int rpos = player_pos;
-    while (rp < *same_beat_n)
+    while ((rp < *same_beat_n) && (round(osc_players.pos[same_beat_players[rp]].position) - rpos < osc_players.resonance_distance))
     {
-        if(round(osc_players.pos[same_beat_players[rp + 1]].position) - rpos)
+        rpos = round(osc_players.pos[same_beat_players[rp]].position);
+        rp++;
     }
+    //now rp is either equal to same_beat_n (all players on the right are withing distance), or it is smaller and then we can safely ignore them
+    *same_beat_n = rp;
+    
+    //and now check the players to the left of the player
+    int lp = pp - 1;
+    int lpos = player_pos;
+    while ((lp >= 0) && (lpos - round(osc_players.pos[same_beat_players[lp]].position) < osc_players.resonance_distance))
+    {
+        lpos = round(osc_players.pos[same_beat_players[lp]].position);
+        lp--;
+    }
+    //now lp is either -1 or we need to move the whole same_beat_players array to the left by the amount (lp + 1)
+    if (lp > -1) //this condition is strictly speaking not necessarily, array would not change if we remove it
+    {
+        for (int i = 0; i < *same_beat_n - lp - 1; ++i)
+        {
+            same_beat_players[i] = same_beat_players[i + lp + 1];
+        }
+        *same_beat_n -= (lp + 1);
+    }
+    //end of range checks
 
+    //now we can fill the affected leds for all players that are left
     for (int sbp = 0; sbp < *same_beat_n; sbp++)
     {
         int p = same_beat_players[sbp]; //the player
@@ -231,6 +262,86 @@ void fill_affected_leds(int* same_beat_n, int* same_beat_players, int* affected_
         }
     }
 }
+
+#ifdef OSC_UNIT_TESTS
+
+static int OscPlayers_run_one_test(int same_beat_n, int* same_beat_players, int* affected_leds, int player_pos, int* expected, int test_id)
+{
+    for (int i = 0; i < C_MAX_CONTROLLERS * (2 * C_MAX_CONTROLLERS + 1) + 1; ++i) affected_leds[i] = 0;
+    fill_affected_leds(&same_beat_n, same_beat_players, affected_leds, player_pos);
+    for (int i = 0; i < C_MAX_CONTROLLERS * (2 * C_MAX_CONTROLLERS + 1) + 1; ++i)
+    {
+        if (affected_leds[i] != expected[i])
+        {
+            printf("!!! ERROR !!! test %i failed\n", test_id);
+            return 0;
+        }
+    }
+    printf("test %i passed\n", test_id);
+    return 1;
+}
+
+
+static int OscPlayers_unit_tests()
+{
+    int affected_leds[C_MAX_CONTROLLERS * (2 * C_MAX_CONTROLLERS + 1) + 1] = { 0 }; //(2 * C_MAX_CONTROLLERS + 1) is the maximum width affected by one player, assuming single_strike_width == 1
+    int expected[C_MAX_CONTROLLERS * (2 * C_MAX_CONTROLLERS + 1) + 1] = { 0 };
+
+    //test 01 -- empty -- expected results: all zeroes
+    for (int i = 0; i < C_MAX_CONTROLLERS * (2 * C_MAX_CONTROLLERS + 1) + 1; ++i) expected[i] = 0;
+    OscPlayers_run_one_test(0, (int[4]) { 0, 0, 0, 0 }, affected_leds, 100, expected, 1);
+
+    //test 02 -- single -- expected results: 3 leds
+    osc_players.pos[0].position = 50;
+    for (int i = 0; i < C_MAX_CONTROLLERS * (2 * C_MAX_CONTROLLERS + 1) + 1; ++i) expected[i] = 0;
+    for (int i = 0; i < 3; ++i) expected[i] = 49 + i;
+    OscPlayers_run_one_test(1, (int[4]){0, 0, 0, 0}, affected_leds, 55, expected, 2);
+
+    //test 03 -- two close -- expected results: 10 leds
+    osc_players.pos[0].position = 50;
+    osc_players.pos[1].position = 57;
+    for (int i = 0; i < C_MAX_CONTROLLERS * (2 * C_MAX_CONTROLLERS + 1) + 1; ++i) expected[i] = 0;
+    for (int i = 0; i < 5; ++i) expected[i] = 48 + i;
+    for (int i = 0; i < 5; ++i) expected[i + 5] = 55 + i;
+    OscPlayers_run_one_test(2, (int[4]) { 1, 0, 0, 0 }, affected_leds, 60, expected, 3);
+
+    //test 04 -- two apart -- expected results: 3 leds
+    osc_players.pos[0].position = 50;
+    osc_players.pos[1].position = 80;
+    for (int i = 0; i < C_MAX_CONTROLLERS * (2 * C_MAX_CONTROLLERS + 1) + 1; ++i) expected[i] = 0;
+    for (int i = 0; i < 3; ++i) expected[i] = 79 + i;
+    OscPlayers_run_one_test(2, (int[4]) { 0, 1, 0, 0 }, affected_leds, 75, expected, 4);
+
+    //test 05 -- two close, one apart -- expected results: 10 leds
+    osc_players.pos[0].position = 80;
+    osc_players.pos[1].position = 50;
+    osc_players.pos[3].position = 57;
+    for (int i = 0; i < C_MAX_CONTROLLERS * (2 * C_MAX_CONTROLLERS + 1) + 1; ++i) expected[i] = 0;
+    for (int i = 0; i < 5; ++i) expected[i] = 48 + i;
+    for (int i = 0; i < 5; ++i) expected[i + 5] = 55 + i;
+    OscPlayers_run_one_test(3, (int[4]) { 1, 0, 3, 0 }, affected_leds, 53, expected, 5);
+
+    //test 06 -- two overlapping -- expected results: 8 leds
+    osc_players.pos[0].position = 50;
+    osc_players.pos[1].position = 53;
+    for (int i = 0; i < C_MAX_CONTROLLERS * (2 * C_MAX_CONTROLLERS + 1) + 1; ++i) expected[i] = 0;
+    for (int i = 0; i < 5; ++i) expected[i] = 48 + i;
+    for (int i = 0; i < 5; ++i) expected[i + 3] = 51 + i;
+    OscPlayers_run_one_test(2, (int[4]) { 0, 1, 0, 0 }, affected_leds, 55, expected, 6);
+
+    //test 07 -- player included
+    osc_players.pos[0].position = 46;
+    osc_players.pos[1].position = 50;
+    osc_players.pos[2].position = 57;
+    for (int i = 0; i < C_MAX_CONTROLLERS * (2 * C_MAX_CONTROLLERS + 1) + 1; ++i) expected[i] = 0;
+    for (int i = 0; i < 7; ++i) expected[i] = 43 + i;
+    for (int i = 0; i < 7; ++i) expected[i + 4] = 47 + i;
+    for (int i = 0; i < 7; ++i) expected[i + 11] = 54 + i;
+    OscPlayers_run_one_test(3, (int[4]) { 1, 2, 0, 0 }, affected_leds, 50, expected, 7);
+    return 1;
+}
+#endif // OSC_UNIT_TESTS
+
 
 /*!
 * Player strikes at time t0. 
@@ -253,7 +364,7 @@ void RGM_Oscillators_player_hit(int player_index, enum ERAD_COLOURS colour)
 {
     (void)colour;
     int affected_leds[C_MAX_CONTROLLERS * (2 * C_MAX_CONTROLLERS + 1) + 1] = { 0 }; //(2 * C_MAX_CONTROLLERS + 1) is the maximum width affected by one player, assuming single_strike_width == 1
-    int same_beat_players[C_MAX_CONTROLLERS];
+    int same_beat_players[C_MAX_CONTROLLERS] = { -1 };
     double hit_boost[] = { 1, 2, 3, 4, 5 }; //there must be C_MAX_CONTROLLERS + 1 numbers here
     uint64_t phase_ns = rad_game_source.basic_source.current_time - rad_game_source.start_time;
     double phase_seconds = (phase_ns / (long)1e3) / (double)1e6;
@@ -261,7 +372,7 @@ void RGM_Oscillators_player_hit(int player_index, enum ERAD_COLOURS colour)
     double impulse_S = sin(M_PI / 2.0 - 2.0 * M_PI * rad_game_songs.freq * phase_seconds);
     int player_pos = round(osc_players.pos[player_index].position);
 
-    //check if we matched the beat and colour
+    //check if we matched the beat, distance and colour
     //TODO colour match
     if (impulse_S * impulse_S < oscillators.S_coeff_threshold) //good strike
     {
@@ -275,47 +386,37 @@ void RGM_Oscillators_player_hit(int player_index, enum ERAD_COLOURS colour)
             }
         }
         printf("same beat %i  %i %i %i\n", same_beat, osc_players.last_strike_beat[0], osc_players.last_strike_beat[1], oscillators.cur_beat);
-        //now we sort it
+        
+        //now we get the leds affected by the previous strike
         fill_affected_leds(&same_beat, same_beat_players, affected_leds, player_pos);
-
-
-        //now the affected_leds contain all previously affected leds and we can proceed with undo and immediately apply the new boost
         double old_boost = hit_boost[same_beat];
-        double new_boost = hit_boost[same_beat + 1];
         int al = 0;
         while (affected_leds[al] > 0)
         {
             int led = affected_leds[al++];
-            double A = oscillators.phases[0][led] / old_boost;
-            oscillators.phases[0][led] = (A < 1) ? new_boost : A * new_boost;
+            oscillators.phases[0][led] /= old_boost;
         }
-        //and finally update my own leds
-        osc_players.last_strike_beat[player_index] = oscillators.cur_beat;
-        int left_led = player_pos - (same_beat + 1) * osc_players.single_strike_width;
-        int affected_led_index = 0;
-        while (affected_leds[affected_led_index] != 0 && affected_leds[affected_led_index] < left_led) affected_led_index++;
-        for (int i = 0; i < 2 * (same_beat + 1) * osc_players.single_strike_width + 1; ++i)
+        
+        //add ourselves and get new affected leds and apply new boost to them
+        same_beat_players[same_beat++] = player_index;
+        fill_affected_leds(&same_beat, same_beat_players, affected_leds, player_pos);
+        double new_boost = hit_boost[same_beat + 1];
+        al = 0;
+        while (affected_leds[al] > 0)
         {
-            int led = left_led + i;
-            if (affected_leds[affected_led_index] == led)
-            {
-                affected_led_index++;
-                continue;
-            }
-            if (led >= oscillators.end_zone_width && led < rad_game_source.basic_source.n_leds - oscillators.end_zone_width)
-            {
-                double A = oscillators.phases[0][led];
-                oscillators.phases[0][led] = (A < 1) ? new_boost : A * new_boost;
-                oscillators.phases[1][led] = 1.0;
-                oscillators.phases[2][led] = 0.0;
-            }
+            int led = affected_leds[al++];
+            double A = oscillators.phases[0][led];
+            oscillators.phases[0][led] = (A < 1) ? new_boost : A * new_boost;
+            oscillators.phases[1][led] = 1.0;
+            oscillators.phases[2][led] = 0.0;
         }
         //TODO effect should depend on beat_players
         oscillators.new_effect = SE_Reward;
+        osc_players.last_strike_beat[player_index] = oscillators.cur_beat;
     }
     else //bad strike
     {
-        /*int player_pos = round(osc_players.pos[player_index].position);
+        int player_pos = round(osc_players.pos[player_index].position);
         for (int led = player_pos - osc_players.single_strike_width; led < player_pos + osc_players.single_strike_width + 1; led++)
         {
             double unnormal_C = oscillators.phases[0][led] * oscillators.phases[1][led] + impulse_C;
@@ -325,7 +426,6 @@ void RGM_Oscillators_player_hit(int player_index, enum ERAD_COLOURS colour)
             oscillators.phases[1][led] = unnormal_C / len;
             oscillators.phases[2][led] = unnormal_S / len;
         }
-        */
     }
 }
 
@@ -404,6 +504,9 @@ void RGM_Oscillators_clear()
 {
     Oscillators_clear();
     Players_init();
+#ifdef OSC_UNIT_TESTS
+    OscPlayers_unit_tests();
+#endif // OSC_UNIT_TESTS
 }
 
 int RGM_Oscillators_update_leds(ws2811_t* ledstrip)
