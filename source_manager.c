@@ -266,6 +266,17 @@ void SourceConfig_destruct()
     free(source_config.colors);
 }
 
+static char* skip_comments(char* buf, FILE* config)
+{
+    char* c = fgets(buf, 1024, config);
+    while (c != NULL && strnlen(buf, 2) > 0 && (buf[0] == ';' || buf[0] == '#'))
+    {
+        c = fgets(buf, 1024, config);
+    }
+    return c;
+}
+
+
 static void read_color_config()
 {
     FILE* config = fopen("config", "r");
@@ -274,7 +285,7 @@ static void read_color_config()
         exit(-4);
     }
     char buf[1024];
-    while (fgets(buf, 255, config) != NULL)
+    while (skip_comments(buf, config) != NULL)
     {
         SourceColors* sc = malloc(sizeof(SourceColors));
         char name[16];
@@ -289,11 +300,7 @@ static void read_color_config()
         sc->colors = malloc(sizeof(ws2811_led_t) * (n_steps + 1));
         sc->steps = malloc(sizeof(int) * n_steps);
         sc->n_steps = n_steps;
-        fgets(buf, 1024, config);
-        while (strnlen(buf, 2) > 0 && (buf[0] == ';' || buf[0] == '#'))
-        {
-            fgets(buf, 1024, config);
-        }
+        skip_comments(buf, config);
         int color, step, offset;
         char* line = buf;
         offset = 0;

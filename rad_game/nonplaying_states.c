@@ -132,7 +132,7 @@ int RGM_Show_Score_update_leds(ws2811_t* ledstrip)
     //TODO first play "you win"/"you lose"
 
     static const double score_speed = 0.5; //LEDs/s
-    static const int bullet_colors_offset = 19;
+    static const int bullet_colors_offset = 20;
 
     int right_led = trunc(score_speed * (rad_game_source.basic_source.current_time - rad_game_source.start_time) / 1000000l / (double)1e3);
 
@@ -167,11 +167,11 @@ int RGM_Show_Score_update_leds(ws2811_t* ledstrip)
     if (all_ready == ((1 << rad_game_source.n_players) - 1))
     {
         printf("Everyone has enough watching the score\n");
-        RadGameLevel_ready_finished();
+        RadGameLevel_score_finished();
     }
     if (right_led / rad_game_source.basic_source.n_leds > 2)
     {
         printf("Score was displayed long enough\n");
-        RadGameLevel_ready_finished();
+        RadGameLevel_score_finished();
     }
 }

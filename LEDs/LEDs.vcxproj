@@ -124,7 +124,8 @@
       </Command>
     </PostBuildEvent>
     <PreBuildEvent>
-      <Command>xcopy /y $(ProjectDir)..\config  $(ProjectDir)</Command>
+      <Command>xcopy /y $(ProjectDir)..\config  $(ProjectDir)
+xcopy /y $(ProjectDir)..\rad_game\config_rad  $(ProjectDir)\rad_game\</Command>
     </PreBuildEvent>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">

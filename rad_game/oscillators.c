@@ -21,7 +21,7 @@
 #include "sound_player.h"
 #include "oscillators.h"
 
-//#define OSC_UNIT_TESTS
+#define OSC_UNIT_TESTS
 
 /* ***************** Oscillators *************
  * Make the whole chain blink game mode     */
@@ -33,12 +33,13 @@ static struct
     // ociallator equation is y = A * (C * sin(f t) + S * cos(f t))
     double* phases[3];
     long cur_beat;
+    int led0_color_index;
     enum ESoundEffects new_effect;  //!< should we start playing a new effect?
     double decay;
     const double S_coeff_threshold;
     const double out_of_sync_decay; //!< how much will out of sync oscillator decay per each beat
     const int grad_length;
-    hsl_t grad_colors[19];
+    //hsl_t* grad_colors;
     const double grad_speed; //leds per beat
     const int end_zone_width;
     const int beats_to_halve; //how many beats it takes for in-sync oscillator to decay to half amplitude
@@ -46,8 +47,8 @@ static struct
 {
     .S_coeff_threshold = 0.1,
     .out_of_sync_decay = 0.66,
-    .grad_length = 19,
-    .grad_speed = 0.5,
+    .grad_length = 20,
+    .grad_speed = 0.1,
     .end_zone_width = 10,
     .beats_to_halve = 20
 };
@@ -74,10 +75,11 @@ static void Oscillators_clear()
 
 static void Oscillators_init()
 {
+    /*oscillators.grad_colors = malloc(sizeof(hsl_t) * oscillators.grad_length);
     for (int i = 0; i < oscillators.grad_length; ++i)
     {
         rgb2hsl(rad_game_source.basic_source.gradient.colors[i], &oscillators.grad_colors[i]);
-    }
+    }*/
     Oscillators_clear();
     double ln05 = -0.6931471805599453; //ln(0.5)
     oscillators.decay = exp(ln05 / oscillators.beats_to_halve);
@@ -116,10 +118,35 @@ static int Oscillators_update_and_count()
 
 /*!
  * @brief 
- * @param ledstrip 
- * @param unhide_pattern 
+ *   The target is to get this picture:
+ *      There is symetric gradient over the interval 2 * grad_length (let's call grad_length L)
+ *          e.g. for L = 5:  A B C D E  E D C B A  
+ *                           B C D E D  D E D C B
+ *                           C D E D C  C D E D C
+ *                           D E D C B
+ * `                         and so on.
+ * 
+ *      Our gradient is L colours long, but usually we display only some subset of it, let'
+ *      call this window W.
+ *          e.g for W = 3:  A B C B A
+ *                          B C A B C
+ *                          C B A B C
+ * @param led 
+ * @param grad_shift 
  * @return 
 */
+static int get_grad_color_index(int led, int grad_shift, int window_width)
+{
+    int l = (led) % (2 * oscillators.grad_length);
+    l = (l < oscillators.grad_length) ? l : 2 * oscillators.grad_length - 1 - l;    //if L = 20 and l = 20, new l will be 19
+    //now l is position within the L segment
+
+    //for gradient insed L we want smooth blend, not doubling at the mirror point
+    int w = (l + grad_shift) % (2 * window_width - 2);
+    w = (w < window_width) ? w : 2 * window_width - 2 - w;      //if W = 5 we want 0 1 2 3 4 3 2 1; for w = 7 new w is 1
+    return w;
+}
+
 static void Oscillators_render(ws2811_t* ledstrip, double unhide_pattern)
 {
     double time_seconds = ((rad_game_source.basic_source.current_time - rad_game_source.start_time) / (long)1e3) / (double)1e6;
@@ -127,12 +154,13 @@ static void Oscillators_render(ws2811_t* ledstrip, double unhide_pattern)
     double cosft = cos(2 * M_PI * rad_game_songs.freq * time_seconds);
     //printf("Time %f\n", time_seconds);
 
-    int pattern_length = (int)((2 * oscillators.grad_length - 2) * unhide_pattern);
-    if (pattern_length < 2) pattern_length = 2;
+    int pattern_length =  (int)((double)oscillators.grad_length * unhide_pattern);
+    if (pattern_length < 1) pattern_length = 1;
     double grad_shift = fmod(oscillators.cur_beat * oscillators.grad_speed, pattern_length); // from 0 to pattern_length-1
     double offset = grad_shift - trunc(grad_shift); //from 0 to 1
 
     double in_sync = 0.0;
+    oscillators.led0_color_index = get_grad_color_index(0, grad_shift, pattern_length);
     for (int led = 0; led < rad_game_source.basic_source.n_leds; ++led)
     {
         double A = oscillators.phases[0][led];
@@ -148,15 +176,10 @@ static void Oscillators_render(ws2811_t* ledstrip, double unhide_pattern)
         }
         if (A > 1.0) A = 1.0;
         y *= A;
-        int grad_pos = (led + (int)grad_shift) % pattern_length;    //from 0 to pattern_length-1, we have to take in account that the second half of the gradient is the reverse of the first one
-        hsl_t col_hsl;
-        if (grad_pos < oscillators.grad_length - 1)
-            lerp_hsl(&oscillators.grad_colors[grad_pos], &oscillators.grad_colors[grad_pos + 1], offset, &col_hsl);
-        else
-            lerp_hsl(&oscillators.grad_colors[pattern_length - grad_pos], &oscillators.grad_colors[pattern_length - grad_pos - 1], 1 - offset, &col_hsl);
-        ws2811_led_t c = hsl2rgb(&col_hsl);
-        ledstrip->channel[0].leds[led] = multiply_rgb_color(c, y);
+        int grad_pos = get_grad_color_index(led, grad_shift, pattern_length);
+        ledstrip->channel[0].leds[led] = multiply_rgb_color(rad_game_source.basic_source.gradient.colors[grad_pos], y);
     }
+    //printf("\n");
     return in_sync;
 }
 
@@ -338,6 +361,21 @@ static int OscPlayers_unit_tests()
     for (int i = 0; i < 7; ++i) expected[i + 4] = 47 + i;
     for (int i = 0; i < 7; ++i) expected[i + 11] = 54 + i;
     OscPlayers_run_one_test(3, (int[4]) { 1, 2, 0, 0 }, affected_leds, 50, expected, 7);
+
+    //test get_grad_index
+    for (int shift = 0; shift < 20; ++shift)
+    {
+        for (int led = 0; led < 40; ++led)
+        {
+            int gi = get_grad_color_index(led, shift, 4);
+            printf("%i ", gi);
+            if (led == 19) printf("  ");
+        }
+        printf("   %i\n", shift);
+    }
+
+
+
     return 1;
 }
 #endif // OSC_UNIT_TESTS
@@ -542,6 +580,7 @@ int RGM_Oscillators_update_leds(ws2811_t* ledstrip)
 
 void RGM_Oscillators_destruct()
 {
+    //free(oscillators.grad_colors);
     for (int i = 0; i < 3; ++i)
     {
         free(oscillators.phases[i]);
@@ -555,7 +594,7 @@ void RGM_Oscillators_render_ready(ws2811_t* ledstrip)
         int colour = 0x0;
         if (led < oscillators.end_zone_width || led >= rad_game_source.basic_source.n_leds - oscillators.end_zone_width)
         {
-            colour = hsl2rgb(&oscillators.grad_colors[0]);
+            colour = rad_game_source.basic_source.gradient.colors[0];
         }
         ledstrip->channel[0].leds[led] = colour;
     }

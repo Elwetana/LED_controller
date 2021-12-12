@@ -178,7 +178,7 @@ void parseargs(int argc, char **argv)
                 }
                 else {
                     printf("invalid strip %s. You will have to modify source code and recompile.\n", optarg);
-                    exit(-1);
+                    exit(-2);
                 }
             }
             break;

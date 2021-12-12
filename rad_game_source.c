@@ -9,6 +9,8 @@
  * [x] ready states -- show players where they are
  * [x] display playing field outline in ready state
  * [ ] show score state
+ * [x] message processing
+ * [ ] multiple wifi config
  * 
  */
 
@@ -84,6 +86,7 @@ struct RadGameLevel
     int song_index;
     enum ERadGameModes game_mode;
     int target_score;
+    char code[32];
 };
 
 static struct {
@@ -423,8 +426,12 @@ static void read_levels_config(FILE* config, int n_levels)
     for (int level = 0; level < n_levels; ++level)
     {
         skip_comments_in_config(buf, config);
-        int n = sscanf(buf, "%i %i %i", &rad_game_levels.levels[level].song_index, (int*)&rad_game_levels.levels[level].game_mode, &rad_game_levels.levels[level].target_score);
-        if (n != 3)
+        int n = sscanf(buf, "%i %i %i %s", 
+            &rad_game_levels.levels[level].song_index, 
+            (int*)&rad_game_levels.levels[level].game_mode, 
+            &rad_game_levels.levels[level].target_score,
+            rad_game_levels.levels[level].code);
+        if (n != 4)
         {
             printf("Invalid level definition\n");
             exit(-11);
@@ -451,9 +458,13 @@ static void read_rad_game_config()
         {
             read_songs_config(config, count);
         }
-        if (strncasecmp(keyword, "levels", 16) == 0)
+        else if (strncasecmp(keyword, "levels", 16) == 0)
         {
             read_levels_config(config, count);
+        }
+        else {
+            printf("Invalid keyword in R&D game config: %s\n", keyword);
+            exit(-20);
         }
         memset(buf, 0, 1024);
         skip_comments_in_config(buf, config);
@@ -480,6 +491,52 @@ void RadGameSource_init(int n_leds, int time_speed, uint64_t current_time)
     RadGameLevel_score_finished();    
 }
 
+//msg = mode?xxxxxx
+void RadGameSource_process_message(const char* msg)
+{
+    char* sep = strchr(msg, '?');
+    if (sep == NULL)
+    {
+        printf("RadGameSource: message does not contain target %s\n", msg);
+        return;
+    }
+    if ((sep - msg) >= 32)
+    {
+        printf("RadGameSource: target is too long or poorly formatted: %s\n", msg);
+        return;
+    }
+    if ((strlen(sep + 1) >= 64))
+    {
+        printf("RadGameSource: message too long or poorly formatted: %s\n", msg);
+        return;
+    }
+    char target[32];
+    char payload[64];
+    strncpy(target, msg, sep - msg);
+    strncpy(payload, sep + 1, 64);
+    target[sep - msg] = 0x0;
+    payload[63] = 0x0;
+    if (!strncasecmp(target, "mode", 5))
+    {
+        for (int l = 0; l < rad_game_levels.n_levels; l++)
+        {
+            if (!strncasecmp(rad_game_levels.levels[l].code, payload, 32))
+            {
+                rad_game_levels.last_level_result = 0;
+                rad_game_levels.cur_level = l;
+                RadGameLevel_score_finished();
+                printf("RGM Received code: %s, starting level: %i\n", payload, l);
+                return;
+            }
+        }
+        printf("RGM Received code: %s, no matching level found\n", payload);
+
+    }
+    else
+        printf("RadGameSource: Unknown target: %s, payload was: %s\n", target, payload);
+
+}
+
 void RadGameSource_destruct()
 {
     for (int i = 0; i < rad_game_songs.n_songs; ++i)
@@ -499,7 +556,7 @@ void RadGameSource_construct()
     rad_game_source.basic_source.init = RadGameSource_init;
     rad_game_source.basic_source.update = RadGameSource_update_leds;
     rad_game_source.basic_source.destruct = RadGameSource_destruct;
-    //game_source.basic_source.process_message = GameSource_process_message;
+    rad_game_source.basic_source.process_message = RadGameSource_process_message;
 }
 
 RadGameSource rad_game_source = {
