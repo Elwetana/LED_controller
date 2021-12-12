@@ -105,7 +105,6 @@ static int Oscillators_update_and_count()
         for (int o = oscillators.end_zone_width; o < rad_game_source.basic_source.n_leds - 1 - oscillators.end_zone_width; ++o)
         {
             double A = oscillators.phases[0][o];
-            double C = oscillators.phases[1][o];
             double S = oscillators.phases[2][o];
 
             if (A > 1 && S == 0) in_sync++;
@@ -166,7 +165,6 @@ static void Oscillators_render(ws2811_t* ledstrip, double unhide_pattern)
     int pattern_length =  (int)((double)oscillators.grad_length * unhide_pattern);
     if (pattern_length < 1) pattern_length = 1;
     double grad_shift = fmod(oscillators.cur_beat * oscillators.grad_speed, pattern_length); // from 0 to pattern_length-1
-    double offset = grad_shift - trunc(grad_shift); //from 0 to 1
 
     oscillators.led0_color_index = get_grad_color_index(0, grad_shift, pattern_length);
     for (int led = 0; led < rad_game_source.basic_source.n_leds; ++led)
@@ -219,7 +217,7 @@ void RGM_Oscillators_player_move(int player_index, signed char dir)
     }
 }
 
-int compare_player_pos(void* p1, void* p2)
+int compare_player_pos(const void* p1, const void* p2)
 {
     double pos1 = osc_players.pos[*(int*)p1].position;
     double pos2 = osc_players.pos[*(int*)p2].position;
@@ -289,7 +287,7 @@ void fill_affected_leds(int* same_beat_n, int* same_beat_players, int* affected_
     }
 }
 
-static is_colour_match(enum ERAD_COLOURS colour)
+static int is_colour_match(enum ERAD_COLOURS colour)
 {
     int is_match = 0;
     //the gradient is R - G - B - Y - R, distance is always 5, i.e. oscillators.grad_length / 4
@@ -589,7 +587,7 @@ int RGM_Oscillators_update_leds(ws2811_t* ledstrip)
     long time_pos = SoundPlayer_play(oscillators.new_effect);
     if (time_pos == -1)
     {
-        long score = 9'999'900 * oscillators.points / oscillators.cur_beat;
+        long score = 9999900 * oscillators.points / oscillators.cur_beat;
         RadGameLevel_level_finished(score);
     }
     //todo else -- check if bpm freq had not changed

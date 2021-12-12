@@ -162,14 +162,14 @@ static int show_score_on_leds(ws2811_t* ledstrip)
         offset[4 - i] = offset[5 - i] - (short_score % (magnitude * 10)) / magnitude;
         magnitude *= 10;
     }
-    for (int led = 0; led < max(0, offset[0]); ++led)
+    for (int led = 0; led < (offset[0] > 0 ? offset[0] : 0); ++led)
     {
         ledstrip->channel[0].leds[led] = 0x0;
     }
     for (int i = 0; i < 5; ++i)
     {
         int colour = i > 0 ? rad_game_source.basic_source.gradient.colors[bullet_colors_offset + 4 - i] : 0x888888;
-        for (int led = max(0, offset[i]); led < max(0, offset[i + 1]); led++)
+        for (int led = offset[i] > 0 ? offset[i] : 0; led < (offset[i + 1] > 0 ? offset[i + 1] : 0); led++)
         {
             led %= rad_game_source.basic_source.n_leds;
             ledstrip->channel[0].leds[led] = colour;

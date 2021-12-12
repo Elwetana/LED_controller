@@ -49,7 +49,7 @@ static char* effect_files[SE_N_EFFECTS] =
     "sound/playerTwo.wav",
     "sound/playerThree.wav",
     "sound/playerFour.wav",
-    "sound/getReady.wav",
+    "sound/get_ready.wav",
     "sound/press_start.wav",
     "sound/level_failed.wav",
     "sound/level_cleared.wav"
@@ -360,6 +360,11 @@ void load_effects()
     for (int i = 0; i < SE_N_EFFECTS; ++i)
     {
         FILE* feff = fopen(effect_files[i], "rb");
+        if(feff == NULL)
+        {
+            printf("Cannot find file %s\n", effect_files[i]);
+            continue;
+        }
         fseek(feff, 44, SEEK_SET);
         int samples_read = fread(tmp, channels * 2, samplerate * max_effect_length, feff);
         fclose(feff);

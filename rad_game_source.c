@@ -132,7 +132,7 @@ void RadGameLevel_level_finished(long points)
         printf("ERROR -- negative score");
     }
     int result = rad_game_levels.levels[rad_game_levels.cur_level].target_score <= points ? 1 : 0;
-    printf("The level result was %i, players scored %i points of %i required\n", result, points, rad_game_levels.levels[rad_game_levels.cur_level].target_score);
+    printf("The level result was %i, players scored %li points of %li required\n", result, points, rad_game_levels.levels[rad_game_levels.cur_level].target_score);
     rad_game_levels.last_level_result = result;
     rad_game_mode.score = points;
     RadGameMode_switch_mode(RGM_Show_Score);
@@ -454,7 +454,7 @@ static void read_levels_config(FILE* config, int n_levels)
     for (int level = 0; level < n_levels; ++level)
     {
         skip_comments_in_config(buf, config);
-        int n = sscanf(buf, "%i %i %i %s \"%s\"", 
+        int n = sscanf(buf, "%i %i %li %s \"%s\"", 
             &rad_game_levels.levels[level].song_index, 
             (int*)&rad_game_levels.levels[level].game_mode, 
             &rad_game_levels.levels[level].target_score,
