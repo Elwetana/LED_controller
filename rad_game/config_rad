@@ -38,8 +38,8 @@ WeThreeKingsDP.wav
 # --- end of songs ---
 # definitions of levels: keyword levels followed by number of levels
 levels 3
-#each level is song_index, game_mode, score, secret code.  Mode: 0 = oscil, 1 = ddr
+#each level is song_index, game_mode, score, secret code, quoted filename.  Mode: 0 = oscil, 1 = ddr
 #song index is 0-based
-0 0 1000000 alpha
-0 0 1000 beta
-2 1 1000000 gamma
+0 0 1000000 alpha "sound/code01.wav"
+0 0 1000 beta "sound/code02.wav"
+2 1 1000000 gamma "sound/code03.wav"

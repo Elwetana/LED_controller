@@ -2,13 +2,13 @@
 /*
  * TODO
  * [x] score for DDR
- * [ ] state machine
+ * [x] state machine
  * [x] finish Oscillator gameplay
  * [x] sound_player -- effect without song
  * [x] start_time should be reset in *_clear() functions -- or elsewhere, when we are starting a new song
  * [x] ready states -- show players where they are
  * [x] display playing field outline in ready state
- * [ ] show score state
+ * [x] show score state
  * [x] message processing
  * [ ] multiple wifi config
  * 
@@ -75,6 +75,7 @@ static struct
     int player;	                //!< only used in ready modes, active player, -1 if there is not active player
     unsigned int ready_players; //!< bit mask of players that pressed Start
     uint64_t effect_start;      //!< used in non-playing modes
+    long state;                 //!< custom data for non-playing modes
 } rad_game_mode =
 {
     .player = 0xF0,
@@ -85,15 +86,16 @@ struct RadGameLevel
 {
     int song_index;
     enum ERadGameModes game_mode;
-    int target_score;
+    long target_score;
     char code[32];
+    char code_wav[32];
 };
 
 static struct {
     struct RadGameLevel* levels;
     int n_levels;
     int cur_level;
-    int last_level_result;
+    int last_level_result; //0 loss, 1 win
 } rad_game_levels =
 {
     .cur_level = -1,
@@ -130,7 +132,7 @@ void RadGameLevel_level_finished(long points)
         printf("ERROR -- negative score");
     }
     int result = rad_game_levels.levels[rad_game_levels.cur_level].target_score <= points ? 1 : 0;
-    printf("The level result was %i\n", result);
+    printf("The level result was %i, players scored %i points of %i required\n", result, points, rad_game_levels.levels[rad_game_levels.cur_level].target_score);
     rad_game_levels.last_level_result = result;
     rad_game_mode.score = points;
     RadGameMode_switch_mode(RGM_Show_Score);
@@ -196,7 +198,7 @@ void RadMovingObject_render(RadMovingObject* mo, int color, ws2811_t* ledstrip)
 }
 
 
-/* ***************** Player input *******************/
+/****************** Player input *******************/
 
 static void (*Player_hit_color)(int, enum ERAD_COLOURS);
 static void (*Player_move)(int, signed char);
@@ -283,6 +285,7 @@ void GameMode_clear()
     rad_game_mode.player = -1;
     rad_game_mode.ready_players = 0;
     rad_game_mode.effect_start = 0;
+    rad_game_mode.state = 0;
 }
 int GameMode_get_current_player()
 {
@@ -312,6 +315,26 @@ void GameMode_set_effect_start(uint64_t t)
 long GameMode_get_score()
 {
     return rad_game_mode.score;
+}
+
+long GameMode_get_state()
+{
+    return rad_game_mode.state;
+}
+
+void GameMode_set_state(long s)
+{
+    rad_game_mode.state = s;
+}
+
+int GameMode_get_last_result()
+{
+    return rad_game_levels.last_level_result;
+}
+
+char* GameMode_get_code_wav()
+{
+    return rad_game_levels.levels[rad_game_levels.cur_level].code_wav;
 }
 
 /****************** Actual RadGameSource update *******************/
@@ -431,12 +454,13 @@ static void read_levels_config(FILE* config, int n_levels)
     for (int level = 0; level < n_levels; ++level)
     {
         skip_comments_in_config(buf, config);
-        int n = sscanf(buf, "%i %i %i %s", 
+        int n = sscanf(buf, "%i %i %i %s \"%s\"", 
             &rad_game_levels.levels[level].song_index, 
             (int*)&rad_game_levels.levels[level].game_mode, 
             &rad_game_levels.levels[level].target_score,
-            rad_game_levels.levels[level].code);
-        if (n != 4)
+            rad_game_levels.levels[level].code,
+            rad_game_levels.levels[level].code_wav);
+        if (n != 5)
         {
             printf("Invalid level definition\n");
             exit(-11);

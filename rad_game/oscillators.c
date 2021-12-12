@@ -74,6 +74,7 @@ static void Oscillators_clear()
             oscillators.phases[2][led] = 0.0;
         }
     }
+    oscillators.new_effect = SE_N_EFFECTS;
     oscillators.cur_beat = -1;
     oscillators.points = 0;
     oscillators.led0_color_index = 0;

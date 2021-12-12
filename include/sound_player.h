@@ -13,10 +13,11 @@ enum ESoundEffects
 	SE_Player3,
 	SE_Player4,
 	SE_GetReady,
+	SE_PressStart,
+	SE_Lose,
+	SE_Win,
 	SE_N_EFFECTS
 };
-
-static const int C_PlayerOneIndex = 1;
 
 /*!
  * @brief Init hardware and start to play

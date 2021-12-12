@@ -110,6 +110,10 @@ int GameMode_get_ready_players();
 uint64_t GameMode_get_effect_start();
 void GameMode_set_effect_start(uint64_t t);
 long GameMode_get_score();
+long GameMode_get_state();
+void GameMode_set_state(long s);
+int GameMode_get_last_result();
+char* GameMode_get_code_wav();
 
 void RadGameLevel_ready_finished();
 void RadGameLevel_level_finished(long points);

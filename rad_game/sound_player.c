@@ -49,7 +49,10 @@ static char* effect_files[SE_N_EFFECTS] =
     "sound/playerTwo.wav",
     "sound/playerThree.wav",
     "sound/playerFour.wav",
-    "sound/getReady.wav"
+    "sound/getReady.wav",
+    "sound/press_start.wav",
+    "sound/level_failed.wav",
+    "sound/level_cleared.wav"
 };
 
 #ifdef __linux__
@@ -352,7 +355,7 @@ long SoundPlayer_play(enum ESoundEffects new_effect)
 
 void load_effects()
 {
-    const int max_effect_length = 2; //!< in seconds
+    const int max_effect_length = 4; //!< in seconds
     char* tmp = (char*)malloc(samplerate * channels * max_effect_length * 2); //*2 for sample size
     for (int i = 0; i < SE_N_EFFECTS; ++i)
     {

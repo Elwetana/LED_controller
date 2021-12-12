@@ -41,6 +41,16 @@ void Ready_clear()
     GameMode_lock_current_player();
 }
 
+/*!
+ * @brief All ready states have the following structure:
+ *  - Message "Press start to begin"
+ *  - Players can press Start button on their controllers, this will highlight their position and play a message with their number
+ *  - When everyone pressed Start, the message "Get ready. Go" is played
+ *  - Ready mode ends and the actual game will start
+ * @param ledstrip 
+ * @param get_intervals 
+ * @return 
+*/
 int Ready_update_leds(ws2811_t* ledstrip, void (*get_intervals)(int, int*, int*))
 {
     static const double effect_freq = 2.0; //Hz
@@ -53,12 +63,12 @@ int Ready_update_leds(ws2811_t* ledstrip, void (*get_intervals)(int, int*, int*)
         if (cur_player > -1)
         {
             //this is player highlight
-            SoundPlayer_play(C_PlayerOneIndex + cur_player);
+            SoundPlayer_play(SE_Player1 + cur_player);
         }
         else
         {
             //this is beginning of the ready state
-            SoundPlayer_play(SE_GetReady);
+            SoundPlayer_play(SE_PressStart);
         }
         //we could start updating leds, but it will wait till next frame
     }
@@ -91,8 +101,16 @@ int Ready_update_leds(ws2811_t* ledstrip, void (*get_intervals)(int, int*, int*)
         int all_ready = GameMode_get_ready_players(); //this is a bit mask, n_players bits must be set
         if (all_ready == ((1 << rad_game_source.n_players) - 1))
         {
+            GameMode_set_effect_start(rad_game_source.basic_source.current_time);
+            SoundPlayer_play(SE_GetReady);
+        }
+    }
+    if(start_time > 0 && cur_player == -1)
+    {
+        int n = SoundPlayer_play(SE_N_EFFECTS);
+        if (n == -1)
+        {
             printf("Everyone is ready to play\n");
-            //TODO play "Let's go"
             RadGameLevel_ready_finished();
         }
     }
@@ -112,6 +130,7 @@ int RGM_DDR_Ready_update_leds(ws2811_t* ledstrip)
 
 void RGM_Osc_Ready_clear()
 {
+    RGM_Oscillators_clear();
     Ready_clear();
 }
 
@@ -127,13 +146,11 @@ void RGM_Show_Score_clear()
     GameMode_clear();
 }
 
-int RGM_Show_Score_update_leds(ws2811_t* ledstrip)
-{
-    //TODO first play "you win"/"you lose"
 
+static int show_score_on_leds(ws2811_t* ledstrip)
+{
     static const double score_speed = 0.5; //LEDs/s
     static const int bullet_colors_offset = 20;
-
     int right_led = trunc(score_speed * (rad_game_source.basic_source.current_time - rad_game_source.start_time) / 1000000l / (double)1e3);
 
     int short_score = GameMode_get_score() / 100;
@@ -162,9 +179,58 @@ int RGM_Show_Score_update_leds(ws2811_t* ledstrip)
     {
         ledstrip->channel[0].leds[led] = 0x0;
     }
+    return right_led;
+}
+
+/*!
+ * @brief State values
+ *  - 0 start
+ *  - 1 playing "win/lose"
+ *  - 2 playing "code" (only when won)
+ *  - 3 waiting for timeout or for everyone to press Start
+ * @param ledstrip 
+ * @return 
+*/
+int RGM_Show_Score_update_leds(ws2811_t* ledstrip)
+{
+    int right_led = show_score_on_leds(ledstrip);
+    int n;
+    enum ESoundEffects eff;
+    switch(GameMode_get_state())
+    {
+        case 0:
+            eff = (enum ESoundEffects)(SE_Lose + GameMode_get_last_result());
+            SoundPlayer_play(eff);
+            GameMode_set_state(1);
+            break;
+        case 1:
+            n = SoundPlayer_play(SE_N_EFFECTS);
+            if (n == -1)
+            {
+                if (GameMode_get_last_result() == 0)
+                {
+                    GameMode_set_state(3);
+                }
+                else
+                {
+                    SoundPlayer_start(GameMode_get_code_wav());
+                    GameMode_set_state(2);
+                }
+            }
+            break;
+        case 2:
+            n = SoundPlayer_play(SE_N_EFFECTS);
+            if (n == -1)
+            {
+                GameMode_set_state(3);
+            }
+            break;
+        default:
+            break;
+    }
     GameMode_clear_current_player();
     int all_ready = GameMode_get_ready_players(); //this is a bit mask, n_players bits must be set
-    if (all_ready == ((1 << rad_game_source.n_players) - 1))
+    if (all_ready == ((1 << rad_game_source.n_players) - 1) && GameMode_get_state() == 3)
     {
         printf("Everyone has enough watching the score\n");
         RadGameLevel_score_finished();
@@ -174,4 +240,5 @@ int RGM_Show_Score_update_leds(ws2811_t* ledstrip)
         printf("Score was displayed long enough\n");
         RadGameLevel_score_finished();
     }
+    return 1;
 }
