@@ -29,6 +29,8 @@ typedef union
 
 ws2811_led_t alpha_blend_rgb(ws2811_led_t upper, ws2811_led_t lower, double upper_alpha);
 ws2811_led_t multiply_rgb_color(ws2811_led_t rgb, double t);
+/* Will not overflow white for t > 1 */
+ws2811_led_t multiply_rgb_color_ratchet(ws2811_led_t rgb, double t);
 ws2811_led_t mix_rgb_color(ws2811_led_t rgb1, ws2811_led_t rgb2, double t);
 void rgb2hsl(ws2811_led_t rgb, hsl_t* hsl);
 ws2811_led_t hsl2rgb(hsl_t* hsl);

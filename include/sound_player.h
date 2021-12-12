@@ -4,7 +4,10 @@
 
 enum ESoundEffects
 {
-	SE_Reward,
+	SE_Reward01,
+	SE_Reward02,
+	SE_Reward03,
+	SE_Reward04,
 	SE_Player1,
 	SE_Player2,
 	SE_Player3,

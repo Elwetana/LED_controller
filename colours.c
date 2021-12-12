@@ -34,6 +34,18 @@ ws2811_led_t multiply_rgb_color(ws2811_led_t rgb, double t)
     return r << 16 | g << 8 | b;
 }
 
+ws2811_led_t multiply_rgb_color_ratchet(ws2811_led_t rgb, double t)
+{
+    int r = (int)(((rgb >> 16) & 0xFF) * t);
+    int g = (int)(((rgb >> 8) & 0xFF) * t);
+    int b = (int)((rgb & 0xFF) * t);
+    r = r > 0xFF ? 0xFF : r;
+    g = g > 0xFF ? 0xFF : g;
+    b = b > 0xFF ? 0xFF : b;
+    return r << 16 | g << 8 | b;
+}
+
+
 void hsl_copy(const hsl_t* hsl_in, hsl_t* hsl_out)
 {
     hsl_out->h = hsl_in->h;

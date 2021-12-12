@@ -3,7 +3,7 @@
  * TODO
  * [x] score for DDR
  * [ ] state machine
- * [ ] finish Oscillator gameplay
+ * [x] finish Oscillator gameplay
  * [x] sound_player -- effect without song
  * [x] start_time should be reset in *_clear() functions -- or elsewhere, when we are starting a new song
  * [x] ready states -- show players where they are
@@ -124,6 +124,11 @@ void RadGameLevel_ready_finished()
 */
 void RadGameLevel_level_finished(long points)
 {
+    if (points < 0)
+    {
+        points = 100;
+        printf("ERROR -- negative score");
+    }
     int result = rad_game_levels.levels[rad_game_levels.cur_level].target_score <= points ? 1 : 0;
     printf("The level result was %i\n", result);
     rad_game_levels.last_level_result = result;

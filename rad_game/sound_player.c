@@ -39,9 +39,12 @@ static unsigned char is_hw_init = 0;
 
 static struct SoundEffect effects[SE_N_EFFECTS];
 static enum ESoundEffects current_effect = SE_N_EFFECTS;
-static char* effect_files[] = 
+static char* effect_files[SE_N_EFFECTS] = 
 { 
-    "sound/reward2_2.wav", 
+    "sound/reward1_1.wav", //SE_Reward01
+    "sound/rewardnotif2_1.wav", //SE_Reward02
+    "sound/reward2_2.wav", //SE_Reward03
+    "sound/rewardnotif3_1.wav", //SE_Reward04
     "sound/playerOne.wav",
     "sound/playerTwo.wav",
     "sound/playerThree.wav",

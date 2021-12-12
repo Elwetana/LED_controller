@@ -21,7 +21,7 @@
 #include "sound_player.h"
 #include "oscillators.h"
 
-#define OSC_UNIT_TESTS
+//#define OSC_UNIT_TESTS
 
 /* ***************** Oscillators *************
  * Make the whole chain blink game mode     */
@@ -34,6 +34,7 @@ static struct
     double* phases[3];
     long cur_beat;
     int led0_color_index;
+    double points; //actual points are 9'999'900 * points / n_beats
     enum ESoundEffects new_effect;  //!< should we start playing a new effect?
     double decay;
     const double S_coeff_threshold;
@@ -43,6 +44,7 @@ static struct
     const double grad_speed; //leds per beat
     const int end_zone_width;
     const int beats_to_halve; //how many beats it takes for in-sync oscillator to decay to half amplitude
+    const enum ERAD_COLOURS grad_steps[5];
 } oscillators =
 {
     .S_coeff_threshold = 0.1,
@@ -50,7 +52,8 @@ static struct
     .grad_length = 20,
     .grad_speed = 0.1,
     .end_zone_width = 10,
-    .beats_to_halve = 20
+    .beats_to_halve = 10,
+    .grad_steps = { DC_RED, DC_GREEN, DC_BLUE, DC_YELLOW, DC_RED }
 };
 
 static void Oscillators_clear()
@@ -66,11 +69,14 @@ static void Oscillators_clear()
         }
         else
         {
-            oscillators.phases[0][led] = 1.0;
+            oscillators.phases[0][led] = 2.0;
             oscillators.phases[1][led] = 1.0;
             oscillators.phases[2][led] = 0.0;
         }
     }
+    oscillators.cur_beat = -1;
+    oscillators.points = 0;
+    oscillators.led0_color_index = 0;
 }
 
 static void Oscillators_init()
@@ -137,6 +143,8 @@ static int Oscillators_update_and_count()
 */
 static int get_grad_color_index(int led, int grad_shift, int window_width)
 {
+    if (window_width == 1) //there is nothing to computer, with this window width we always see the first colour of gradient
+        return 0;
     int l = (led) % (2 * oscillators.grad_length);
     l = (l < oscillators.grad_length) ? l : 2 * oscillators.grad_length - 1 - l;    //if L = 20 and l = 20, new l will be 19
     //now l is position within the L segment
@@ -159,7 +167,6 @@ static void Oscillators_render(ws2811_t* ledstrip, double unhide_pattern)
     double grad_shift = fmod(oscillators.cur_beat * oscillators.grad_speed, pattern_length); // from 0 to pattern_length-1
     double offset = grad_shift - trunc(grad_shift); //from 0 to 1
 
-    double in_sync = 0.0;
     oscillators.led0_color_index = get_grad_color_index(0, grad_shift, pattern_length);
     for (int led = 0; led < rad_game_source.basic_source.n_leds; ++led)
     {
@@ -169,18 +176,13 @@ static void Oscillators_render(ws2811_t* ledstrip, double unhide_pattern)
         double y = (C * sinft + S * cosft);
         if (y < 0)
         {
-            if (A > 5)
-                y = -y;
-            else
-                y = 0; //negative half-wave will not be shown at all
+            y = 0; //negative half-wave will not be shown at all
         }
-        if (A > 1.0) A = 1.0;
-        y *= A;
+        y *= A / 2;
         int grad_pos = get_grad_color_index(led, grad_shift, pattern_length);
-        ledstrip->channel[0].leds[led] = multiply_rgb_color(rad_game_source.basic_source.gradient.colors[grad_pos], y);
+        ledstrip->channel[0].leds[led] = multiply_rgb_color_ratchet(rad_game_source.basic_source.gradient.colors[grad_pos], y);
     }
     //printf("\n");
-    return in_sync;
 }
 
 static struct
@@ -284,6 +286,33 @@ void fill_affected_leds(int* same_beat_n, int* same_beat_players, int* affected_
             }
         }
     }
+}
+
+static is_colour_match(enum ERAD_COLOURS colour)
+{
+    int is_match = 0;
+    //the gradient is R - G - B - Y - R, distance is always 5, i.e. oscillators.grad_length / 4
+    int grad_steps_count = sizeof(oscillators.grad_steps) / sizeof(enum ERAD_COLOURS);
+    assert(grad_steps_count == 5);
+
+    int step_length = oscillators.grad_length / (grad_steps_count - 1);
+    int cur_colour = oscillators.led0_color_index / step_length; //oscillators.grad_steps[cur_colour] is the beginning of current gradient step
+    int next_colour = (cur_colour + 1) % grad_steps_count;
+    int cur_colour_blend = oscillators.led0_color_index % step_length;
+    //if current blend is close to the start or end, we only allow one colour. Otherwise we allow both from the blend
+    if (cur_colour_blend < 2)
+    {
+        is_match = (colour == oscillators.grad_steps[cur_colour]);
+    }
+    else if (cur_colour_blend > step_length - 2)
+    {
+        is_match = (colour == oscillators.grad_steps[next_colour]);
+    }
+    else
+    {
+        is_match = (colour == oscillators.grad_steps[cur_colour]) || (colour == oscillators.grad_steps[next_colour]);
+    }
+    return is_match;
 }
 
 #ifdef OSC_UNIT_TESTS
@@ -400,7 +429,6 @@ static int OscPlayers_unit_tests()
 */
 void RGM_Oscillators_player_hit(int player_index, enum ERAD_COLOURS colour)
 {
-    (void)colour;
     int affected_leds[C_MAX_CONTROLLERS * (2 * C_MAX_CONTROLLERS + 1) + 1] = { 0 }; //(2 * C_MAX_CONTROLLERS + 1) is the maximum width affected by one player, assuming single_strike_width == 1
     int same_beat_players[C_MAX_CONTROLLERS] = { -1 };
     double hit_boost[] = { 1, 2, 3, 4, 5 }; //there must be C_MAX_CONTROLLERS + 1 numbers here
@@ -411,19 +439,18 @@ void RGM_Oscillators_player_hit(int player_index, enum ERAD_COLOURS colour)
     int player_pos = round(osc_players.pos[player_index].position);
 
     //check if we matched the beat, distance and colour
-    //TODO colour match
-    if (impulse_S * impulse_S < oscillators.S_coeff_threshold) //good strike
+    if (is_colour_match(colour) && impulse_S * impulse_S < oscillators.S_coeff_threshold) //good strike
     {
         //we need to find how many players matched this beat and update their leds
         int same_beat = 0;
         for (int p = 0; p < rad_game_source.n_players; ++p)
         {
-            if (osc_players.last_strike_beat[p] == oscillators.cur_beat)
+            if (osc_players.last_strike_beat[p] == oscillators.cur_beat && p != player_index)
             {
                 same_beat_players[same_beat++] = p;
             }
         }
-        printf("same beat %i  %i %i %i\n", same_beat, osc_players.last_strike_beat[0], osc_players.last_strike_beat[1], oscillators.cur_beat);
+        //printf("same beat %i  %i %i %i\n", same_beat, osc_players.last_strike_beat[0], osc_players.last_strike_beat[1], oscillators.cur_beat);
         
         //now we get the leds affected by the previous strike
         fill_affected_leds(&same_beat, same_beat_players, affected_leds, player_pos);
@@ -448,8 +475,7 @@ void RGM_Oscillators_player_hit(int player_index, enum ERAD_COLOURS colour)
             oscillators.phases[1][led] = 1.0;
             oscillators.phases[2][led] = 0.0;
         }
-        //TODO effect should depend on beat_players
-        oscillators.new_effect = SE_Reward;
+        oscillators.new_effect = (enum ESoundEffects)(SE_Reward01 + same_beat - 1);
         osc_players.last_strike_beat[player_index] = oscillators.cur_beat;
     }
     else //bad strike
@@ -547,30 +573,37 @@ void RGM_Oscillators_clear()
 #endif // OSC_UNIT_TESTS
 }
 
+/*!
+ * @brief Among other things, calculate score. The idea is that every song is worth 9 999 900 points that would be won if 
+ * every led was in sync every beat. Therefore:
+ * 
+ *  points = 9'999'900 * sum(in_sync) / (n_beats * n_leds) = 9'999'900 * sum(in_sync / n_leds) / n_beats
+ * 
+ * @param ledstrip 
+ * @return 
+*/
 int RGM_Oscillators_update_leds(ws2811_t* ledstrip)
 {
     static double completed = 0;
     long time_pos = SoundPlayer_play(oscillators.new_effect);
     if (time_pos == -1)
     {
-        SoundPlayer_destruct();
-        if (rad_game_songs.n_songs == rad_game_songs.current_song++)
-        {
-            //TODO, game completed
-            rad_game_songs.current_song = 0;
-        }
-        start_current_song();
+        long score = 9'999'900 * oscillators.points / oscillators.cur_beat;
+        RadGameLevel_level_finished(score);
     }
     //todo else -- check if bpm freq had not changed
     double in_sync = Oscillators_update_and_count();
-    if(in_sync > -1)
-        completed = (in_sync - 2.0 * oscillators.end_zone_width) / (rad_game_source.basic_source.n_leds - 2.0 * oscillators.end_zone_width);
+    if (in_sync > -1)
+    {
+        completed = in_sync / (rad_game_source.basic_source.n_leds - 2.0 * oscillators.end_zone_width);
+        oscillators.points += completed;
+        if (oscillators.cur_beat % 20 == 0) 
+        {
+            printf("Leds in sync: %f\n", in_sync);
+        }
+    }
     Oscillators_render(ledstrip, completed);
 
-    if (rad_game_source.cur_frame % 500 == 0) //TODO if in_sync = n_leds, players win
-    {
-        printf("Leds in sync: %f\n", in_sync);
-    }
     Players_update();
     Players_render(ledstrip);
     oscillators.new_effect = SE_N_EFFECTS;
