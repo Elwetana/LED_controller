@@ -218,6 +218,11 @@ void SoundPlayer_start(char* filename)
     //open input file
     //FILE* fin = fopen("GodRestYeMerryGentlemen.wav", "rb");
     fin = fopen(filename, "rb");
+    if (fin == NULL)
+    {
+        fprintf(stderr, "FATAL ERROR: cannot open file %s to play\n", filename);
+        exit(-19);
+    }
     fseek(fin, 44, SEEK_SET);
     SoundPlayer_init_timers();
     is_playing = 1;
