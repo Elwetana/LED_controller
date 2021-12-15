@@ -16,6 +16,7 @@ enum ESoundEffects
 	SE_PressStart,
 	SE_Lose,
 	SE_Win,
+	SE_WinGame,
 	SE_N_EFFECTS
 };
 

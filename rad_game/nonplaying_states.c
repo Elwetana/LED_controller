@@ -39,13 +39,16 @@ void Ready_clear()
 {
     GameMode_clear();
     GameMode_lock_current_player();
+    GameMode_set_state(1);
+    SoundPlayer_play(SE_PressStart);
 }
 
 /*!
  * @brief All ready states have the following structure:
- *  - Message "Press start to begin"
- *  - Players can press Start button on their controllers, this will highlight their position and play a message with their number
- *  - When everyone pressed Start, the message "Get ready. Go" is played
+ *  - state 1: Message "Press start to begin"
+ *  - state 2: Waiting for players to press Start button
+    - state 3: Players can press Start button on their controllers, this will highlight their position and play a message with their number
+ *  - state 4: When everyone pressed Start, the message "Get ready. Go" is played
  *  - Ready mode ends and the actual game will start
  * @param ledstrip 
  * @param get_intervals 
@@ -55,38 +58,27 @@ int Ready_update_leds(ws2811_t* ledstrip, void (*get_intervals)(int, int*, int*)
 {
     static const double effect_freq = 2.0; //Hz
     int cur_player = GameMode_get_current_player();
-    uint64_t start_time = GameMode_get_effect_start();
-    if (start_time == 0 && cur_player != -1)
+    int state = GameMode_get_state();
+    if (state == 1 || state == 3)       //press start to begin or name of the player is playing
     {
-        //we have to start a new effect
-        GameMode_set_effect_start(rad_game_source.basic_source.current_time);
-        if (cur_player > -1)
-        {
-            //this is player highlight
-            SoundPlayer_play(SE_Player1 + cur_player);
-        }
-        else
-        {
-            //this is beginning of the ready state
-            SoundPlayer_play(SE_PressStart);
-        }
-        //we could start updating leds, but it will wait till next frame
-    }
-    if (start_time > 0 && cur_player != -1)
-    {
-        //we have some sound effect in play
         int n = SoundPlayer_play(SE_N_EFFECTS);
         if (n == -1)
         {
-            //we are finished
             GameMode_clear_current_player();
+            GameMode_set_state(2);
         }
     }
-    if (start_time > 0 && cur_player > -1)
+    if(state == 2 && cur_player > -1)   //this is new player highlight
     {
-        //we have player highlight in progress
-        double time_delta = (rad_game_source.basic_source.current_time - start_time) / (long)1e3 / (double)(1e6);
-        double sinft = fabs(sin(2 * M_PI * effect_freq * time_delta));
+        SoundPlayer_play(SE_Player1 + cur_player);
+        //we could start updating leds, but it will wait till next frame
+        RadGameSource_set_start();
+        GameMode_set_state(3);
+    }
+    if (state == 3)                     //we have player highlight in progress
+    {
+        //update leds
+        double sinft = fabs(sin(2 * M_PI * effect_freq * RadGameSource_time_from_start_seconds()));
         int colour = multiply_rgb_color(0xFFFFFF, sinft);
         int left_led, right_led;
         get_intervals(cur_player, &left_led, &right_led);
@@ -95,17 +87,16 @@ int Ready_update_leds(ws2811_t* ledstrip, void (*get_intervals)(int, int*, int*)
             ledstrip->channel[0].leds[led] = colour;
         }
     }
-    if (start_time == 0 && cur_player == -1)
+    if (state == 2 && cur_player == -1) //we could have all players ready and their effects finished
     {
-        //we could have all players ready and their effects finished
         int all_ready = GameMode_get_ready_players(); //this is a bit mask, n_players bits must be set
         if (all_ready == ((1 << rad_game_source.n_players) - 1))
         {
-            GameMode_set_effect_start(rad_game_source.basic_source.current_time);
             SoundPlayer_play(SE_GetReady);
+            GameMode_set_state(4);
         }
     }
-    if(start_time > 0 && cur_player == -1)
+    if(state == 4)                      //let's go is playing
     {
         int n = SoundPlayer_play(SE_N_EFFECTS);
         if (n == -1)
@@ -151,7 +142,7 @@ static int show_score_on_leds(ws2811_t* ledstrip)
 {
     static const double score_speed = 0.5; //LEDs/s
     static const int bullet_colors_offset = 20;
-    int right_led = trunc(score_speed * (rad_game_source.basic_source.current_time - rad_game_source.start_time) / 1000000l / (double)1e3);
+    int right_led = trunc(score_speed * RadGameSource_time_from_start_seconds());
 
     int short_score = GameMode_get_score() / 100;
     int offset[6];
@@ -198,35 +189,35 @@ int RGM_Show_Score_update_leds(ws2811_t* ledstrip)
     enum ESoundEffects eff;
     switch(GameMode_get_state())
     {
-        case 0:
-            eff = (enum ESoundEffects)(SE_Lose + GameMode_get_last_result());
-            SoundPlayer_play(eff);
-            GameMode_set_state(1);
-            break;
-        case 1:
-            n = SoundPlayer_play(SE_N_EFFECTS);
-            if (n == -1)
-            {
-                if (GameMode_get_last_result() == 0)
-                {
-                    GameMode_set_state(3);
-                }
-                else
-                {
-                    SoundPlayer_start(GameMode_get_code_wav());
-                    GameMode_set_state(2);
-                }
-            }
-            break;
-        case 2:
-            n = SoundPlayer_play(SE_N_EFFECTS);
-            if (n == -1)
+    case 0:
+        eff = (enum ESoundEffects)(SE_Lose + GameMode_get_last_result());
+        SoundPlayer_play(eff);
+        GameMode_set_state(1);
+        break;
+    case 1:
+        n = SoundPlayer_play(SE_N_EFFECTS);
+        if (n == -1)
+        {
+            if (GameMode_get_last_result() == 0)
             {
                 GameMode_set_state(3);
             }
-            break;
-        default:
-            break;
+            else
+            {
+                SoundPlayer_start(GameMode_get_code_wav());
+                GameMode_set_state(2);
+            }
+        }
+        break;
+    case 2:
+        n = SoundPlayer_play(SE_N_EFFECTS);
+        if (n == -1)
+        {
+            GameMode_set_state(3);
+        }
+        break;
+    default:
+        break;
     }
     GameMode_clear_current_player();
     int all_ready = GameMode_get_ready_players(); //this is a bit mask, n_players bits must be set

@@ -44,6 +44,17 @@
 //#define GAME_DEBUG
 
 
+
+double RadGameSource_time_from_start_seconds()
+{
+    return ((rad_game_source.basic_source.current_time - rad_game_source.start_time) / 1000l) / (double)1e6;
+}
+
+void RadGameSource_set_start()
+{
+    rad_game_source.start_time = rad_game_source.basic_source.current_time;
+}
+
 /****************** Game mode *******************/
 /*
 The flow of the game is:
@@ -74,12 +85,10 @@ static struct
     long score;	        	    //!< only used in show_score mode
     int player;	                //!< only used in ready modes, active player, -1 if there is not active player
     unsigned int ready_players; //!< bit mask of players that pressed Start
-    uint64_t effect_start;      //!< used in non-playing modes
     long state;                 //!< custom data for non-playing modes
 } rad_game_mode =
 {
-    .player = 0xF0,
-    .effect_start = 0
+    .player = -1
 };
 
 struct RadGameLevel
@@ -284,8 +293,8 @@ void GameMode_clear()
 {
     rad_game_mode.player = -1;
     rad_game_mode.ready_players = 0;
-    rad_game_mode.effect_start = 0;
     rad_game_mode.state = 0;
+    RadGameSource_set_start();
 }
 int GameMode_get_current_player()
 {
@@ -294,7 +303,7 @@ int GameMode_get_current_player()
 void GameMode_clear_current_player()
 {
     rad_game_mode.player = -1;
-    rad_game_mode.effect_start = 0;
+    RadGameSource_set_start();
 }
 void GameMode_lock_current_player()
 {
@@ -303,14 +312,6 @@ void GameMode_lock_current_player()
 int GameMode_get_ready_players()
 {
     return rad_game_mode.ready_players;
-}
-uint64_t GameMode_get_effect_start()
-{
-    return rad_game_mode.effect_start;
-}
-void GameMode_set_effect_start(uint64_t t)
-{
-    rad_game_mode.effect_start = t;
 }
 long GameMode_get_score()
 {

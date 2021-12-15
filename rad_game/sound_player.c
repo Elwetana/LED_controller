@@ -52,7 +52,8 @@ static char* effect_files[SE_N_EFFECTS] =
     "sound/get_ready.wav",
     "sound/press_start.wav",
     "sound/level_failed.wav",
-    "sound/level_cleared.wav"
+    "sound/level_cleared.wav",
+    "sound/you_win.wav"
 };
 
 #ifdef __linux__

@@ -241,7 +241,7 @@ static void DdrEmitors_update()
 {
     DdrEmitors_update_bullets();
     //check whether we want to emit a new bullet
-    double time_seconds = ((rad_game_source.basic_source.current_time - rad_game_source.start_time) / (long)1e3) / (double)1e6;
+    double time_seconds = RadGameSource_time_from_start_seconds();
     double beat = time_seconds * rad_game_songs.freq;
     //todo -- emit bullets in other phases of the beat?
     if ((int)beat > ddr_emitors.last_beat)
@@ -377,7 +377,7 @@ static void DdrEmitors_render_reactions(ws2811_t* ledstrip)
             else
             {
                 double A = ddr_emitors.streak_grad_len / grad_index;
-                double y = A + (1 - A) * sin(M_PI * rad_game_songs.freq * ((rad_game_source.basic_source.current_time - rad_game_source.start_time) / (long)1e3) / (double)1e6);
+                double y = A + (1 - A) * sin(M_PI * rad_game_songs.freq * RadGameSource_time_from_start_seconds());
                 //the pulsing gets more intense as streak grows
                 if (y < y) y = -y;
                 color1 = multiply_rgb_color(rad_game_source.basic_source.gradient.colors[ddr_emitors.streak_grad_offset + ddr_emitors.streak_grad_len - 1], y);

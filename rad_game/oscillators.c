@@ -95,8 +95,7 @@ static void Oscillators_init()
 
 static int Oscillators_update_and_count()
 {
-    double time_seconds = ((rad_game_source.basic_source.current_time - rad_game_source.start_time) / (long)1e3) / (double)1e6;
-    long beat = (long)(rad_game_songs.freq * time_seconds);
+    long beat = (long)(rad_game_songs.freq * RadGameSource_time_from_start_seconds());
     
     int in_sync = -1;
     if (oscillators.cur_beat < beat)
@@ -124,7 +123,7 @@ static int Oscillators_update_and_count()
 
 /*!
  * @brief 
- *   The target is to get this picture:
+ *   When do_gradient is true, the target is to get this picture:
  *      There is symetric gradient over the interval 2 * grad_length (let's call grad_length L)
  *          e.g. for L = 5:  A B C D E  E D C B A  
  *                           B C D E D  D E D C B
@@ -143,7 +142,7 @@ static int Oscillators_update_and_count()
 */
 static int get_grad_color_index(int led, int grad_shift, int window_width)
 {
-    if (window_width == 1) //there is nothing to computer, with this window width we always see the first colour of gradient
+    if (window_width == 1) //there is nothing to compute, with this window width we always see the first colour of gradient
         return 0;
     int l = (led) % (2 * oscillators.grad_length);
     l = (l < oscillators.grad_length) ? l : 2 * oscillators.grad_length - 1 - l;    //if L = 20 and l = 20, new l will be 19
@@ -155,9 +154,9 @@ static int get_grad_color_index(int led, int grad_shift, int window_width)
     return w;
 }
 
-static void Oscillators_render(ws2811_t* ledstrip, double unhide_pattern)
+static void Oscillators_render(ws2811_t* ledstrip, double unhide_pattern, int do_gradient)
 {
-    double time_seconds = ((rad_game_source.basic_source.current_time - rad_game_source.start_time) / (long)1e3) / (double)1e6;
+    double time_seconds = RadGameSource_time_from_start_seconds();
     double sinft = sin(2 * M_PI * rad_game_songs.freq * time_seconds);
     double cosft = cos(2 * M_PI * rad_game_songs.freq * time_seconds);
     //printf("Time %f\n", time_seconds);
@@ -178,7 +177,7 @@ static void Oscillators_render(ws2811_t* ledstrip, double unhide_pattern)
             y = 0; //negative half-wave will not be shown at all
         }
         y *= A / 2;
-        int grad_pos = get_grad_color_index(led, grad_shift, pattern_length);
+        int grad_pos = do_gradient ? get_grad_color_index(led, grad_shift, pattern_length) : oscillators.led0_color_index;
         ledstrip->channel[0].leds[led] = multiply_rgb_color_ratchet(rad_game_source.basic_source.gradient.colors[grad_pos], y);
     }
     //printf("\n");
@@ -431,8 +430,7 @@ void RGM_Oscillators_player_hit(int player_index, enum ERAD_COLOURS colour)
     int affected_leds[C_MAX_CONTROLLERS * (2 * C_MAX_CONTROLLERS + 1) + 1] = { 0 }; //(2 * C_MAX_CONTROLLERS + 1) is the maximum width affected by one player, assuming single_strike_width == 1
     int same_beat_players[C_MAX_CONTROLLERS] = { -1 };
     double hit_boost[] = { 1, 2, 3, 4, 5 }; //there must be C_MAX_CONTROLLERS + 1 numbers here
-    uint64_t phase_ns = rad_game_source.basic_source.current_time - rad_game_source.start_time;
-    double phase_seconds = (phase_ns / (long)1e3) / (double)1e6;
+    double phase_seconds = RadGameSource_time_from_start_seconds();
     double impulse_C = cos(M_PI / 2.0 - 2.0 * M_PI * rad_game_songs.freq * phase_seconds);
     double impulse_S = sin(M_PI / 2.0 - 2.0 * M_PI * rad_game_songs.freq * phase_seconds);
     int player_pos = round(osc_players.pos[player_index].position);
@@ -474,7 +472,10 @@ void RGM_Oscillators_player_hit(int player_index, enum ERAD_COLOURS colour)
             oscillators.phases[1][led] = 1.0;
             oscillators.phases[2][led] = 0.0;
         }
-        oscillators.new_effect = (enum ESoundEffects)(SE_Reward01 + same_beat - 1);
+        if (same_beat > 1)
+        {
+            oscillators.new_effect = (enum ESoundEffects)(SE_Reward01 + same_beat - 1);
+        }
         osc_players.last_strike_beat[player_index] = oscillators.cur_beat;
     }
     else //bad strike
@@ -601,7 +602,7 @@ int RGM_Oscillators_update_leds(ws2811_t* ledstrip)
             printf("Leds in sync: %f\n", in_sync);
         }
     }
-    Oscillators_render(ledstrip, completed);
+    Oscillators_render(ledstrip, completed, 0);
 
     Players_update();
     Players_render(ledstrip);
@@ -638,4 +639,56 @@ void RGM_Oscillators_get_ready_interval(int player_index, int* left_led, int* ri
 {
     *left_led = round(osc_players.pos[player_index].position) - 3;
     *right_led = round(osc_players.pos[player_index].position) + 3;
+}
+
+
+/*!
+ * @brief This could/should be a different file, but it shares a lot of functionality with the oscillators gameplay
+ *  When players win the game, the game enters this state that cannot be exited (you can switch to another level via http server)
+ *  There are internal states:
+ *      - 1: play "You Won"
+ *      - 2: playing secret message
+ *      - 3: playing random song and blinking the leds
+ * @param ledstrip 
+*/
+
+static void GameWon_clear_leds()
+{
+    for (int led = 0; led < rad_game_source.basic_source.n_leds; ++led)
+    {
+        oscillators.phases[0][led] = 2.0;
+        oscillators.phases[1][led] = 1.0;
+        oscillators.phases[2][led] = 0.0;
+    }
+    oscillators.cur_beat = -1;
+}
+
+static void GameWon_set_colour(ws2811_t* ledstrip, ws2811_led_t colour)
+{
+    for (int led = 0; led < rad_game_source.basic_source.n_leds; ++led)
+    {
+        ledstrip->channel[0].leds[led] = colour;
+    }
+}
+
+void RGM_GameWon_clear()
+{
+    GameWon_clear_leds();
+    Players_init();
+    GameMode_set_state(1);
+    SoundPlayer_play(SE_WinGame);
+}
+
+void RGM_GameWon_update_leds(ws2811_t* ledstrip)
+{
+    int st = GameMode_get_state();
+    long t = SoundPlayer_play(SE_N_EFFECTS);
+    if (st == 1 && t != 1) //still playing you win
+    {
+        //double 
+        GameWon_set_colour(ledstrip, 0);
+    }
+
+
+    SoundPlayer_start("sound/secret_message.wav");
 }

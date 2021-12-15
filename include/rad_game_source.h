@@ -70,6 +70,8 @@ typedef struct RadGameSource
 } RadGameSource;
 
 extern RadGameSource rad_game_source;
+double RadGameSource_time_from_start_seconds();
+void RadGameSource_set_start();
 
 struct RadGameSong
 {
@@ -107,8 +109,6 @@ int GameMode_get_current_player();
 void GameMode_clear_current_player();
 void GameMode_lock_current_player();
 int GameMode_get_ready_players();
-uint64_t GameMode_get_effect_start();
-void GameMode_set_effect_start(uint64_t t);
 long GameMode_get_score();
 long GameMode_get_state();
 void GameMode_set_state(long s);
