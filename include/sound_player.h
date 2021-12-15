@@ -37,6 +37,8 @@ void SoundPlayer_init(int frame_time);
  */
 long SoundPlayer_play(enum ESoundEffects new_effect);
 
+void SoundPlayer_stop();
+
 void SoundPlayer_destruct();
 
 #endif /* __SOUND_PLAYER_H */

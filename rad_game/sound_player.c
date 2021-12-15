@@ -336,6 +336,8 @@ long SoundPlayer_play(enum ESoundEffects new_effect)
              is_hw_init = 0;
              free(buff);
              buff = 0;
+             if (is_playing == 1)
+                 fclose(fin);
              is_playing = 0;
              return -1;
         }
@@ -359,7 +361,26 @@ long SoundPlayer_play(enum ESoundEffects new_effect)
 	return time_running_us;
 }
 
-void load_effects()
+void SoundPlayer_stop()
+{
+    printf("Stopping player\n");
+    if (!is_playing)
+        return;
+    if (is_playing == 1)
+    {
+        fclose(fin);
+    }
+    else
+    {
+        current_effect = SE_N_EFFECTS;
+    }
+    is_hw_init = 0;
+    free(buff);
+    buff = 0;
+    is_playing = 0;
+}
+
+static void load_effects()
 {
     const int max_effect_length = 4; //!< in seconds
     char* tmp = (char*)malloc(samplerate * channels * max_effect_length * 2); //*2 for sample size

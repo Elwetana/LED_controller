@@ -13,5 +13,9 @@ void RGM_Oscillators_player_move(int player_index, signed char dir);
 void RGM_Oscillators_render_ready(ws2811_t* ledstrip);
 void RGM_Oscillators_get_ready_interval(int player_index, int* left_led, int* right_led);
 
+
+void RGM_GameWon_clear();
+void RGM_GameWon_update_leds(ws2811_t* ledstrip);
+
 #endif  /* __OSCILLATORS_H__ */
 

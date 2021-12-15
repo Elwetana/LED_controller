@@ -44,6 +44,7 @@ enum ERadGameModes
 	RGM_Osc_Ready,		//!< getting ready to play Osciallators
 	RGM_DDR_Ready,		//!< getting ready to play DDR
 	RGM_Show_Score,		//!< after finishing level
+	RGM_Game_Won,		//!< Players won
 	RGM_N_MODES
 };
 
@@ -91,8 +92,7 @@ typedef struct SRadGameSongs
 } RadGameSongs;
 
 extern RadGameSongs rad_game_songs;
-
-void start_current_song();
+void RadGameSong_start_random();
 
 typedef struct SRadMovingObject
 {

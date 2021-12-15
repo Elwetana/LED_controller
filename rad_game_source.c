@@ -119,6 +119,7 @@ static struct {
  * @param game_mode Mode to switch into
 */
 static void RadGameMode_switch_mode(enum ERadGameModes game_mode);
+static void start_current_song();
 
 void RadGameLevel_ready_finished()
 {
@@ -152,8 +153,8 @@ void RadGameLevel_score_finished()
     int next_level = rad_game_levels.last_level_result == 0 ? rad_game_levels.cur_level : rad_game_levels.cur_level + 1;
     if (next_level == rad_game_levels.n_levels)
     {
-        //players won, what now?
         printf("Players won\n");
+        RadGameMode_switch_mode(RGM_Game_Won);
         return;
     }
     rad_game_levels.cur_level = next_level;
@@ -181,11 +182,17 @@ RadGameSongs rad_game_songs =
     .time_offset = 0
 };
 
-void start_current_song()
+static void start_current_song()
 {
     double bpm = rad_game_songs.songs[rad_game_songs.current_song].bpms[0];
     rad_game_songs.freq = bpm / 60.0;
     SoundPlayer_start(rad_game_songs.songs[rad_game_songs.current_song].filename);
+}
+
+void RadGameSong_start_random()
+{
+    rad_game_songs.current_song = (int)(random_01() * rad_game_songs.n_songs);
+    start_current_song();
 }
 
 
@@ -303,7 +310,6 @@ int GameMode_get_current_player()
 void GameMode_clear_current_player()
 {
     rad_game_mode.player = -1;
-    RadGameSource_set_start();
 }
 void GameMode_lock_current_player()
 {
@@ -389,6 +395,13 @@ static void RadGameMode_switch_mode(enum ERadGameModes game_mode)
         Player_start = GameMode_player_pressed_start;
         current_mode_update_leds = RGM_Show_Score_update_leds;
         break;
+    case RGM_Game_Won:
+        RGM_GameWon_clear();
+        Player_hit_color = Ready_player_hit;
+        Player_move = Ready_player_move;
+        Player_start = 0x0;
+        current_mode_update_leds = RGM_GameWon_update_leds;
+        break;
     case RGM_N_MODES:
         printf("Unknown game mode\n");
         exit(-1);
@@ -400,13 +413,14 @@ static void RadGameMode_switch_mode(enum ERadGameModes game_mode)
 // This is interface implememntation stuff
 //
 
-static void skip_comments_in_config(char* buf, FILE* config)
+static char* skip_comments_in_config(char* buf, FILE* config)
 {
-    fgets(buf, 1024, config);
+    char* b = fgets(buf, 1024, config);
     while (strnlen(buf, 2) > 0 && (buf[0] == ';' || buf[0] == '#'))
     {
-        fgets(buf, 1024, config);
+        b = fgets(buf, 1024, config);
     }
+    return b;
 }
 
 static void read_songs_config(FILE* config, int n_songs)
@@ -421,7 +435,12 @@ static void read_songs_config(FILE* config, int n_songs)
     rad_game_songs.songs = malloc(sizeof(struct RadGameSong) * rad_game_songs.n_songs);
     for (int song = 0; song < rad_game_songs.n_songs; ++song)
     {
-        skip_comments_in_config(buf, config);
+        char* c = skip_comments_in_config(buf, config);
+        if (c == NULL)
+        {
+            printf("Error reading song config -- probably not enough songs defined\n");
+            exit(-17);
+        }
         char fn[64];
         int n = sscanf(buf, "%s", fn);
         if (n != 1) { printf("Error reading filename in R&D game config for level %i\n", song); exit(10); }
@@ -429,14 +448,24 @@ static void read_songs_config(FILE* config, int n_songs)
         size_t l = strnlen(fn, 64);
         rad_game_songs.songs[song].filename = (char*)malloc(l + 6 + 1);
         snprintf(rad_game_songs.songs[song].filename, l + 6 + 1, "sound/%s", fn);
-        skip_comments_in_config(buf, config);
+        c = skip_comments_in_config(buf, config);
+        if (c == NULL)
+        {
+            printf("Error reading song config -- probably missing BPM definition for song %s\n", fn);
+            exit(-15);
+        }
         n = sscanf(buf, "%i", &rad_game_songs.songs[song].n_bpms);
         if (n != 1) { printf("Error reading n_bmps in R&D game config for level %i\n", song); exit(10); }
         rad_game_songs.songs[song].bpms = (double*)malloc(sizeof(double) * rad_game_songs.songs[song].n_bpms);
         rad_game_songs.songs[song].bpm_switch = (long*)malloc(sizeof(long) * rad_game_songs.songs[song].n_bpms);
         for (int bpm = 0; bpm < rad_game_songs.songs[song].n_bpms; bpm++)
         {
-            skip_comments_in_config(buf, config);
+            c = skip_comments_in_config(buf, config);
+            if (c == NULL)
+            {
+                printf("Error reading song config -- probably not enough bpm defined for song %s\n", fn);
+                exit(-16);
+            }
             n = sscanf(buf, "%lf %li", &rad_game_songs.songs[song].bpms[bpm], &rad_game_songs.songs[song].bpm_switch[bpm]);
             if (n != 2) 
             { 
@@ -454,8 +483,13 @@ static void read_levels_config(FILE* config, int n_levels)
     char buf[1024];
     for (int level = 0; level < n_levels; ++level)
     {
-        skip_comments_in_config(buf, config);
-        int n = sscanf(buf, "%i %i %li %s \"%s\"", 
+        char* c = skip_comments_in_config(buf, config);
+        if (c == NULL)
+        {
+            printf("Error reading level config -- probably not enough levels defined.\n");
+            exit(-18);
+        }
+        int n = sscanf(buf, "%i %i %li %s \"%32[^\"]\"", 
             &rad_game_levels.levels[level].song_index, 
             (int*)&rad_game_levels.levels[level].game_mode, 
             &rad_game_levels.levels[level].target_score,
@@ -552,10 +586,11 @@ void RadGameSource_process_message(const char* msg)
         {
             if (!strncasecmp(rad_game_levels.levels[l].code, payload, 32))
             {
-                rad_game_levels.last_level_result = 0;
+                rad_game_levels.last_level_result = 1;
                 rad_game_levels.cur_level = l;
+                SoundPlayer_stop();
                 RadGameLevel_score_finished();
-                printf("RGM Received code: %s, starting level: %i\n", payload, l);
+                printf("RGM Received code: %s, starting level: %i\n", payload, l+1);
                 return;
             }
         }
@@ -595,5 +630,4 @@ RadGameSource rad_game_source = {
     .start_time = 0,
     .n_players = 0
 };
-
 

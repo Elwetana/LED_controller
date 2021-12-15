@@ -681,14 +681,41 @@ void RGM_GameWon_clear()
 
 void RGM_GameWon_update_leds(ws2811_t* ledstrip)
 {
+    const double blink_fq = 2; //Hz
     int st = GameMode_get_state();
     long t = SoundPlayer_play(SE_N_EFFECTS);
-    if (st == 1 && t != 1) //still playing you win
+    double sinft = fabs(cos(2 * M_PI * blink_fq * RadGameSource_time_from_start_seconds()));
+    if (t != -1) //stil playing
     {
-        //double 
-        GameWon_set_colour(ledstrip, 0);
+        switch (st)
+        {
+        case 1: //you win
+            GameWon_set_colour(ledstrip, multiply_rgb_color(0xFFFFFF, sinft));
+            break;
+        case 2: //secret message
+            GameWon_set_colour(ledstrip, 0x0);
+            break;
+        case 3: //random song
+            oscillators.cur_beat = (long)(rad_game_songs.freq * RadGameSource_time_from_start_seconds());
+            Oscillators_render(ledstrip, 1, 1);
+            break;
+        default:
+            break;
+        }
     }
-
-
-    SoundPlayer_start("sound/secret_message.wav");
+    if (t == -1) //playing ended, switch to new state
+    {
+        switch (st)
+        {
+        case 1: //start secret message
+        case 3:
+            SoundPlayer_start("sound/secret_message.wav");
+            GameMode_set_state(2);
+            break;
+        case 2: //start random song
+            RadGameSong_start_random();
+            GameMode_set_state(3);
+            break;
+        }
+    }
 }
