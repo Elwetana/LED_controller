@@ -679,7 +679,7 @@ void RGM_GameWon_clear()
     SoundPlayer_play(SE_WinGame);
 }
 
-void RGM_GameWon_update_leds(ws2811_t* ledstrip)
+int RGM_GameWon_update_leds(ws2811_t* ledstrip)
 {
     const double blink_fq = 2; //Hz
     int st = GameMode_get_state();
@@ -718,4 +718,6 @@ void RGM_GameWon_update_leds(ws2811_t* ledstrip)
             break;
         }
     }
+    return 1;
 }
+

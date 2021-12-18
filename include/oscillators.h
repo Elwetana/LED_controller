@@ -15,7 +15,7 @@ void RGM_Oscillators_get_ready_interval(int player_index, int* left_led, int* ri
 
 
 void RGM_GameWon_clear();
-void RGM_GameWon_update_leds(ws2811_t* ledstrip);
+int RGM_GameWon_update_leds(ws2811_t* ledstrip);
 
 #endif  /* __OSCILLATORS_H__ */
 
