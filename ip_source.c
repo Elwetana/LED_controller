@@ -8,6 +8,7 @@
 #include <math.h>
 #ifdef __linux__
 #include "ws2811.h"
+#include <unistd.h> // for close
 #include <sys/types.h>
 #include <sys/socket.h>
 #include <sys/ioctl.h>
@@ -77,7 +78,6 @@ int IPSource_update_leds(int frame, ws2811_t* ledstrip)
         }
         for (int addr_byte = 0; addr_byte < 4; ++addr_byte)
         {
-            unsigned char c = addr[addr_byte];
             for (int bit_index = 0; bit_index < 8; ++bit_index)
             {
                 ledstrip->channel[0].leds[l * one_len + 3 + addr_byte * 9 + bit_index] = (addr[addr_byte] & (1 << (7 - bit_index))) ? 0x888888 : 0x0;

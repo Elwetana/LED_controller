@@ -374,10 +374,15 @@ void SoundPlayer_stop()
     {
         current_effect = SE_N_EFFECTS;
     }
+#ifdef __linux__
+     snd_pcm_drain(pcm_handle);
+     snd_pcm_close(pcm_handle);
+#endif
     is_hw_init = 0;
     free(buff);
     buff = 0;
     is_playing = 0;
+    printf("Sound player stopped\n");
 }
 
 static void load_effects()

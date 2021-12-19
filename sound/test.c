@@ -16,9 +16,8 @@
 
 #define INT_TO_FLOAT 3.0517578125e-05 // = 1. / 32768.
 
-int main(int argc, char* argv[])
+uint32_t get_ip()
 {
-
      int fd;
      struct ifreq ifr;
      fd = socket(AF_INET, SOCK_DGRAM, 0);
@@ -34,7 +33,19 @@ int main(int argc, char* argv[])
      close(fd);
 
      /* display result */
-     printf("%s\n", inet_ntoa(((struct sockaddr_in *)&ifr.ifr_addr)->sin_addr));
+     //printf("%s\n", inet_ntoa(((struct sockaddr_in *)&ifr.ifr_addr)->sin_addr));
+     return ((struct sockaddr_in *)&ifr.ifr_addr)->sin_addr.s_addr;
+}
+
+int main(int argc, char* argv[])
+{
+    uint32_t ip = get_ip();
+    unsigned char s1 = (ip & 0xFF);
+    unsigned char s2 = (ip & 0xFF00) >> 8;
+    unsigned char s3 = (ip & 0xFF0000) >> 16;
+    unsigned char s4 = (ip & 0xFF000000) >> 24;
+    printf("%i\n", ip);
+    printf("%i.%i\n", s1, s2);
 
     return 0;
 
