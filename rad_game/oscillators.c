@@ -29,9 +29,12 @@
 static struct
 {
     //! array of oscillators
-    // first is amplitude, second and third are C and S, such that C*C + S*S == 1
-    // ociallator equation is y = A * (C * sin(f t) + S * cos(f t))
-    double* phases[3];
+    // first is amplitude, second is phase shift
+    // ociallator equation is y = A * exp(k * (t - t0)) - B where t0 is phase shift and A, B are constants such that
+    // y(t = 0, t0 = 0) == 1 and y(t = 1, t0 = 0) == 0
+    // therefore A = 1/(1 - exp(k)) and B = A - 1
+    double* amps;
+    double* delays;
     long cur_beat;
     int led0_color_index;
     double points; //actual points are 9'999'900 * points / n_beats
@@ -47,7 +50,7 @@ static struct
     const enum ERAD_COLOURS grad_steps[5];
 } oscillators =
 {
-    .S_coeff_threshold = 0.1,
+    .S_coeff_threshold = 0.11,
     .out_of_sync_decay = 0.66,
     .grad_length = 20,
     .grad_speed = 0.1,
@@ -62,16 +65,13 @@ static void Oscillators_clear()
     {
         if (led >= oscillators.end_zone_width && led < rad_game_source.basic_source.n_leds - oscillators.end_zone_width)
         {
-            for (int i = 0; i < 3; ++i)
-            {
-                oscillators.phases[i][led] = 0.0;
-            }
+            oscillators.amps[led] = 0.0;
+            oscillators.delays[led] = 0.0;
         }
         else
         {
-            oscillators.phases[0][led] = 2.0;
-            oscillators.phases[1][led] = 1.0;
-            oscillators.phases[2][led] = 0.0;
+            oscillators.amps[led] = 2.0;
+            oscillators.delays[led] = 0.0;
         }
     }
     oscillators.new_effect = SE_N_EFFECTS;
@@ -103,16 +103,15 @@ static int Oscillators_update_and_count()
         in_sync = 0;
         for (int o = oscillators.end_zone_width; o < rad_game_source.basic_source.n_leds - 1 - oscillators.end_zone_width; ++o)
         {
-            double A = oscillators.phases[0][o];
-            double S = oscillators.phases[2][o];
+            double A = oscillators.amps[o];
+            double S = oscillators.delays[o];
 
             if (A > 1 && S == 0) in_sync++;
-            oscillators.phases[0][o] *= (S == 0) ? oscillators.decay : oscillators.out_of_sync_decay;
+            oscillators.amps[o] *= (S == 0) ? oscillators.decay : oscillators.out_of_sync_decay;
             if (A < oscillators.S_coeff_threshold)
             {
-                oscillators.phases[0][o] = 0.0;
-                oscillators.phases[1][o] = 0.0;
-                oscillators.phases[2][o] = 0.0;
+                oscillators.amps[o] = 0.0;
+                oscillators.delays[o] = 0.0;
             }
         }
         oscillators.cur_beat = beat;
@@ -156,10 +155,13 @@ static int get_grad_color_index(int led, int grad_shift, int window_width)
 
 static void Oscillators_render(ws2811_t* ledstrip, double unhide_pattern, int do_gradient)
 {
-    double time_seconds = RadGameSource_time_from_start_seconds();
-    double sinft = sin(2 * M_PI * rad_game_songs.freq * time_seconds);
-    double cosft = cos(2 * M_PI * rad_game_songs.freq * time_seconds);
     //printf("Time %f\n", time_seconds);
+    //=LET(a;IF(@t<Shift; EXP(K * (1 - Shift)); EXP(-K * Shift)); a * A * EXP(K * freq * @t)-B)
+    const double k = -2.0;
+    double beat_fract = (rad_game_songs.freq * RadGameSource_time_from_start_seconds() - oscillators.cur_beat);
+    double A = 1.0 / (1 - exp(k));
+    double B = A - 1;
+    double expft = exp(k * beat_fract);
 
     int pattern_length =  (int)((double)oscillators.grad_length * unhide_pattern);
     if (pattern_length < 1) pattern_length = 1;
@@ -168,19 +170,15 @@ static void Oscillators_render(ws2811_t* ledstrip, double unhide_pattern, int do
     oscillators.led0_color_index = get_grad_color_index(0, grad_shift, pattern_length);
     for (int led = 0; led < rad_game_source.basic_source.n_leds; ++led)
     {
-        double A = oscillators.phases[0][led];
-        double C = oscillators.phases[1][led];
-        double S = oscillators.phases[2][led];
-        double y = (C * sinft + S * cosft);
-        if (y < 0)
-        {
-            y = 0; //negative half-wave will not be shown at all
-        }
-        y *= A / 2;
+        double ampl = oscillators.amps[led];
+        double shift = oscillators.delays[led];
+        double a = beat_fract < shift ? exp(k * (1 - shift)) : exp(-k * shift);
+        double y = a * A * expft - B;
+        assert(y >= 0);
+        y *= ampl / 2;
         int grad_pos = do_gradient ? get_grad_color_index(led, grad_shift, pattern_length) : oscillators.led0_color_index;
         ledstrip->channel[0].leds[led] = multiply_rgb_color_ratchet(rad_game_source.basic_source.gradient.colors[grad_pos], y);
     }
-    //printf("\n");
 }
 
 static struct
@@ -430,13 +428,11 @@ void RGM_Oscillators_player_hit(int player_index, enum ERAD_COLOURS colour)
     int affected_leds[C_MAX_CONTROLLERS * (2 * C_MAX_CONTROLLERS + 1) + 1] = { 0 }; //(2 * C_MAX_CONTROLLERS + 1) is the maximum width affected by one player, assuming single_strike_width == 1
     int same_beat_players[C_MAX_CONTROLLERS] = { -1 };
     double hit_boost[] = { 1, 2, 3, 4, 5 }; //there must be C_MAX_CONTROLLERS + 1 numbers here
-    double phase_seconds = RadGameSource_time_from_start_seconds();
-    double impulse_C = cos(M_PI / 2.0 - 2.0 * M_PI * rad_game_songs.freq * phase_seconds);
-    double impulse_S = sin(M_PI / 2.0 - 2.0 * M_PI * rad_game_songs.freq * phase_seconds);
+    double beat_fract = (rad_game_songs.freq * RadGameSource_time_from_start_seconds() - oscillators.cur_beat);
     int player_pos = round(osc_players.pos[player_index].position);
 
     //check if we matched the beat, distance and colour
-    if (is_colour_match(colour) && impulse_S * impulse_S < oscillators.S_coeff_threshold) //good strike
+    if (is_colour_match(colour) && (beat_fract * (1.0 - beat_fract)) < oscillators.S_coeff_threshold) //good strike -- for S_coeff_th = 0.11, this includes +- 1/8 of the beat, i.e. 0.25 of the beat is good strike
     {
         //we need to find how many players matched this beat and update their leds
         int same_beat = 0;
@@ -456,7 +452,7 @@ void RGM_Oscillators_player_hit(int player_index, enum ERAD_COLOURS colour)
         while (affected_leds[al] > 0)
         {
             int led = affected_leds[al++];
-            oscillators.phases[0][led] /= old_boost;
+            oscillators.amps[led] /= old_boost;
         }
         
         //add ourselves and get new affected leds and apply new boost to them
@@ -467,10 +463,9 @@ void RGM_Oscillators_player_hit(int player_index, enum ERAD_COLOURS colour)
         while (affected_leds[al] > 0)
         {
             int led = affected_leds[al++];
-            double A = oscillators.phases[0][led];
-            oscillators.phases[0][led] = (A < 1) ? new_boost : A * new_boost;
-            oscillators.phases[1][led] = 1.0;
-            oscillators.phases[2][led] = 0.0;
+            double A = oscillators.amps[led];
+            oscillators.amps[led] = (A < 1) ? new_boost : A * new_boost;
+            oscillators.delays[led] = 0.0;
         }
         if (same_beat > 1)
         {
@@ -483,12 +478,12 @@ void RGM_Oscillators_player_hit(int player_index, enum ERAD_COLOURS colour)
         int player_pos = round(osc_players.pos[player_index].position);
         for (int led = player_pos - osc_players.single_strike_width; led < player_pos + osc_players.single_strike_width + 1; led++)
         {
-            double unnormal_C = oscillators.phases[0][led] * oscillators.phases[1][led] + impulse_C;
-            double unnormal_S = oscillators.phases[0][led] * oscillators.phases[2][led] + impulse_S;
-            double len = sqrt(unnormal_C * unnormal_C + unnormal_S * unnormal_S);
-            oscillators.phases[0][led] = len;
-            oscillators.phases[1][led] = unnormal_C / len;
-            oscillators.phases[2][led] = unnormal_S / len;
+            if (oscillators.amps[led] < oscillators.out_of_sync_decay)
+            {
+                oscillators.amps[led] = 1;
+                oscillators.delays[led] = beat_fract;
+
+            }
         }
     }
 }
@@ -558,8 +553,8 @@ static void Players_render(ws2811_t* ledstrip)
 
 void RGM_Oscillators_init()
 {
-    for (int i = 0; i < 3; ++i)
-        oscillators.phases[i] = malloc(sizeof(double) * rad_game_source.basic_source.n_leds);
+    oscillators.amps = malloc(sizeof(double) * rad_game_source.basic_source.n_leds);
+    oscillators.delays = malloc(sizeof(double) * rad_game_source.basic_source.n_leds);
     Oscillators_init();
     Players_init();
 }
@@ -614,10 +609,8 @@ int RGM_Oscillators_update_leds(ws2811_t* ledstrip)
 void RGM_Oscillators_destruct()
 {
     //free(oscillators.grad_colors);
-    for (int i = 0; i < 3; ++i)
-    {
-        free(oscillators.phases[i]);
-    }
+    free(oscillators.amps);
+    free(oscillators.delays);
 }
 
 void RGM_Oscillators_render_ready(ws2811_t* ledstrip)
@@ -656,9 +649,8 @@ static void GameWon_clear_leds()
 {
     for (int led = 0; led < rad_game_source.basic_source.n_leds; ++led)
     {
-        oscillators.phases[0][led] = 2.0;
-        oscillators.phases[1][led] = 1.0;
-        oscillators.phases[2][led] = 0.0;
+        oscillators.amps[led] = 2.0;
+        oscillators.delays[led] = 0.0;
     }
     oscillators.cur_beat = -1;
 }
@@ -720,4 +712,3 @@ int RGM_GameWon_update_leds(ws2811_t* ledstrip)
     }
     return 1;
 }
-

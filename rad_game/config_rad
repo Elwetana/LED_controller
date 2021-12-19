@@ -35,15 +35,15 @@ StorkCarol.wav
 # song 7
 WeThreeKingsDP.wav
 1
-161 0
+53.6667 0
 # --- end of songs ---
 # definitions of levels: keyword levels followed by number of levels
 levels 6
 #each level is song_index, game_mode, score, secret code, quoted filename.  Mode: 0 = oscil, 1 = ddr
 #song index is 0-based
-4 1 1000000 remember "sound/code03.wav"
 7 1 1000000 history "sound/code01.wav"
 0 0 1000000 event "sound/code02.wav"
+4 1 1000000 remember "sound/code03.wav"
 5 0 1000000 Ursula "sound/code04.wav"
 1 1 1000000 date "sound/code05.wav"
 6 0 1000000 Elizabeth "sound/code06.wav"

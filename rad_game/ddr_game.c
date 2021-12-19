@@ -64,7 +64,9 @@ static struct
     const int streak_grad_len;
     const double points_to_size_amp; //see get_emitor_length for usage
     const int points_per_color; //see fire bullet for usage
-    const int beats_to_target;
+    const double bullet_speed;
+    const double chance_per_second;
+
 }
 ddr_emitors =
 {
@@ -81,7 +83,8 @@ ddr_emitors =
     .streak_grad_len = 6,
     .points_to_size_amp = 0.25,
     .points_per_color = 100000,
-    .beats_to_target = 24
+    .bullet_speed = 5, //led/s
+    .chance_per_second = 0.5
 };
 
 void RGM_DDR_clear()
@@ -187,9 +190,8 @@ static void DdrEmitors_fire_bullet()
 {
     int emitor_len = 6;
     //int beats = // ddr_emitors.beats_to_target;
-    double target_speed = 5; //led/s
     int dist = ddr_emitors.data[0].player_pos - ddr_emitors.data[0].emitor_pos - emitor_len - 1; //all players have the same distance
-    double target_time = (double)dist / target_speed;
+    double target_time = (double)dist / ddr_emitors.bullet_speed;
     int beats = (int)(target_time * rad_game_songs.freq);
     double time_to_reach = (double)beats / rad_game_songs.freq;
 
@@ -205,7 +207,6 @@ static void DdrEmitors_fire_bullet()
     {
         if (ddr_emitors.data[p].n_bullets < C_MAX_DDR_BULLETS)
         {
-            int dist = ddr_emitors.data[p].player_pos - ddr_emitors.data[p].emitor_pos - emitor_len - 1;
             ddr_emitors.data[p].bullets[ddr_emitors.data[p].n_bullets].position = (double)ddr_emitors.data[p].emitor_pos + emitor_len + 1;
             ddr_emitors.data[p].bullets[ddr_emitors.data[p].n_bullets].moving_dir = +1;
             ddr_emitors.data[p].bullets[ddr_emitors.data[p].n_bullets].custom_data = col;
@@ -255,8 +256,7 @@ static void DdrEmitors_update()
     if ((int)beat > ddr_emitors.last_beat)
     {
         ddr_emitors.last_beat = (int)beat;
-        double chance_per_second = 0.5;
-        double p = 1 - exp(log(chance_per_second) / rad_game_songs.freq);
+        double p = 1 - exp(log(ddr_emitors.chance_per_second) / rad_game_songs.freq);
         if (random_01() < p)
         {
             DdrEmitors_fire_bullet();
