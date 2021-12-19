@@ -55,7 +55,7 @@ int RadInputHandler_process_input()
 #ifdef GAME_DEBUG
             printf("Player: %i, controller button: %s, state: %i\n", player, Controller_get_button_name(button), state);
 #endif // GAME_DEBUG
-            //if (state == BT_down) state = BT_pressed;
+            if (state == BT_down && (button == XBTN_LST_L || button == XBTN_LST_R)) state = BT_pressed;
             int button_index = state * C_MAX_XBTN + button;
             if (button_handlers[button_index])
             {
