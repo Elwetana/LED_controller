@@ -15,6 +15,7 @@ srcs = Split('''
     morse_source.c
     disco_source.c
     xmas_source.c
+    ip_source.c
     source_manager.c    
     colours.c
     listener.c

@@ -17,6 +17,7 @@
 #include "chaser_source.h"
 #include "morse_source.h"
 #include "disco_source.h"
+#include "ip_source.h"
 #include "xmas_source.h"
 #include "game_source.h"
 #include "rad_game_source.h"
@@ -43,6 +44,9 @@ enum SourceType string_to_SourceType(const char* source)
     }
     else if (!strncasecmp("DISCO", source, 5)) {
         return DISCO_SOURCE;
+    }
+    else if (!strncasecmp("IP", source, 2)) {
+        return IP_SOURCE;
     }
     else if (!strncasecmp("XMAS", source, 4)) {
         return XMAS_SOURCE;
@@ -101,6 +105,7 @@ void SourceManager_init(enum SourceType source_type, int led_count, int time_spe
     sources[CHASER_SOURCE] = &chaser_source.basic_source;
     sources[MORSE_SOURCE]  = &morse_source.basic_source;
     sources[DISCO_SOURCE]  = &disco_source.basic_source;
+    sources[IP_SOURCE]     = &ip_source.basic_source;
     sources[XMAS_SOURCE]   = &xmas_source.basic_source;
     sources[GAME_SOURCE]   = &game_source.basic_source;
     sources[RAD_GAME_SOURCE] = &rad_game_source.basic_source;

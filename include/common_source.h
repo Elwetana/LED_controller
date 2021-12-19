@@ -17,6 +17,7 @@ enum SourceType {
     CHASER_SOURCE,
     MORSE_SOURCE,
     DISCO_SOURCE,
+    IP_SOURCE,
     XMAS_SOURCE,
     GAME_SOURCE,
     RAD_GAME_SOURCE,

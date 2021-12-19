@@ -77,7 +77,8 @@ struct ArgOptions arg_options =
 { 
     .clear_on_exit = 0,
     .frame_time = FRAME_TIME,
-    .time_speed = 1
+    .time_speed = 1,
+    .source_type = IP_SOURCE
 };
 
 void parseargs(int argc, char **argv)

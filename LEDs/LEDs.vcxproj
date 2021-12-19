@@ -177,6 +177,7 @@ xcopy /y $(ProjectDir)..\rad_game\config_rad  $(ProjectDir)\rad_game\</Command>
     <ClCompile Include="..\game\player_object.c" />
     <ClCompile Include="..\game\pulse_object.c" />
     <ClCompile Include="..\game\stencil_handler.c" />
+    <ClCompile Include="..\ip_source.c" />
     <ClCompile Include="..\rad_game\ddr_game.c" />
     <ClCompile Include="..\rad_game\nonplaying_states.c" />
     <ClCompile Include="..\rad_game\oscillators.c" />
@@ -224,6 +225,7 @@ xcopy /y $(ProjectDir)..\rad_game\config_rad  $(ProjectDir)\rad_game\</Command>
     <ClInclude Include="..\include\fakesignal.h" />
     <ClInclude Include="..\include\faketime.h" />
     <ClInclude Include="..\include\fire_source.h" />
+    <ClInclude Include="..\include\ip_source.h" />
     <ClInclude Include="..\include\nonplaying_states.h" />
     <ClInclude Include="..\include\oscillators.h" />
     <ClInclude Include="..\include\rad_game_source.h" />
