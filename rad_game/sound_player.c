@@ -266,8 +266,8 @@ long SoundPlayer_play(enum ESoundEffects new_effect)
     struct timespec now;
     clock_gettime(CLOCK_MONOTONIC_RAW, &now);
     uint64_t current_ns = now.tv_sec * (long long)1e9 + now.tv_nsec;
-    uint64_t time_running_us = (current_ns - start_ns) / (long)1e3;
-    long samples_consumed = time_running_us * samplerate / 1e6;
+    uint64_t time_running_us = (current_ns - start_ns) / 1000l;
+    long samples_consumed = time_running_us * samplerate / 1000000l;
     if(samples_supplied - samples_consumed < samples_in_buffer) 
     {
         int samples_read;

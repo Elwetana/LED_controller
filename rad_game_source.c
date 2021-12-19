@@ -182,10 +182,33 @@ RadGameSongs rad_game_songs =
     .time_offset = 0
 };
 
+int RadGameSong_update_freq(long t)
+{
+    if ((rad_game_songs.current_bpm_index < rad_game_songs.songs[rad_game_songs.current_song].n_bpms - 1) &&
+        (rad_game_songs.songs[rad_game_songs.current_song].bpm_switch[rad_game_songs.current_bpm_index + 1] < t))
+    {
+        printf("Song frequency changed\n");
+        rad_game_songs.current_bpm_index++;
+        rad_game_songs.current_beat += (rad_game_songs.freq * rad_game_songs.songs[rad_game_songs.current_song].bpm_switch[rad_game_songs.current_bpm_index] - 
+            rad_game_songs.freq * rad_game_songs.last_update) / 1e6;
+        rad_game_songs.freq = rad_game_songs.songs[rad_game_songs.current_song].bpms[rad_game_songs.current_bpm_index] / 60.0;
+        rad_game_songs.current_beat += (rad_game_songs.freq * t - 
+            rad_game_songs.freq * rad_game_songs.songs[rad_game_songs.current_song].bpm_switch[rad_game_songs.current_bpm_index]) / 1e6;
+        rad_game_songs.last_update = t;
+        return 1;
+    }
+    rad_game_songs.current_beat += (rad_game_songs.freq * t - rad_game_songs.freq * rad_game_songs.last_update) / 1e6;
+    rad_game_songs.last_update = t;
+    return 0;
+}
+
 static void start_current_song()
 {
     double bpm = rad_game_songs.songs[rad_game_songs.current_song].bpms[0];
     rad_game_songs.freq = bpm / 60.0;
+    rad_game_songs.current_bpm_index = 0;
+    rad_game_songs.current_beat = 0;
+    rad_game_songs.last_update = 0;
     SoundPlayer_start(rad_game_songs.songs[rad_game_songs.current_song].filename);
 }
 

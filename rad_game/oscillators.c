@@ -95,7 +95,7 @@ static void Oscillators_init()
 
 static int Oscillators_update_and_count()
 {
-    long beat = (long)(rad_game_songs.freq * RadGameSource_time_from_start_seconds());
+    long beat = (long)(rad_game_songs.current_beat);
     
     int in_sync = -1;
     if (oscillators.cur_beat < beat)
@@ -158,7 +158,7 @@ static void Oscillators_render(ws2811_t* ledstrip, double unhide_pattern, int do
     //printf("Time %f\n", time_seconds);
     //=LET(a;IF(@t<Shift; EXP(K * (1 - Shift)); EXP(-K * Shift)); a * A * EXP(K * freq * @t)-B)
     const double k = -2.0;
-    double beat_fract = (rad_game_songs.freq * RadGameSource_time_from_start_seconds() - oscillators.cur_beat);
+    double beat_fract = (rad_game_songs.current_beat - oscillators.cur_beat);
     double A = 1.0 / (1 - exp(k));
     double B = A - 1;
     double expft = exp(k * beat_fract);
@@ -428,7 +428,7 @@ void RGM_Oscillators_player_hit(int player_index, enum ERAD_COLOURS colour)
     int affected_leds[C_MAX_CONTROLLERS * (2 * C_MAX_CONTROLLERS + 1) + 1] = { 0 }; //(2 * C_MAX_CONTROLLERS + 1) is the maximum width affected by one player, assuming single_strike_width == 1
     int same_beat_players[C_MAX_CONTROLLERS] = { -1 };
     double hit_boost[] = { 1, 2, 3, 4, 5 }; //there must be C_MAX_CONTROLLERS + 1 numbers here
-    double beat_fract = (rad_game_songs.freq * RadGameSource_time_from_start_seconds() - oscillators.cur_beat);
+    double beat_fract = (rad_game_songs.current_beat - oscillators.cur_beat);
     int player_pos = round(osc_players.pos[player_index].position);
 
     //check if we matched the beat, distance and colour
@@ -586,13 +586,14 @@ int RGM_Oscillators_update_leds(ws2811_t* ledstrip)
         long score = 9999900 * oscillators.points / oscillators.cur_beat;
         RadGameLevel_level_finished(score);
     }
-    //todo else -- check if bpm freq had not changed
+    //else -- check if bpm freq had not changed
+    RadGameSong_update_freq(time_pos);
     double in_sync = Oscillators_update_and_count();
     if (in_sync > -1)
     {
         completed = in_sync / (rad_game_source.basic_source.n_leds - 2.0 * oscillators.end_zone_width);
         oscillators.points += completed;
-        if (oscillators.cur_beat % 20 == 0) 
+        if (oscillators.cur_beat % 50 == 0) 
         {
             printf("Leds in sync: %f\n", in_sync);
         }
@@ -688,7 +689,7 @@ int RGM_GameWon_update_leds(ws2811_t* ledstrip)
             GameWon_set_colour(ledstrip, 0x0);
             break;
         case 3: //random song
-            oscillators.cur_beat = (long)(rad_game_songs.freq * RadGameSource_time_from_start_seconds());
+            oscillators.cur_beat = (long)(rad_game_songs.current_beat);
             Oscillators_render(ledstrip, 1, 1);
             break;
         default:

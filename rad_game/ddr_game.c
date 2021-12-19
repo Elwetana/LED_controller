@@ -83,7 +83,7 @@ ddr_emitors =
     .streak_grad_len = 6,
     .points_to_size_amp = 0.25,
     .points_per_color = 100000,
-    .bullet_speed = 5, //led/s
+    .bullet_speed = 10, //led/s
     .chance_per_second = 0.5
 };
 
@@ -189,7 +189,6 @@ static void DdrEmitors_delete_bullet(int player_index, int bullet_index)
 static void DdrEmitors_fire_bullet()
 {
     int emitor_len = 6;
-    //int beats = // ddr_emitors.beats_to_target;
     int dist = ddr_emitors.data[0].player_pos - ddr_emitors.data[0].emitor_pos - emitor_len - 1; //all players have the same distance
     double target_time = (double)dist / ddr_emitors.bullet_speed;
     int beats = (int)(target_time * rad_game_songs.freq);
@@ -211,12 +210,13 @@ static void DdrEmitors_fire_bullet()
             ddr_emitors.data[p].bullets[ddr_emitors.data[p].n_bullets].moving_dir = +1;
             ddr_emitors.data[p].bullets[ddr_emitors.data[p].n_bullets].custom_data = col;
             ddr_emitors.data[p].bullets[ddr_emitors.data[p].n_bullets].speed = (double)dist / time_to_reach;
+            ddr_emitors.data[p].bullets[ddr_emitors.data[p].n_bullets].target_beat = (int)rad_game_songs.current_beat + beats;
             ddr_emitors.data[p].n_bullets++;
         }
     }
 }
 
-static void DdrEmitors_update_bullets()
+static void DdrEmitors_update_bullets(int freq_changed)
 {
     double time_elapsed = ((rad_game_source.basic_source.time_delta / (long)1e3) / (double)1e6);
     for (int p = 0; p < rad_game_source.n_players; ++p)
@@ -225,6 +225,13 @@ static void DdrEmitors_update_bullets()
         int b = 0;
         while (b < ddr_emitors.data[p].n_bullets)
         {
+            if (freq_changed) //we have to recalculate the bullet speed
+            {
+                double dist = ddr_emitors.data[p].player_pos - ddr_emitors.data[p].bullets[b].position;
+                double time_to_reach = (ddr_emitors.data[p].bullets[b].target_beat - rad_game_songs.current_beat) / rad_game_songs.freq;
+                ddr_emitors.data[p].bullets[ddr_emitors.data[p].n_bullets].speed = dist / time_to_reach;
+            }
+
             double distance_moved = time_elapsed * ddr_emitors.data[p].bullets[b].speed;
             double miss_distance = ddr_emitors.data[p].bullets[b].speed / rad_game_songs.freq * ddr_emitors.hit_intervals[DHI_MISS];
             if ((ddr_emitors.data[p].bullets[b].position + distance_moved) > (ddr_emitors.data[p].player_pos + miss_distance))
@@ -248,10 +255,8 @@ static void DdrEmitors_update_bullets()
 
 static void DdrEmitors_update()
 {
-    DdrEmitors_update_bullets();
     //check whether we want to emit a new bullet
-    double time_seconds = RadGameSource_time_from_start_seconds();
-    double beat = time_seconds * rad_game_songs.freq;
+    double beat = rad_game_songs.current_beat;
     //todo -- emit bullets in other phases of the beat?
     if ((int)beat > ddr_emitors.last_beat)
     {
@@ -421,11 +426,12 @@ int RGM_DDR_update_leds(ws2811_t* ledstrip)
         RadGameLevel_level_finished(total_score);
         return 1;
     }
-    //todo else -- check if bpm freq had not changed
+    //else -- check if bpm freq had not changed
+    int freq_changed = RadGameSong_update_freq(time_pos);
     //update emitors
     DdrEmitors_update();
     //update bullets
-    DdrEmitors_update_bullets();
+    DdrEmitors_update_bullets(freq_changed);
 
     //render emitor
     DdrEmitors_render_emitors(ledstrip);

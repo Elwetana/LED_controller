@@ -78,7 +78,7 @@ struct RadGameSong
 {
 	char* filename;
 	double* bpms;
-	long* bpm_switch; //!< time in ms from the start of the song
+	long* bpm_switch; //!< time in us from the start of the song
 	int n_bpms;
 };
 
@@ -88,10 +88,19 @@ typedef struct SRadGameSongs
 	double freq;		//!< frequency (in Hz) of the current song
 	int n_songs;
 	int current_song;
+	int current_bpm_index;
+	double current_beat;
+	long last_update;
 	long time_offset;	//< in ms
 } RadGameSongs;
 
 extern RadGameSongs rad_game_songs;
+/*!
+ * @brief check if the song frequency haven't changed
+ * @param t current song elapsed time in microseconds
+ * @return 1 if there is new frequency, 0 if the frequency is the same
+*/
+int RadGameSong_update_freq(long t);
 void RadGameSong_start_random();
 
 typedef struct SRadMovingObject
@@ -99,6 +108,7 @@ typedef struct SRadMovingObject
 	double position;
 	double speed;		//!< in leds/s
 	int custom_data;	//!< user defined
+	int target_beat;
 	signed char moving_dir; //< 0 when not moving, +1 when moving right, -1 when moving left
 } RadMovingObject;
 
