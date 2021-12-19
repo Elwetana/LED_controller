@@ -93,6 +93,7 @@ void RGM_DDR_clear()
         ddr_emitors.data[em].points = 1;
         ddr_emitors.data[em].streak = 0;
     }
+    ddr_emitors.last_beat = 0;
 }
 
 void RGM_DDR_init()
@@ -181,8 +182,9 @@ static void DdrEmitors_delete_bullet(int player_index, int bullet_index)
  * @brief will fire a bullet for all players, all of them with the same color
  * @param beats how many beats to reach the player
 */
-static void DdrEmitors_fire_bullet(int beats)
+static void DdrEmitors_fire_bullet()
 {
+    int beats = ddr_emitors.beats_to_target;
     int total_points = 0;
     for (int p = 0; p < rad_game_source.n_players; ++p)
     {
@@ -249,7 +251,7 @@ static void DdrEmitors_update()
         ddr_emitors.last_beat = (int)beat;
         if (random_01() > 0.1f)
         {
-            DdrEmitors_fire_bullet(ddr_emitors.beats_to_target);
+            DdrEmitors_fire_bullet();
         }
     }
     //check reactions
