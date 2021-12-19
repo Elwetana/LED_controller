@@ -180,11 +180,19 @@ static void DdrEmitors_delete_bullet(int player_index, int bullet_index)
 
 /*!
  * @brief will fire a bullet for all players, all of them with the same color
+ *      we want the bullets to have roughly same speed, and take whole number of beats
  * @param beats how many beats to reach the player
 */
 static void DdrEmitors_fire_bullet()
 {
-    int beats = ddr_emitors.beats_to_target;
+    int emitor_len = 6;
+    //int beats = // ddr_emitors.beats_to_target;
+    double target_speed = 5; //led/s
+    int dist = ddr_emitors.data[0].player_pos - ddr_emitors.data[0].emitor_pos - emitor_len - 1; //all players have the same distance
+    double target_time = (double)dist / target_speed;
+    int beats = (int)(target_time * rad_game_songs.freq);
+    double time_to_reach = (double)beats / rad_game_songs.freq;
+
     int total_points = 0;
     for (int p = 0; p < rad_game_source.n_players; ++p)
     {
@@ -197,9 +205,7 @@ static void DdrEmitors_fire_bullet()
     {
         if (ddr_emitors.data[p].n_bullets < C_MAX_DDR_BULLETS)
         {
-            int emitor_len = 6;
             int dist = ddr_emitors.data[p].player_pos - ddr_emitors.data[p].emitor_pos - emitor_len - 1;
-            double time_to_reach = (double)beats / rad_game_songs.freq;
             ddr_emitors.data[p].bullets[ddr_emitors.data[p].n_bullets].position = (double)ddr_emitors.data[p].emitor_pos + emitor_len + 1;
             ddr_emitors.data[p].bullets[ddr_emitors.data[p].n_bullets].moving_dir = +1;
             ddr_emitors.data[p].bullets[ddr_emitors.data[p].n_bullets].custom_data = col;
@@ -249,7 +255,9 @@ static void DdrEmitors_update()
     if ((int)beat > ddr_emitors.last_beat)
     {
         ddr_emitors.last_beat = (int)beat;
-        if (random_01() > 0.1f)
+        double chance_per_second = 0.5;
+        double p = 1 - exp(log(chance_per_second) / rad_game_songs.freq);
+        if (random_01() < p)
         {
             DdrEmitors_fire_bullet();
         }
