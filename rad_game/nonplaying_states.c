@@ -39,8 +39,7 @@ void Ready_clear()
 {
     GameMode_clear();
     GameMode_lock_current_player();
-    GameMode_set_state(1);
-    SoundPlayer_play(SE_PressStart);
+    GameMode_set_state(0);
 }
 
 /*!
@@ -59,6 +58,11 @@ int Ready_update_leds(ws2811_t* ledstrip, void (*get_intervals)(int, int*, int*)
     static const double effect_freq = 2.0; //Hz
     int cur_player = GameMode_get_current_player();
     int state = GameMode_get_state();
+    if (state == 0)
+    {
+        SoundPlayer_play(SE_PressStart);
+        GameMode_set_state(1);
+    }
     if (state == 1 || state == 3)       //press start to begin or name of the player is playing
     {
         int n = SoundPlayer_play(SE_N_EFFECTS);
