@@ -272,7 +272,7 @@ void MovingLed_move(moving_led_t* moving_led)
         }
         moving_led->origin = geometry.neighbors[moving_led->origin][moving_led->direction];
         if ((geometry.neighbors[moving_led->origin][moving_led->direction] == -1) // we cannot keep moving in this direction
-            || moving_led->stop_at_destination)                                   // or we are supposed to stop at destination
+            || (moving_led->destination == moving_led->origin && moving_led->stop_at_destination))  // or we are supposed to stop at destination and we have arrived
         {
             moving_led->distance = 0.0f;
             moving_led->is_moving = 0;
@@ -916,6 +916,87 @@ static int update_leds_fireworks(ws2811_t* ledstrip)
 
 #pragma endregion
 
+#pragma region Sledges
+
+#define C_SLEDGES_TOTAL 16
+static moving_led_t sledges[C_SLEDGES_TOTAL];
+static ws2811_led_t sledge_colors[C_SLEDGES_TOTAL];
+static int n_sledges = 0;
+const double acc = 1.0;  //led/s^2
+
+static void Sledges_init()
+{
+    for (int si = 0; si < C_SLEDGES_TOTAL; ++si)
+    {
+        sledges[si].origin = xmas_source.basic_source.n_leds - 1;
+        sledges[si].direction = BACKWARD;
+        sledges[si].destination = 0;
+        sledges[si].speed = 0.0;
+        sledges[si].distance = 0;
+        sledges[si].stop_at_destination = 1;
+        sledges[si].is_moving = 0;
+        int i = random_01() * xmas_source.basic_source.gradient.n_colors;
+        sledge_colors[si] = xmas_source.basic_source.gradient.colors[i];
+    }
+    sledges[0].is_moving = 1;
+}
+
+/*!
+ * @brief The idea is to spawn 16 "sledges" in regular intervals and then wait untill the last one gets to the bottom, wait and restart
+*/
+static void Sledges_update()
+{
+    double time_seconds = (double)(xmas_source.basic_source.time_delta) / (double)1e9;
+    int moving_sledges = 0;
+    for (int si = 0; si < C_SLEDGES_TOTAL; ++si)
+    {
+        if (sledges[si].is_moving)
+        {
+            sledges[si].speed += acc * time_seconds;
+            MovingLed_move(&sledges[si]);
+            if (si < C_SLEDGES_TOTAL - 1 && sledges[si + 1].is_moving == 0 && sledges[si].origin < xmas_source.basic_source.n_leds * (1.0 - 1.0 / 64.0))
+            {
+                sledges[si + 1].is_moving = 1;
+            }
+            moving_sledges++;
+            //printf("si %i, origin: %i, stop: %i, dist: %f, speed: %f\n", si, sledges[si].origin, sledges[si].next_stop, sledges[si].distance, sledges[si].speed);
+        }
+    }
+    if (moving_sledges == 0)
+    {
+        Sledges_init();
+    }
+}
+
+static void Sledges_render(ws2811_t* ledstrip)
+{
+    for (int led = 0; led < xmas_source.basic_source.n_leds; ++led)
+    {
+        ledstrip->channel[0].leds[led] = 0x0;
+    }
+    for (int si = 0; si < C_SLEDGES_TOTAL; ++si)
+    {
+        if (sledges[si].is_moving)
+        {
+            float at_origin, at_next_stop;
+            MovingLed_get_intensity(&sledges[si], &at_origin, &at_next_stop);
+            ledstrip->channel[0].leds[sledges[si].origin] = multiply_rgb_color(sledge_colors[si], at_origin);
+            ledstrip->channel[0].leds[sledges[si].next_stop] = multiply_rgb_color(sledge_colors[si], at_next_stop);
+            //printf("or: %i, ns: %i, @or %f, @ns %f\n", sledges[si].origin, sledges[si].next_stop, at_origin, at_next_stop);
+        }
+    }
+}
+
+
+static int update_leds_sledges(ws2811_t* ledstrip)
+{
+    Sledges_update();
+    Sledges_render(ledstrip);
+    return 1;
+}
+
+#pragma endregion
+
 #pragma region XmasSource
 
 static int update_leds_debug(ws2811_t* ledstrip)
@@ -951,6 +1032,8 @@ XMAS_MODE_t string_to_xmas_mode(const char* txt)
         return XM_JOY_PATTERN;
     if (strcasecmp(txt, "fireworks") == 0)
         return XM_FIREWORKS;
+    if (strcasecmp(txt, "sledges") == 0)
+        return XM_SLEDGES;
     return N_XMAS_MODES;
 }
 
@@ -1155,6 +1238,8 @@ int XmasSource_update_leds(int frame, ws2811_t* ledstrip)
         return update_leds_pattern(ledstrip);
     case XM_FIREWORKS:
         return update_leds_fireworks(ledstrip);
+    case XM_SLEDGES:
+        return update_leds_sledges(ledstrip);
     case N_XMAS_MODES:
         printf("Invalid Xmas Source Mode in frame %d\n", frame);
         break;
@@ -1185,6 +1270,7 @@ void XmasSource_destruct_current_mode()
         free(static_flares);
     case XM_GRADIENT:
     case XM_JOY_PATTERN:
+    case XM_SLEDGES:
         break;
     case N_XMAS_MODES:
         break;
@@ -1225,6 +1311,9 @@ void XmasSource_init_current_mode()
         break;
     case XM_FIREWORKS:
         Fireworks_init();
+        break;
+    case XM_SLEDGES:
+        Sledges_init();
         break;
     case N_XMAS_MODES:
         break;

@@ -83,15 +83,15 @@ void SourceManager_construct_sources()
     }
 }
 
-void set_source(enum SourceType source_type, uint64_t cur_time)
+static void set_source(enum SourceType source_type, uint64_t cur_time)
 {
-    sources[source_type]->init(led_param.led_count, led_param.time_speed, cur_time);
     SourceManager_update_leds = sources[source_type]->update;
     SourceManager_destruct_source = sources[source_type]->destruct;
     SourceManager_process_message = sources[source_type]->process_message;
     current_time = &sources[source_type]->current_time;
     time_delta = &sources[source_type]->time_delta;
     active_source = source_type;
+    sources[source_type]->init(led_param.led_count, led_param.time_speed, cur_time);
 }
 
 void SourceManager_init(enum SourceType source_type, int led_count, int time_speed, uint64_t cur_time)
@@ -122,6 +122,12 @@ void SourceManager_set_time(uint64_t time_ns, uint64_t time_delta_ns)
     *time_delta = time_delta_ns;
 }
 
+void SourceManager_switch_to_source(enum SourceType source)
+{
+    SourceManager_destruct_source();
+    set_source(source, current_time);
+}
+
 inline int ishex(int x)
 {
     return (x >= '0' && x <= '9') ||
@@ -131,7 +137,7 @@ inline int ishex(int x)
 
 // Decode URL-encoded strings
 // https://rosettacode.org/wiki/URL_decoding#C
-int64_t decode(const char* s, char* dec)
+static int64_t decode(const char* s, char* dec)
 {
     char* o;
     const char* end = s + strlen(s);
@@ -149,7 +155,7 @@ int64_t decode(const char* s, char* dec)
 }
 
 
-void process_source_message(const char* param)
+static void process_source_message(const char* param)
 {
     char source_name[64];
     int color = -1;

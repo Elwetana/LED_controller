@@ -13,6 +13,7 @@ int (*SourceManager_update_leds)(int, ws2811_t*);
 void (*SourceManager_destruct_source)();
 void (*SourceManager_process_message)(const char*);
 void SourceManager_set_time(uint64_t time_ns, uint64_t delta_ns);
+void SourceManager_switch_to_source(enum SourceType source);
 void check_message();
 
 

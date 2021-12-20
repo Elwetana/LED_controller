@@ -33,6 +33,7 @@
 
 #include "colours.h"
 #include "common_source.h"
+#include "source_manager.h"
 #include "rad_game_source.h"
 #include "rad_input_handler.h"
 #include "sound_player.h"
@@ -566,6 +567,11 @@ void RadGameSource_init(int n_leds, int time_speed, uint64_t current_time)
     rad_game_source.start_time = current_time;
     rad_game_source.n_players = Controller_get_n_players();
     printf("Players detected: %i\n", rad_game_source.n_players);
+    if (rad_game_source.n_players == 0)
+    {
+        SourceManager_switch_to_source(IP_SOURCE);
+        return;
+    }
 
     read_rad_game_config();
     /*

@@ -34,6 +34,7 @@ typedef struct SourceColors
 typedef struct SourceGradient
 {
     ws2811_led_t colors[GRADIENT_N];
+    int n_colors;
 } SourceGradient;
 
 typedef struct BasicSource
