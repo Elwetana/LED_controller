@@ -921,7 +921,6 @@ static int update_leds_fireworks(ws2811_t* ledstrip)
 #define C_SLEDGES_TOTAL 16
 static moving_led_t sledges[C_SLEDGES_TOTAL];
 static ws2811_led_t sledge_colors[C_SLEDGES_TOTAL];
-static int n_sledges = 0;
 const double acc = 1.0;  //led/s^2
 
 static void Sledges_init()

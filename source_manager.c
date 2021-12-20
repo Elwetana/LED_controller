@@ -125,7 +125,7 @@ void SourceManager_set_time(uint64_t time_ns, uint64_t time_delta_ns)
 void SourceManager_switch_to_source(enum SourceType source)
 {
     SourceManager_destruct_source();
-    set_source(source, current_time);
+    set_source(source, *current_time);
 }
 
 inline int ishex(int x)
@@ -155,7 +155,7 @@ static int64_t decode(const char* s, char* dec)
 }
 
 
-static void process_source_message(const char* param)
+void process_source_message(const char* param)
 {
     char source_name[64];
     int color = -1;
