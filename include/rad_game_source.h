@@ -80,6 +80,8 @@ struct RadGameSong
 	double* bpms;
 	long* bpm_switch; //!< time in us from the start of the song
 	int n_bpms;
+    long delay;
+    int signature;
 };
 
 typedef struct SRadGameSongs

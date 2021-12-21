@@ -185,6 +185,7 @@ RadGameSongs rad_game_songs =
 
 int RadGameSong_update_freq(long t)
 {
+    t += rad_game_songs.time_offset;
     if ((rad_game_songs.current_bpm_index < rad_game_songs.songs[rad_game_songs.current_song].n_bpms - 1) &&
         (rad_game_songs.songs[rad_game_songs.current_song].bpm_switch[rad_game_songs.current_bpm_index + 1] < t))
     {
@@ -210,6 +211,7 @@ static void start_current_song()
     rad_game_songs.current_bpm_index = 0;
     rad_game_songs.current_beat = 0;
     rad_game_songs.last_update = 0;
+    rad_game_songs.time_offset = rad_game_songs.songs[rad_game_songs.current_song].delay * 1000;
     SoundPlayer_start(rad_game_songs.songs[rad_game_songs.current_song].filename);
 }
 
@@ -295,17 +297,15 @@ void Player_freq_dec(int player_index)
 void Player_time_offset_inc(int player_index)
 {
     (void)player_index;
-    rad_game_songs.time_offset += 50;
-    rad_game_source.start_time += 50 * 1000000;
-    printf("Time offset increased to %li ms\n", rad_game_songs.time_offset);
+    rad_game_songs.time_offset += 5000;
+    printf("Time offset increased to %li us\n", rad_game_songs.time_offset);
 }
 
 void Player_time_offset_dec(int player_index)
 {
     (void)player_index;
-    rad_game_songs.time_offset -= 50;
-    rad_game_source.start_time -= 50 * 1000000;
-    printf("Time offset decreased to %li ms\n", rad_game_songs.time_offset);
+    rad_game_songs.time_offset -= 5000;
+    printf("Time offset decreased to %li us\n", rad_game_songs.time_offset);
 }
 
 
@@ -478,8 +478,8 @@ static void read_songs_config(FILE* config, int n_songs)
             printf("Error reading song config -- probably missing BPM definition for song %s\n", fn);
             exit(-15);
         }
-        n = sscanf(buf, "%i", &rad_game_songs.songs[song].n_bpms);
-        if (n != 1) { printf("Error reading n_bmps in R&D game config for level %i\n", song); exit(10); }
+        n = sscanf(buf, "%i %li %i", &rad_game_songs.songs[song].n_bpms, &rad_game_songs.songs[song].delay, &rad_game_songs.songs[song].signature);
+        if (n != 3) { printf("Error reading n_bmps in R&D game config for level %i\n", song); exit(10); }
         rad_game_songs.songs[song].bpms = (double*)malloc(sizeof(double) * rad_game_songs.songs[song].n_bpms);
         rad_game_songs.songs[song].bpm_switch = (long*)malloc(sizeof(long) * rad_game_songs.songs[song].n_bpms);
         for (int bpm = 0; bpm < rad_game_songs.songs[song].n_bpms; bpm++)
