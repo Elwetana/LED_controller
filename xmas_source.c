@@ -919,8 +919,9 @@ static int update_leds_fireworks(ws2811_t* ledstrip)
 #pragma region Sledges
 
 #define C_SLEDGES_TOTAL 16
+#define C_TAIL_MAX 32
 static moving_led_t sledges[C_SLEDGES_TOTAL];
-static ws2811_led_t sledge_colors[C_SLEDGES_TOTAL];
+static hsl_t sledge_colors[C_SLEDGES_TOTAL];
 const double acc = 1.0;  //led/s^2
 
 static void Sledges_init()
@@ -935,7 +936,7 @@ static void Sledges_init()
         sledges[si].stop_at_destination = 1;
         sledges[si].is_moving = 0;
         int i = random_01() * xmas_source.basic_source.gradient.n_colors;
-        sledge_colors[si] = xmas_source.basic_source.gradient.colors[i];
+        rgb2hsl(xmas_source.basic_source.gradient.colors[i], &sledge_colors[si]);
     }
     sledges[0].is_moving = 1;
 }
@@ -973,14 +974,33 @@ static void Sledges_render(ws2811_t* ledstrip)
     {
         ledstrip->channel[0].leds[led] = 0x0;
     }
+    hsl_t tail[C_TAIL_MAX + 1]; //+1 is for the last black led
     for (int si = 0; si < C_SLEDGES_TOTAL; ++si)
     {
         if (sledges[si].is_moving)
         {
+            float tail_len = 1 + sledges[si].speed / 2.0f;
+            if ((int)tail_len >= C_TAIL_MAX) tail_len = C_TAIL_MAX - 1;
+            hsl_t black;
+            rgb2hsl(0x0, &black);
+            tail[0] = sledge_colors[si];
+            for (int i = 1; i < (int)tail_len; ++i)
+            {
+                lerp_hsl(&tail[0], &black, (float)i/tail_len,  &tail[i]);
+            }
+            tail[(int)tail_len] = black;
             float at_origin, at_next_stop;
             MovingLed_get_intensity(&sledges[si], &at_origin, &at_next_stop);
-            ledstrip->channel[0].leds[sledges[si].origin] = multiply_rgb_color(sledge_colors[si], at_origin);
-            ledstrip->channel[0].leds[sledges[si].next_stop] = multiply_rgb_color(sledge_colors[si], at_next_stop);
+            hsl_t led_col;
+            lerp_hsl(&black, &tail[0], at_next_stop, &led_col);
+            ledstrip->channel[0].leds[sledges[si].next_stop] = hsl2rgb(&led_col);
+            for (int i = 1; i < (int)tail_len + 1; ++i)
+            {
+                lerp_hsl(&tail[i - 1], &tail[i], at_next_stop, &led_col);
+                ledstrip->channel[0].leds[sledges[si].next_stop + i] = hsl2rgb(&led_col);
+            }
+
+            //ledstrip->channel[0].leds[sledges[si].origin] = multiply_rgb_color(sledge_colors[si], at_origin);
             //printf("or: %i, ns: %i, @or %f, @ns %f\n", sledges[si].origin, sledges[si].next_stop, at_origin, at_next_stop);
         }
     }
