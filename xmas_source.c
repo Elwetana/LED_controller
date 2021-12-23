@@ -982,13 +982,17 @@ static void Sledges_render(ws2811_t* ledstrip)
             float tail_len = 1 + sledges[si].speed / 2.0f;
             if ((int)tail_len >= C_TAIL_MAX) tail_len = C_TAIL_MAX - 1;
             hsl_t black;
-            rgb2hsl(0x0, &black);
+            black = sledge_colors[si];
+            black.s *= 0.01;
+            black.l *= 0.01;
             tail[0] = sledge_colors[si];
-            for (int i = 1; i < (int)tail_len; ++i)
+            for (int i = 1; i < (int)tail_len + 1; ++i)
             {
-                lerp_hsl(&tail[0], &black, (float)i/tail_len,  &tail[i]);
+                tail[i] = tail[0];
+                float aten = (tail_len - i)/tail_len;
+                tail[i].l *= aten; 
+                tail[i].s *= (0.5f + aten/2.0f);
             }
-            tail[(int)tail_len] = black;
             float at_origin, at_next_stop;
             MovingLed_get_intensity(&sledges[si], &at_origin, &at_next_stop);
             hsl_t led_col;
@@ -999,9 +1003,6 @@ static void Sledges_render(ws2811_t* ledstrip)
                 lerp_hsl(&tail[i - 1], &tail[i], at_next_stop, &led_col);
                 ledstrip->channel[0].leds[sledges[si].next_stop + i] = hsl2rgb(&led_col);
             }
-
-            //ledstrip->channel[0].leds[sledges[si].origin] = multiply_rgb_color(sledge_colors[si], at_origin);
-            //printf("or: %i, ns: %i, @or %f, @ns %f\n", sledges[si].origin, sledges[si].next_stop, at_origin, at_next_stop);
         }
     }
 }
