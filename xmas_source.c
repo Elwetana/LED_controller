@@ -43,7 +43,9 @@ static struct {
     int gradient_speed;
     //pattern
     int beat_length;
-    //
+    //valeria
+    float valeria_speed;
+    //random
     int is_random;
 } config;
 
@@ -1021,6 +1023,70 @@ static int update_leds_sledges(ws2811_t* ledstrip)
 
 #pragma endregion
 
+#pragma region Valeria
+
+static long valeria_start;
+static int valeria_color_index = 42;
+
+static void Valeria_init()
+{
+    valeria_start = current_time_in_ms();
+}
+
+static int update_leds_valeria(ws2811_t* ledstrip)
+{
+    int phase = 0;
+    float left_dist = config.valeria_speed * (current_time_in_ms() - valeria_start) / 1000.0;
+    while (left_dist > xmas_source.basic_source.n_leds)
+    {
+        left_dist -= xmas_source.basic_source.n_leds;
+        phase++;
+    }
+    phase %= 4;
+    float right_dist = (float)xmas_source.basic_source.n_leds - left_dist;
+    //several options are possible:
+    // Phase 0:
+    // 0 < left_dist < right_dist < N -> left colour from 0 to left led, black from left to right, right colour from right to N
+    // 0 < right_dist < left_dist < N -> left colour from 0 to right led, union colour from right to left, right colour from left to N
+    // Phase 1:
+    // 0 < left_dist < right_dist < N -> right colour from 0 to left led, union from left to right, left colour from right to N
+    // 0 < right_dist < left_dist < N -> right colour from 0 to right led, black colour from right to left, left colour from left to N
+    // Phase 2:
+    // 0 < left_dist < right_dist < N -> right colour from 0 to left led, black from left to right, left colour from right to N
+    // 0 < right_dist < left_dist < N -> right colour from 0 to right led, union colour from right to left, left colour from left to N
+    // Phase 3:
+    // 0 < left_dist < right_dist < N -> left colour from 0 to left led, union from left to right, right colour from right to N
+    // 0 < right_dist < left_dist < N -> left colour from 0 to right led, black colour from right to left, right colour from left to N
+
+    ws2811_led_t left_col, mid_col, right_col;
+    left_col = (phase == 0 || phase == 3) ? xmas_source.basic_source.gradient.colors[valeria_color_index] : xmas_source.basic_source.gradient.colors[valeria_color_index + 1];
+    right_col = (phase == 0 || phase == 3) ? xmas_source.basic_source.gradient.colors[valeria_color_index + 1] : xmas_source.basic_source.gradient.colors[valeria_color_index];
+    mid_col = ((left_dist < right_dist && (phase == 0 || phase == 2)) || left_dist > right_dist && (phase == 1 || phase == 3)) ?
+        0x0 : xmas_source.basic_source.gradient.colors[valeria_color_index + 2];
+    int left_led, right_led;
+    left_led = (left_dist < right_dist) ? left_dist : right_dist;
+    right_led = (left_dist < right_dist) ? right_dist : left_dist;
+    float t = left_led - (int)left_led;
+    for (int led = 0; led < (int)left_led; ++led)
+    {
+        ledstrip->channel[0].leds[led] = left_col;
+    }
+    ledstrip->channel[0].leds[(int)left_led] = multiply_rgb_color(left_col, t);
+    for (int led = (int)left_led + 1; led < (int)right_led; ++led)
+    {
+        ledstrip->channel[0].leds[led] = mid_col;
+    }
+    ledstrip->channel[0].leds[(int)right_led] = multiply_rgb_color(right_col, t);
+    for (int led = (int)right_led + 1; led < xmas_source.basic_source.n_leds; ++led)
+    {
+        ledstrip->channel[0].leds[led] = right_col;
+    }
+
+
+}
+
+#pragma endregion
+
 #pragma region XmasSource
 
 static int update_leds_debug(ws2811_t* ledstrip)
@@ -1058,6 +1124,8 @@ XMAS_MODE_t string_to_xmas_mode(const char* txt)
         return XM_FIREWORKS;
     if (strcasecmp(txt, "sledges") == 0)
         return XM_SLEDGES;
+    if (strcasecmp(txt, "valeria") == 0)
+        return XM_VALERIA;
     return N_XMAS_MODES;
 }
 
@@ -1238,6 +1306,11 @@ int XmasSource_process_config(const char* name, const char* value)
         config.beat_length = atoi(value);
         return 1;
     }
+    //valeria
+    if (strcasecmp(name, "valeria_speed") == 0) {
+        config.valeria_speed = strtof(value, NULL);
+        return 1;
+    }
     printf("Unknown config option %s with value %s\n", name, value);
     return 0;
 }
@@ -1270,6 +1343,8 @@ int XmasSource_update_leds(int frame, ws2811_t* ledstrip)
         return update_leds_fireworks(ledstrip);
     case XM_SLEDGES:
         return update_leds_sledges(ledstrip);
+    case XM_VALERIA:
+        return update_leds_valeria(ledstrip);
     case N_XMAS_MODES:
         printf("Invalid Xmas Source Mode in frame %d\n", frame);
         break;
@@ -1301,6 +1376,7 @@ void XmasSource_destruct_current_mode()
     case XM_GRADIENT:
     case XM_JOY_PATTERN:
     case XM_SLEDGES:
+    case XM_VALERIA:
         break;
     case N_XMAS_MODES:
         break;
@@ -1344,6 +1420,9 @@ void XmasSource_init_current_mode()
         break;
     case XM_SLEDGES:
         Sledges_init();
+        break;
+    case XM_VALERIA:
+        Valeria_init();
         break;
     case N_XMAS_MODES:
         break;

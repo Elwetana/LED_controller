@@ -125,6 +125,7 @@
     </PostBuildEvent>
     <PreBuildEvent>
       <Command>xcopy /y $(ProjectDir)..\config  $(ProjectDir)
+xcopy /y $(ProjectDir)..\config.ini  $(ProjectDir)
 xcopy /y $(ProjectDir)..\rad_game\config_rad  $(ProjectDir)\rad_game\</Command>
     </PreBuildEvent>
   </ItemDefinitionGroup>
