@@ -43,6 +43,8 @@ static struct {
     int gradient_speed;
     //pattern
     int beat_length;
+    //
+    int is_random;
 } config;
 
 typedef struct GlitterConfig
@@ -215,6 +217,8 @@ static int XmasSource_read_geometry()
 #pragma endregion
 
 #pragma region Common
+
+static long random_time_start;
 
 typedef struct PeriodData {
     //all are times in ms
@@ -1238,9 +1242,15 @@ int XmasSource_process_config(const char* name, const char* value)
     return 0;
 }
 
+static void random_mode();
+
 //returns 1 if leds were updated, 0 if update is not necessary
 int XmasSource_update_leds(int frame, ws2811_t* ledstrip)
 {
+    if (config.is_random && current_time_in_ms() - random_time_start > 300000l)
+    {
+        random_mode();
+    }
     switch (xmas_source.mode)
     {
     case XM_SNOWFLAKES:
@@ -1340,6 +1350,18 @@ void XmasSource_init_current_mode()
     }
 }
 
+static void random_mode()
+{
+    int mode = random_01() * N_XMAS_MODES;
+    XmasSource_destruct_current_mode();
+    xmas_source.mode = (XMAS_MODE_t)mode;
+    XmasSource_init_current_mode();
+    xmas_source.first_update = 0;
+    printf("Switched random mode in XmasSource to: %i\n", mode);
+    config.is_random = 1;
+    random_time_start = current_time_in_ms();
+}
+
 // The whole message is e.g. LED MSG MODE?GLITTER
 // This function will only receive the part after LED MSG
 void XmasSource_process_message(const char* msg)
@@ -1371,7 +1393,8 @@ void XmasSource_process_message(const char* msg)
         XMAS_MODE_t mode = string_to_xmas_mode(payload);
         if (mode == N_XMAS_MODES)
         {
-            printf("Mode not recognized: %s\n", payload);
+            //printf("Mode not recognized: %s\n", payload);
+            random_mode();
             return;
         }
         XmasSource_destruct_current_mode();
@@ -1379,6 +1402,7 @@ void XmasSource_process_message(const char* msg)
         XmasSource_init_current_mode();
         xmas_source.first_update = 0;
         printf("Switched mode in XmasSource to: %s\n", payload);
+        config.is_random = 0;
     }
     else if (!strncasecmp(target, "DEBUG", 5))
     {
