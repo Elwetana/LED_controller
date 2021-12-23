@@ -206,8 +206,8 @@ osc_players =
 void RGM_Oscillators_player_move(int player_index, signed char dir)
 {
     if (osc_players.pos[player_index].moving_dir == 0 &&
-        osc_players.pos[player_index].position > oscillators.end_zone_width &&
-        osc_players.pos[player_index].position < (double)rad_game_source.basic_source.n_leds - oscillators.end_zone_width)
+        (osc_players.pos[player_index].position > oscillators.end_zone_width || dir > 0) &&
+        (osc_players.pos[player_index].position < (double)rad_game_source.basic_source.n_leds - oscillators.end_zone_width || dir < 0))
     {
         osc_players.pos[player_index].moving_dir = dir;
         osc_players.pos[player_index].position += dir * 0.0001;
