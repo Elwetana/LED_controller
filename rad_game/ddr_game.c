@@ -92,6 +92,7 @@ void RGM_DDR_clear()
     for (int em = 0; em < rad_game_source.n_players; ++em)
     {
         ddr_emitors.data[em].n_bullets = 0;
+        ddr_emitors.data[em].furthest_bullet = -1;
         ddr_emitors.data[em].reaction_progress = 0.0;
         ddr_emitors.data[em].points = 1;
         ddr_emitors.data[em].streak = 0;
@@ -174,10 +175,21 @@ static void DdrPlayer_action(int player_index, enum EDDR_HIT_INTERVAL hit, enum 
 
 static void DdrEmitors_delete_bullet(int player_index, int bullet_index)
 {
+    printf("deleting bullet %i for player %i n %i\n", bullet_index, player_index, ddr_emitors.data[player_index].n_bullets);
+    assert(bullet_index < ddr_emitors.data[player_index].n_bullets);
+    assert(bullet_index >= 0);
+    assert(ddr_emitors.data[player_index].n_bullets > 0);
     ddr_emitors.data[player_index].n_bullets--;
+    double furthest_pos = 0;
+    ddr_emitors.data[player_index].furthest_bullet = -1; 
     for (int b = bullet_index; b < ddr_emitors.data[player_index].n_bullets; ++b)
     {
         ddr_emitors.data[player_index].bullets[b] = ddr_emitors.data[player_index].bullets[b + 1];
+        if (ddr_emitors.data[player_index].bullets[b].position > furthest_pos)
+        {
+            furthest_pos = ddr_emitors.data[player_index].bullets[b].position;
+            ddr_emitors.data[player_index].furthest_bullet = b;
+        }
     }
 }
 
@@ -223,13 +235,14 @@ static void DdrEmitors_update_bullets(int freq_changed)
     {
         double furthest_pos = 0;
         int b = 0;
+        ddr_emitors.data[p].furthest_bullet = -1;
         while (b < ddr_emitors.data[p].n_bullets)
         {
             if (freq_changed) //we have to recalculate the bullet speed
             {
                 double dist = ddr_emitors.data[p].player_pos - ddr_emitors.data[p].bullets[b].position;
                 double time_to_reach = (ddr_emitors.data[p].bullets[b].target_beat - rad_game_songs.current_beat) / rad_game_songs.freq;
-                ddr_emitors.data[p].bullets[ddr_emitors.data[p].n_bullets].speed = dist / time_to_reach;
+                ddr_emitors.data[p].bullets[b].speed = dist / time_to_reach;
             }
 
             double distance_moved = time_elapsed * ddr_emitors.data[p].bullets[b].speed;
@@ -281,9 +294,14 @@ static void DdrEmitors_update()
 void RGM_DDR_player_hit(int player_index, enum ERAD_COLOURS colour)
 {
     int fb = ddr_emitors.data[player_index].furthest_bullet;
+    if(fb < 0)
+    {
+        printf("Player %i pressed button %i, but there are not bullets.\n", player_index, colour);
+        return; //there is no bullet to compare to
+    }
     if ((enum ERAD_COLOURS)ddr_emitors.data[player_index].bullets[fb].custom_data != colour)
     {
-        printf("Player %i pressed button %i\n", player_index, colour);
+        printf("Player %i pressed button %i, wrong colour.\n", player_index, colour);
         return; //this is not right colour, if the bullet is missed, we will find about it in the update_bullets function
     }
 
@@ -472,3 +490,4 @@ void RGM_DDR_get_ready_interval(int player_index, int* left_led, int* right_led)
     *left_led = ddr_emitors.data[player_index].emitor_pos;
     *right_led = ddr_emitors.data[player_index].reward_pos + ddr_emitors.reaction_len - 1;
 }
+
