@@ -283,29 +283,37 @@ void Player_start_pressed(int player_index)
 void Player_freq_inc(int player_index)
 {
     (void)player_index;
+#ifdef TUNE_FREQ
     rad_game_songs.freq += 0.01;
     printf("Frequence increased to %f\n", rad_game_songs.freq);
+#endif
 }
 
 void Player_freq_dec(int player_index)
 {
     (void)player_index;
+#ifdef TUNE_FREQ
     rad_game_songs.freq -= 0.01;
     printf("Frequence lowered to %f\n", rad_game_songs.freq);
+#endif
 }
 
 void Player_time_offset_inc(int player_index)
 {
     (void)player_index;
+#ifdef TUNE_FREQ
     rad_game_songs.time_offset += 5000;
     printf("Time offset increased to %li us\n", rad_game_songs.time_offset);
+#endif
 }
 
 void Player_time_offset_dec(int player_index)
 {
     (void)player_index;
+#ifdef TUNE_FREQ
     rad_game_songs.time_offset -= 5000;
     printf("Time offset decreased to %li us\n", rad_game_songs.time_offset);
+#endif
 }
 
 

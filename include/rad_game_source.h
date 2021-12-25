@@ -48,7 +48,13 @@ enum ERadGameModes
 	RGM_N_MODES
 };
 
-enum ERAD_COLOURS                                                                                                                                                                                                                               {                                                                                                                                                                                                                                                   DC_RED,                                                                                                                                                                                                                                         DC_GREEN,                                                                                                                                                                                                                                       DC_BLUE,                                                                                                                                                                                                                                        DC_YELLOW                                                                                                                                                                                                                                   };
+enum ERAD_COLOURS
+{
+    DC_RED,
+    DC_GREEN,
+    DC_BLUE,
+    DC_YELLOW
+};
 
 void Player_move_left(int player_index);
 void Player_move_right(int player_index);

@@ -1061,7 +1061,7 @@ static int update_leds_valeria(ws2811_t* ledstrip)
     ws2811_led_t left_col, mid_col, right_col;
     left_col = (phase == 0 || phase == 3) ? xmas_source.basic_source.gradient.colors[valeria_color_index] : xmas_source.basic_source.gradient.colors[valeria_color_index + 1];
     right_col = (phase == 0 || phase == 3) ? xmas_source.basic_source.gradient.colors[valeria_color_index + 1] : xmas_source.basic_source.gradient.colors[valeria_color_index];
-    mid_col = ((left_dist < right_dist && (phase == 0 || phase == 2)) || left_dist > right_dist && (phase == 1 || phase == 3)) ?
+    mid_col = (((left_dist < right_dist) && (phase == 0 || phase == 2)) || ((left_dist > right_dist) && (phase == 1 || phase == 3))) ?
         0x0 : xmas_source.basic_source.gradient.colors[valeria_color_index + 2];
     int left_led, right_led;
     left_led = (left_dist < right_dist) ? left_dist : right_dist;
@@ -1071,18 +1071,17 @@ static int update_leds_valeria(ws2811_t* ledstrip)
     {
         ledstrip->channel[0].leds[led] = left_col;
     }
-    ledstrip->channel[0].leds[(int)left_led] = multiply_rgb_color(left_col, t);
+    ledstrip->channel[0].leds[(int)left_led] = mix_rgb_color(left_col, mid_col, t);
     for (int led = (int)left_led + 1; led < (int)right_led; ++led)
     {
         ledstrip->channel[0].leds[led] = mid_col;
     }
-    ledstrip->channel[0].leds[(int)right_led] = multiply_rgb_color(right_col, t);
+    ledstrip->channel[0].leds[(int)right_led] = mix_rgb_color(right_col, mid_col, t);
     for (int led = (int)right_led + 1; led < xmas_source.basic_source.n_leds; ++led)
     {
         ledstrip->channel[0].leds[led] = right_col;
     }
-
-
+    return 1;
 }
 
 #pragma endregion
@@ -1431,7 +1430,7 @@ void XmasSource_init_current_mode()
 
 static void random_mode()
 {
-    int mode = random_01() * N_XMAS_MODES;
+    int mode = 1 + random_01() * (N_XMAS_MODES - 1); //mode 0 is debug, not very interesting
     XmasSource_destruct_current_mode();
     xmas_source.mode = (XMAS_MODE_t)mode;
     XmasSource_init_current_mode();
