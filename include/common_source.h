@@ -21,6 +21,7 @@ enum SourceType {
     XMAS_SOURCE,
     GAME_SOURCE,
     RAD_GAME_SOURCE,
+    M3_GAME_SOURCE,
     N_SOURCE_TYPES
 };
 

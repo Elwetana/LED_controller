@@ -100,6 +100,12 @@
     <ClCompile Include="..\ip_source.c">
       <Filter>SourceCommon</Filter>
     </ClCompile>
+    <ClCompile Include="..\m3_game\m3_game.c">
+      <Filter>Games</Filter>
+    </ClCompile>
+    <ClCompile Include="..\m3_game_source.c">
+      <Filter>Games</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\include\color_source.h">
@@ -205,6 +211,12 @@
       <Filter>Include</Filter>
     </ClInclude>
     <ClInclude Include="..\include\ip_source.h">
+      <Filter>Include</Filter>
+    </ClInclude>
+    <ClInclude Include="..\include\m3_game.h">
+      <Filter>Include</Filter>
+    </ClInclude>
+    <ClInclude Include="..\include\m3_game_source.h">
       <Filter>Include</Filter>
     </ClInclude>
   </ItemGroup>

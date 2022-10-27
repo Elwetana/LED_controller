@@ -10,20 +10,17 @@
 #define max(x,y)  ((x) > (y)) ? (x) : (y)
 #endif
 
-ws2811_led_t alpha_blend_rgb(ws2811_led_t upper, ws2811_led_t lower, double upper_alpha)
-{
-    int r = (int)(((upper >> 16) & 0xFF) * upper_alpha + ((lower >> 16) & 0xFF) * (1. - upper_alpha));
-    int g = (int)(((upper >> 8) & 0xFF) * upper_alpha + ((lower >> 8) & 0xFF) * (1. - upper_alpha));
-    int b = (int)((upper & 0xFF) * upper_alpha + (lower & 0xFF) * (1. - upper_alpha));
-    return r << 16 | g << 8 | b;
-}
-
 ws2811_led_t mix_rgb_color(ws2811_led_t rgb1, ws2811_led_t rgb2, double t)
 {
     int r = (int)(((rgb1 >> 16) & 0xFF) * t + ((rgb2 >> 16) & 0xFF) * (1. - t));
     int g = (int)(((rgb1 >>  8) & 0xFF) * t + ((rgb2 >>  8) & 0xFF) * (1. - t));
     int b = (int)((rgb1 & 0xFF) * t + (rgb2 & 0xFF) * (1 - t));
     return r << 16 | g << 8 | b;
+}
+
+ws2811_led_t alpha_blend_rgb(ws2811_led_t upper, ws2811_led_t lower, double upper_alpha)
+{
+    return mix_rgb_color(upper, lower, upper_alpha);
 }
 
 ws2811_led_t multiply_rgb_color(ws2811_led_t rgb, double t)

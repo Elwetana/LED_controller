@@ -49,7 +49,8 @@ enum EState
 };
 
 void Controller_init();
-//Returns 1 when button was read, there may be potentially more buttons to read if they were pressed since last update
+//! Returns 1 when a button was read, there may be potentially more buttons to read if they were pressed since last update
+//! @param t current time (ignored on Windows, necessary to distinguish DOWN and PRESSED events on linux)
 int Controller_get_button(uint64_t t, enum EButtons* button, enum EState* state, int player_index);
 char* Controller_get_button_name(enum EButtons button);
 int Controller_get_n_players();

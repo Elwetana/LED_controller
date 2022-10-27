@@ -21,6 +21,7 @@
 #include "xmas_source.h"
 #include "game_source.h"
 #include "rad_game_source.h"
+#include "m3_game_source.h"
 #include "source_manager.h"
 #include "listener.h"
 #include "ini.h"
@@ -56,6 +57,9 @@ enum SourceType string_to_SourceType(const char* source)
     }
     else if (!strncasecmp("RAD_GAME", source, 8)) {
         return RAD_GAME_SOURCE;
+    }
+    else if (!strncasecmp("M3_GAME", source, 8)) {
+        return M3_GAME_SOURCE;
     }
     else {
         printf("Unknown source");
@@ -109,6 +113,7 @@ void SourceManager_init(enum SourceType source_type, int led_count, int time_spe
     sources[XMAS_SOURCE]   = &xmas_source.basic_source;
     sources[GAME_SOURCE]   = &game_source.basic_source;
     sources[RAD_GAME_SOURCE] = &rad_game_source.basic_source;
+    sources[M3_GAME_SOURCE] = &match3_game_source.basic_source;
     SourceManager_construct_sources();
 
     Listener_init();
