@@ -44,6 +44,21 @@ int player_colour = 0xFFFFFF;
 
 /* Config data end */
 
+/* move to their own files 
+
+
+typedef struct MovingObject {
+    double position;
+    double speed;
+    Match3GameSource* match3_game_source;
+} moving_object_t;
+
+
+void MovingObject_move(moving_object_t* mo)
+{
+
+}*/
+
 
 //! playing field
 typedef struct TJewel {
@@ -53,15 +68,14 @@ typedef struct TJewel {
     unsigned char is_collapsing;
 } jewel_t;
 jewel_t* field;
-int* canvas3;
-int* zbuffer;
-const int C_BULLET_Z = 16; //!< bullets z index will be C_BULLET_Z + bullet
 
 //! Segments of the field that move as one block
 typedef struct TSegment {
     int start;      //!< this is index into field
     double speed;   //!< in leds/second
-    double shift;   //!< offset againt start
+    double shift;   //!< offset againt start, first led of the field is start + shift
+    uint64_t last_move;
+    int tmp;
 } segment_t;
 segment_t segments[N_MAX_SEGMENTS];
 int n_segments = 0;
@@ -73,7 +87,9 @@ typedef struct TBullet {
     double speed;    //!< could be positive or negative, in leds/second
     int player;      //!< index into players; player that fired the bullet
 } bullet_t;
+//! array of bullets
 bullet_t bullets[N_MAX_BULLETS];
+//! number of bullets
 n_bullets = 0;
 
 //! Players positions
@@ -81,6 +97,10 @@ bullet_t players[C_MAX_CONTROLLERS];
 
 //! collapse progress: 0 collapse is finished, 1 collapse is finished
 double collapse_progress = 0;
+
+int* canvas3;
+int* zbuffer;
+const int C_BULLET_Z = 16; //!< bullets z index will be C_BULLET_Z + bullet
 
 
 //! This will find segments with three or more gems of the same colour and starts
@@ -93,9 +113,36 @@ const int evaluate_field(int* length)
 }
 
 
-void update_field()
+void update_segments()
 {
-
+    const double x = 7.5; // segments only move when in 1/x from end, at x * speed
+    double time_delta = match3_game_source.basic_source.time_delta / 1000L / 1e6;
+    for (int segment = 0; segment < n_segments; ++segment)
+    {
+        if (segments[segment].speed == 0)
+            continue;
+        double fraction = segments[segment].shift - trunc(segments[segment].shift);
+        double delta = 0;
+        /*
+        double delta = segments[segment].speed * time_delta;
+        double squeeze = (1.5 - 4 * (0.5 - fraction) * (0.5 - fraction));
+        segments[segment].shift += squeeze * squeeze * squeeze * delta;
+        printf("squeeze %f\n", squeeze);
+        */
+        double sec_per_led = fabs(1.0 / segments[0].speed); 
+        double sec_from_last_move = (match3_game_source.basic_source.current_time - segments[0].last_move) / 1000l / 1e6;
+        if (sec_from_last_move > sec_per_led * (x - 1) / x) 
+        {
+            delta = segments[segment].speed * time_delta * x;
+        }
+        if (fraction + delta > 1.0 || (fraction + delta < 0 && fraction > 0.0001)) 
+        {
+            segments[segment].last_move = match3_game_source.basic_source.current_time;
+            //delta = (delta > 0) ? 1.0 - fraction : -fraction;
+        }
+        //printf("s/led %f, last move %f  fraction %f  delta %f\n", sec_per_led, sec_from_last_move, fraction, delta);
+        segments[segment].shift += delta;
+    }
 }
 
 void update_bullets()
@@ -124,10 +171,10 @@ void update_bullets()
 
     //test hack
     //double t = (match3_game_source.basic_source.current_time - match3_game_source.start_time) / 1000l / 1e6;
-    if (random_01() < 0.001)
+    if (random_01() < 0.0001)
     {
         bullets[n_bullets].jewel.type = trunc(random_01() * N_GEM_COLORS);
-        bullets[n_bullets].speed = 2.; // +random_01();
+        bullets[n_bullets].speed = 0.2; // +random_01();
         bullets[n_bullets].position = 0;
         n_bullets++;
         printf("bullet fired\n");
@@ -139,11 +186,25 @@ int mix_rgb_alpha(int rgb1, double alpha1, int rgb2, double alpha2)
     assert(alpha1 >= 0.0);
     assert(alpha2 >= 0.0);
     assert(alpha1 + alpha2 <= 1.0);
+    /*hsl_t c1, c2, out;
+    rgb2hsl(rgb1, &c1);
+    rgb2hsl(rgb2, &c2);
+    float t = (float)(alpha1 / (alpha1 + alpha2));
+    lerp_hsl(&c1, &c2, 1-t, &out);*/
+
+    int r1 = (int)(((rgb1 >> 16) & 0xFF);
+    int g1, b1;
+    l1 = r1 * r1 + 
+
+
+
     int r = (int)(((rgb1 >> 16) & 0xFF) * alpha1 + ((rgb2 >> 16) & 0xFF) * alpha2);
     int g = (int)(((rgb1 >> 8) & 0xFF) * alpha1 + ((rgb2 >> 8) & 0xFF) * alpha2);
     int b = (int)(((rgb1) & 0xFF) * alpha1 + ((rgb2) & 0xFF) * alpha2);
     int a = (int)(0xFF * alpha1 + 0xFF * alpha2);
     return a << 24 | r << 16 | g << 8 | b;
+    
+    //return a << 24 | hsl2rgb(&out);
 }
 
 
@@ -200,7 +261,7 @@ void render_field(ws2811_t* ledstrip)
         int segment_start = segments[segment].start;
         int segment_end = (segment == n_segments - 1) ? match3_game_source.basic_source.n_leds : segments[segment + 1].start;
         double segment_shift = segments[segment].shift;
-        for (int fi = segment_start; fi < segment_end; ++fi)  //fi -- field_index 
+        for (int fi = segment_end - 1; fi >= segment_start; --fi)  //fi -- field_index 
         {
             unsigned char type = field[fi].type;
             //this will transform ampl to <0, 2 * N_HALF_GRAD>
@@ -208,7 +269,7 @@ void render_field(ws2811_t* ledstrip)
             int gradient_index = (int)ampl;
             double blend = ampl - (int)ampl;
             gradient_index += (2 * N_HALF_GRAD + 1) * type;
-            assert(gradient_index >= type * (2 * N_HALF_GRAD + 1));
+            assert(gradient_index >= type * (2 * N_HALF_GRAD + 1)); 
             assert(gradient_index < (type + 1)* (2 * N_HALF_GRAD + 1));
             assert(gradient_index + 1 < match3_game_source.basic_source.gradient.n_colors);
 
@@ -218,19 +279,27 @@ void render_field(ws2811_t* ledstrip)
 
             //now we have to blend it with canvas; if there is something in z-buffer, we will shift to avoid
             int led = (int)trunc(fi + segment_shift);
-            double alpha = 1.0 - ((fi + segment_shift) - (double)led);
+
+            //there are two limits: how much we want to show -- depending on segment_shift -- and how much can fit -- depending on the canvas_alpha
+            double total_alpha = 0.0;
+
+
+            double alpha = ((fi + segment_shift) - (double)led);
             led += led_offset;
-            led_offset -= 2; //the next loop will normally iterate twice
-            while (alpha > 0 && led < match3_game_source.basic_source.n_leds)
+            if (led >= match3_game_source.basic_source.n_leds || led < 0) continue;
+            led_offset += 2; //the next loop will normally iterate twice
+            while (total_alpha < 1 && led < match3_game_source.basic_source.n_leds && led >= 0)
             {
                 int canvas_colour = canvas3[led] & 0xFFFFFF;
                 double canvas_alpha = (double)((canvas3[led] & 0xFF000000) >> 24) / (double)0xFF;
                 double led_alpha = min(alpha, 1 - canvas_alpha);
                 canvas3[led] = mix_rgb_alpha(colour, led_alpha, canvas_colour, canvas_alpha);
-                alpha -= led_alpha;
-                led++;
-                led_offset++;
+                total_alpha += led_alpha;
+                alpha = 1. - total_alpha;
+                led--;
+                led_offset--;
             }
+            if (fi == 0) printf("ss %i, sh %f, led %i\n", segment_start, segment_shift, led);
         }
     }
 
@@ -240,6 +309,7 @@ void render_field(ws2811_t* ledstrip)
     {
         double canvas_alpha = (double)((canvas3[led] & 0xFF000000) >> 24) / (double)0xFF;
         int canvas_colour = canvas3[led] & 0xFFFFFF;
+        if (zbuffer[led] == 0) canvas_alpha *= 0.5;
         ledstrip->channel[0].leds[led] = multiply_rgb_color(canvas_colour, canvas_alpha);
         if (led == 0)
         {
@@ -277,6 +347,7 @@ void render_field(ws2811_t* ledstrip)
 int Match3GameSource_update_leds(int frame, ws2811_t* ledstrip)
 {
     update_bullets();
+    update_segments();
     render_field(ledstrip);
     //color = mix_rgb_color(trailing_color, object->color[color_index], (float)mr->body_offset);
 
@@ -293,8 +364,10 @@ void Match3GameSource_init_field()
         field[i].cos_phase = cos(shift);
     }
     segments[0].start = 0;
-    segments[0].speed = 0;
-    segments[0].shift = 30.0;
+    segments[0].speed = -0.1;
+    segments[0].shift = 30.01;
+    segments[0].last_move = match3_game_source.basic_source.current_time;
+    segments[0].tmp = 0;
     n_segments = 1;
 }
 
