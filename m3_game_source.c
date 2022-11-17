@@ -115,7 +115,7 @@ const int evaluate_field(int* length)
 
 void update_segments()
 {
-    const double x = 7.5; // segments only move when in 1/x from end, at x * speed
+    const double x = 2; // segments only move when in 1/x from end, at x * speed
     double time_delta = match3_game_source.basic_source.time_delta / 1000L / 1e6;
     for (int segment = 0; segment < n_segments; ++segment)
     {
@@ -141,6 +141,7 @@ void update_segments()
             //delta = (delta > 0) ? 1.0 - fraction : -fraction;
         }
         //printf("s/led %f, last move %f  fraction %f  delta %f\n", sec_per_led, sec_from_last_move, fraction, delta);
+        delta = -time_delta / sec_per_led;
         segments[segment].shift += delta;
     }
 }
@@ -181,6 +182,20 @@ void update_bullets()
     }
 }
 
+/*void rgb2rgb(int rgb, int* r, int* g, int* b)
+{
+    r = (int)((rgb >> 16) & 0xFF);
+    g = (int)((rgb >> 8) & 0xFF);
+    b = (int)(rgb & 0xFF);
+}*/
+
+void rgb2rgb(int rgb_in, double* rgb_out)
+{
+    rgb_out[0] = (double)((rgb_in >> 16) & 0xFF)/0xFF;
+    rgb_out[1] = (double)((rgb_in >> 8) & 0xFF)/0xFF;
+    rgb_out[2] = (double)(rgb_in & 0xFF) / 0xFF;
+}
+
 int mix_rgb_alpha(int rgb1, double alpha1, int rgb2, double alpha2)
 {
     assert(alpha1 >= 0.0);
@@ -192,16 +207,28 @@ int mix_rgb_alpha(int rgb1, double alpha1, int rgb2, double alpha2)
     float t = (float)(alpha1 / (alpha1 + alpha2));
     lerp_hsl(&c1, &c2, 1-t, &out);*/
 
-    int r1 = (int)(((rgb1 >> 16) & 0xFF);
-    int g1, b1;
-    l1 = r1 * r1 + 
+    double rgb1a[3], rgb2a[3], rgb_out[3];
+    rgb2rgb(rgb1, rgb1a);
+    rgb2rgb(rgb2, rgb2a);
+    double l1 = 0, l2 = 0, l_out = 0;
+    for (int i = 0; i < 3; ++i)
+    {
+        l1 += rgb1a[i] * rgb1a[i];
+        l2 += rgb2a[i] * rgb2a[i];
+        rgb_out[i] = rgb1a[i] * alpha1 + rgb2a[i] * alpha2;
+        l_out += rgb_out[i] * rgb_out[i];
+    }
+    double l_target = l1 * alpha1 + l2 * alpha2;
+    double norm = (l_out != 0) ? sqrt(l_target / l_out) :  1;
+    int a = (int)(0xFF * (alpha1 + alpha2));
+    int r = (int)(norm * rgb_out[0] * 0xFF);
+    int g = (int)(norm * rgb_out[1] * 0xFF);
+    int b = (int)(norm * rgb_out[2] * 0xFF);
 
-
-
-    int r = (int)(((rgb1 >> 16) & 0xFF) * alpha1 + ((rgb2 >> 16) & 0xFF) * alpha2);
+    /*int r = (int)(((rgb1 >> 16) & 0xFF) * alpha1 + ((rgb2 >> 16) & 0xFF) * alpha2);
     int g = (int)(((rgb1 >> 8) & 0xFF) * alpha1 + ((rgb2 >> 8) & 0xFF) * alpha2);
     int b = (int)(((rgb1) & 0xFF) * alpha1 + ((rgb2) & 0xFF) * alpha2);
-    int a = (int)(0xFF * alpha1 + 0xFF * alpha2);
+    int a = (int)(0xFF * alpha1 + 0xFF * alpha2);*/
     return a << 24 | r << 16 | g << 8 | b;
     
     //return a << 24 | hsl2rgb(&out);
@@ -309,7 +336,7 @@ void render_field(ws2811_t* ledstrip)
     {
         double canvas_alpha = (double)((canvas3[led] & 0xFF000000) >> 24) / (double)0xFF;
         int canvas_colour = canvas3[led] & 0xFFFFFF;
-        if (zbuffer[led] == 0) canvas_alpha *= 0.5;
+        //if (zbuffer[led] == 0) canvas_alpha *= 0.5;
         ledstrip->channel[0].leds[led] = multiply_rgb_color(canvas_colour, canvas_alpha);
         if (led == 0)
         {
@@ -364,7 +391,7 @@ void Match3GameSource_init_field()
         field[i].cos_phase = cos(shift);
     }
     segments[0].start = 0;
-    segments[0].speed = -0.1;
+    segments[0].speed = -0.2;
     segments[0].shift = 30.01;
     segments[0].last_move = match3_game_source.basic_source.current_time;
     segments[0].tmp = 0;
