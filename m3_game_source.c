@@ -68,6 +68,7 @@ typedef struct TJewel {
     unsigned char is_collapsing;
 } jewel_t;
 jewel_t* field;
+int field_length = 0;
 
 //! Segments of the field that move as one block
 typedef struct TSegment {
@@ -112,37 +113,39 @@ const int evaluate_field(int* length)
     return -1;
 }
 
+double get_segment_delta_staggered(double time_delta, int segment)
+{
+    const double x = 7.5; // segments only move when in 1/x from end, at x * speed
+    double fraction = segments[segment].shift - trunc(segments[segment].shift);
+    double delta = 0;
+    double sec_per_led = fabs(1.0 / segments[segment].speed);
+    double sec_from_last_move = (match3_game_source.basic_source.current_time - segments[segment].last_move) / 1000l / 1e6;
+    if (sec_from_last_move > sec_per_led * (x - 1) / x)
+    {
+        delta = segments[segment].speed * time_delta * x;
+    }
+    if (fraction + delta > 1.0 || (fraction + delta < 0 && fraction > 0.0001))
+    {
+        segments[segment].last_move = match3_game_source.basic_source.current_time;
+        delta = (delta > 0) ? 1.0 - fraction : -fraction;
+    }
+    //printf("s/led %f, last move %f  fraction %f  delta %f\n", sec_per_led, sec_from_last_move, fraction, delta);
+    return delta;
+}
+
+double get_segment_delta_smooth(double time_delta, int segment)
+{
+    return segments[segment].speed * time_delta;
+}
 
 void update_segments()
 {
-    const double x = 2; // segments only move when in 1/x from end, at x * speed
     double time_delta = match3_game_source.basic_source.time_delta / 1000L / 1e6;
     for (int segment = 0; segment < n_segments; ++segment)
     {
         if (segments[segment].speed == 0)
             continue;
-        double fraction = segments[segment].shift - trunc(segments[segment].shift);
-        double delta = 0;
-        /*
-        double delta = segments[segment].speed * time_delta;
-        double squeeze = (1.5 - 4 * (0.5 - fraction) * (0.5 - fraction));
-        segments[segment].shift += squeeze * squeeze * squeeze * delta;
-        printf("squeeze %f\n", squeeze);
-        */
-        double sec_per_led = fabs(1.0 / segments[0].speed); 
-        double sec_from_last_move = (match3_game_source.basic_source.current_time - segments[0].last_move) / 1000l / 1e6;
-        if (sec_from_last_move > sec_per_led * (x - 1) / x) 
-        {
-            delta = segments[segment].speed * time_delta * x;
-        }
-        if (fraction + delta > 1.0 || (fraction + delta < 0 && fraction > 0.0001)) 
-        {
-            segments[segment].last_move = match3_game_source.basic_source.current_time;
-            //delta = (delta > 0) ? 1.0 - fraction : -fraction;
-        }
-        //printf("s/led %f, last move %f  fraction %f  delta %f\n", sec_per_led, sec_from_last_move, fraction, delta);
-        delta = -time_delta / sec_per_led;
-        segments[segment].shift += delta;
+        segments[segment].shift += get_segment_delta_smooth(time_delta, segment);
     }
 }
 
@@ -189,51 +192,124 @@ void update_bullets()
     b = (int)(rgb & 0xFF);
 }*/
 
-void rgb2rgb(int rgb_in, double* rgb_out)
+void rgb2rgb_array(int rgb_in, double* rgb_out)
 {
     rgb_out[0] = (double)((rgb_in >> 16) & 0xFF)/0xFF;
     rgb_out[1] = (double)((rgb_in >> 8) & 0xFF)/0xFF;
     rgb_out[2] = (double)(rgb_in & 0xFF) / 0xFF;
 }
 
-int mix_rgb_alpha(int rgb1, double alpha1, int rgb2, double alpha2)
+int mix_rgb_alpha_over_hsl(int rgb1, double alpha1, int rgb2, double alpha2)
 {
     assert(alpha1 >= 0.0);
     assert(alpha2 >= 0.0);
     assert(alpha1 + alpha2 <= 1.0);
-    /*hsl_t c1, c2, out;
+    hsl_t c1, c2, out;
     rgb2hsl(rgb1, &c1);
     rgb2hsl(rgb2, &c2);
     float t = (float)(alpha1 / (alpha1 + alpha2));
-    lerp_hsl(&c1, &c2, 1-t, &out);*/
+    lerp_hsl(&c1, &c2, 1-t, &out);
+    int a = (int)(0xFF * alpha1 + 0xFF * alpha2);
+    return a << 24 | hsl2rgb(&out);
+}
+
+int mix_rgb_alpha_direct(int rgb1, double alpha1, int rgb2, double alpha2)
+{
+    assert(alpha1 >= 0.0);
+    assert(alpha2 >= 0.0);
+    assert(alpha1 + alpha2 <= 1.0);
+    int r = (int)(((rgb1 >> 16) & 0xFF) * alpha1 + ((rgb2 >> 16) & 0xFF) * alpha2);
+    int g = (int)(((rgb1 >> 8) & 0xFF) * alpha1 + ((rgb2 >> 8) & 0xFF) * alpha2);
+    int b = (int)(((rgb1) & 0xFF) * alpha1 + ((rgb2) & 0xFF) * alpha2);
+    int a = (int)(0xFF * alpha1 + 0xFF * alpha2);
+    return a << 24 | r << 16 | g << 8 | b;
+}
+
+//! Will return black when alpha1 = alpha2, will return rgb1 * alpha1 when alpha2 = 0 and vice versa
+int mix_rgb_alpha_through_black(int rgb1, double alpha1, int rgb2, double alpha2)
+{
+    assert(alpha1 >= 0.0);
+    assert(alpha2 >= 0.0);
+    assert(alpha1 + alpha2 <= 1.0);
+    int out = (alpha1 >= alpha2) ? rgb1 : rgb2;
+    double norm = max(alpha1, alpha2);
+    norm = 2. * norm - (alpha1 + alpha2); //this will transform norm to interval <0, alpha1 + alpha2>
+
+    int r = (int)(((out >> 16) & 0xFF) * norm);
+    int g = (int)(((out >> 8) & 0xFF) * norm);
+    int b = (int)(((out) & 0xFF) * norm);
+    int a = (int)(0xFF * alpha1 + 0xFF * alpha2);
+    return a << 24 | r << 16 | g << 8 | b;
+}
+
+int mix_rgb_alpha_no_blend(int rgb1, double alpha1, int rgb2, double alpha2)
+{
+    assert(alpha1 >= 0.0);
+    assert(alpha2 >= 0.0);
+    assert(alpha1 + alpha2 <= 1.0);
+    int out = (alpha1 >= alpha2) ? rgb1 : rgb2;
+
+    int a = (int)(0xFF * alpha1 + 0xFF * alpha2);
+    return a << 24 | out;
+}
+
+int mix_rgb_alpha_preserve_lightness(int rgb1, double alpha1, int rgb2, double alpha2)
+{
+    assert(alpha1 >= 0.0);
+    assert(alpha2 >= 0.0);
+    assert(alpha1 + alpha2 <= 1.0);
 
     double rgb1a[3], rgb2a[3], rgb_out[3];
-    rgb2rgb(rgb1, rgb1a);
-    rgb2rgb(rgb2, rgb2a);
+    rgb2rgb_array(rgb1, rgb1a);
+    rgb2rgb_array(rgb2, rgb2a);
     double l1 = 0, l2 = 0, l_out = 0;
     for (int i = 0; i < 3; ++i)
     {
-        l1 += rgb1a[i] * rgb1a[i];
-        l2 += rgb2a[i] * rgb2a[i];
+        l1 = max(rgb1a[i], l1);
+        l2 = max(rgb2a[i], l2);
         rgb_out[i] = rgb1a[i] * alpha1 + rgb2a[i] * alpha2;
-        l_out += rgb_out[i] * rgb_out[i];
+        l_out = max(rgb_out[i], l_out);
     }
     double l_target = l1 * alpha1 + l2 * alpha2;
-    double norm = (l_out != 0) ? sqrt(l_target / l_out) :  1;
+    double norm = (l_out != 0) ? l_target / l_out :  1;
     int a = (int)(0xFF * (alpha1 + alpha2));
     int r = (int)(norm * rgb_out[0] * 0xFF);
     int g = (int)(norm * rgb_out[1] * 0xFF);
     int b = (int)(norm * rgb_out[2] * 0xFF);
-
-    /*int r = (int)(((rgb1 >> 16) & 0xFF) * alpha1 + ((rgb2 >> 16) & 0xFF) * alpha2);
-    int g = (int)(((rgb1 >> 8) & 0xFF) * alpha1 + ((rgb2 >> 8) & 0xFF) * alpha2);
-    int b = (int)(((rgb1) & 0xFF) * alpha1 + ((rgb2) & 0xFF) * alpha2);
-    int a = (int)(0xFF * alpha1 + 0xFF * alpha2);*/
     return a << 24 | r << 16 | g << 8 | b;
-    
-    //return a << 24 | hsl2rgb(&out);
 }
 
+void render_blend_test(ws2811_t* ledstrip)
+{
+    int from = 0xFF0000;
+    int to = 0x00FF00;
+    const int row_length = 25;
+    for (int i = 0; i < row_length; ++i) {
+        double alpha = i / (double)row_length;
+        int a = 0xFF * alpha;
+        //first row -- just alpha
+        ledstrip->channel[0].leds[i] = a << 16 | a << 8 | a;
+        //second row HSL blend
+        ledstrip->channel[0].leds[i + row_length] = mix_rgb_alpha_over_hsl(from, alpha, to, 1.0 - alpha);
+        //third row lightness preserving
+        ledstrip->channel[0].leds[i + 2 * row_length] = mix_rgb_alpha_preserve_lightness(from, alpha, to, 1.0 - alpha);
+        //fourth row direct blend
+        ledstrip->channel[0].leds[i + 3 * row_length] = mix_rgb_alpha_direct(from, alpha, to, 1.0 - alpha);
+        //fifth row through black
+        ledstrip->channel[0].leds[i + 4 * row_length] = mix_rgb_alpha_through_black(from, alpha, to, 1.0 - alpha);
+        //sixth row no blend
+        ledstrip->channel[0].leds[i + 5 * row_length] = mix_rgb_alpha_no_blend(from, alpha, to, 1.0 - alpha);
+        //seventh row alpha again
+        ledstrip->channel[0].leds[i + 6 * row_length] = a << 16 | a << 8 | a;
+        //eigth row -- black
+        ledstrip->channel[0].leds[i + 7 * row_length] = 0;
+    }
+}
+
+int mix_rgb_alpha(int rgb1, double alpha1, int rgb2, double alpha2)
+{
+    mix_rgb_alpha_preserve_lightness(rgb1, alpha1, rgb2, alpha2);
+}
 
 //! How to render the field
 //! There are:
@@ -286,8 +362,25 @@ void render_field(ws2811_t* ledstrip)
     for (int segment = 0; segment < n_segments; ++segment)
     {
         int segment_start = segments[segment].start;
-        int segment_end = (segment == n_segments - 1) ? match3_game_source.basic_source.n_leds : segments[segment + 1].start;
-        double segment_shift = segments[segment].shift;
+        int segment_end = (segment == n_segments - 1) ? field_length : segments[segment + 1].start;
+        int segment_shift = trunc(segments[segment].shift);
+        double offset = segments[segment].shift - segment_shift;
+        int hole_position = (segment_end - segment_start);
+        hole_position *= (1 - offset);
+        int hole_direction = 0;
+        if (segments[segment].speed > 0)
+        {
+            //moving left to right, the hole appears on right and travels to left, we shift jewels that are after the hole
+            //offset is increasing
+            hole_direction = -1;
+        }
+        else if(segments[segment].speed < 0)
+        {
+            //moving right to left, hole appears on left and travels right, we shift jewels that are before hole
+            //offset is decreasing
+            hole_direction = 1;
+        }
+
         for (int fi = segment_end - 1; fi >= segment_start; --fi)  //fi -- field_index 
         {
             unsigned char type = field[fi].type;
@@ -304,6 +397,21 @@ void render_field(ws2811_t* ledstrip)
             gradient_index = (2 * N_HALF_GRAD + 1) * type + N_HALF_GRAD;
             int colour = match3_game_source.basic_source.gradient.colors[gradient_index];
 
+            int led = fi + segment_shift;
+            if (fi == hole_position)
+            {
+                canvas3[led] = 0x0;
+            }
+            else if (fi*hole_direction <= hole_position*hole_direction)
+            {
+                led -= hole_direction;
+            }
+            //+(((hole_direction * fi) > (hole_direction * hole_position)) ? hole_direction : 0);
+            //if (led >= match3_game_source.basic_source.n_leds || led < 0) continue;
+            canvas3[led] = 0xFF << 24 | colour;
+            zbuffer[led] = fi;
+
+            /*
             //now we have to blend it with canvas; if there is something in z-buffer, we will shift to avoid
             int led = (int)trunc(fi + segment_shift);
 
@@ -325,8 +433,8 @@ void render_field(ws2811_t* ledstrip)
                 alpha = 1. - total_alpha;
                 led--;
                 led_offset--;
-            }
-            if (fi == 0) printf("ss %i, sh %f, led %i\n", segment_start, segment_shift, led);
+            } */
+            if (fi == 0) printf("ss %i, sh %i, led %i\n", segment_start, segment_shift, led);
         }
     }
 
@@ -376,14 +484,13 @@ int Match3GameSource_update_leds(int frame, ws2811_t* ledstrip)
     update_bullets();
     update_segments();
     render_field(ledstrip);
-    //color = mix_rgb_color(trailing_color, object->color[color_index], (float)mr->body_offset);
-
+    //render_blend_test(ledstrip);
     return 1;
 }
 
 void Match3GameSource_init_field()
 {
-    for (int i = 0; i < match3_game_source.basic_source.n_leds; ++i)
+    for (int i = 0; i < field_length; ++i)
     {
         field[i].type = (unsigned char)trunc(random_01() * (double)N_GEM_COLORS);
         double shift = random_01()* M_PI;
@@ -391,7 +498,7 @@ void Match3GameSource_init_field()
         field[i].cos_phase = cos(shift);
     }
     segments[0].start = 0;
-    segments[0].speed = -0.2;
+    segments[0].speed = 0.0;
     segments[0].shift = 30.01;
     segments[0].last_move = match3_game_source.basic_source.current_time;
     segments[0].tmp = 0;
@@ -452,7 +559,8 @@ void Match3GameSource_init(int n_leds, int time_speed, uint64_t current_time)
     BasicSource_init(&match3_game_source.basic_source, n_leds, time_speed, source_config.colors[M3_GAME_SOURCE], current_time);
     match3_game_source.start_time = current_time;
     //Game_source_init_objects();
-    field = malloc(sizeof(jewel_t) * match3_game_source.basic_source.n_leds);
+    field_length = match3_game_source.basic_source.n_leds / 2;
+    field = malloc(sizeof(jewel_t) * field_length);
     canvas3 = malloc(sizeof(int) * match3_game_source.basic_source.n_leds);
     zbuffer = malloc(sizeof(int) * match3_game_source.basic_source.n_leds);
     match3_game_source.n_players = Controller_get_n_players();
