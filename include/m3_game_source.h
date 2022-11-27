@@ -8,6 +8,9 @@ typedef struct Match3GameSource
 	uint64_t start_time;
 	int cur_frame;
 	int n_players;
+	//void (*Player_hit_color)(int, enum ERAD_COLOURS);
+	void (*Player_move)(int, signed char);
+	//void (*Player_start)(int);
 } Match3GameSource;
 
 extern Match3GameSource match3_game_source;

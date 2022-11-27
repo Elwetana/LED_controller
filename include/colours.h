@@ -32,8 +32,14 @@ ws2811_led_t multiply_rgb_color(ws2811_led_t rgb, double t);
 /* Will not overflow white for t > 1 */
 ws2811_led_t multiply_rgb_color_ratchet(ws2811_led_t rgb, double t);
 ws2811_led_t mix_rgb_color(ws2811_led_t rgb1, ws2811_led_t rgb2, double t);
+ws2811_led_t mix_rgb_alpha_over_hsl(int rgb1, double alpha1, int rgb2, double alpha2);
+ws2811_led_t mix_rgb_alpha_direct(int rgb1, double alpha1, int rgb2, double alpha2);
+ws2811_led_t mix_rgb_alpha_through_black(int rgb1, double alpha1, int rgb2, double alpha2);
+ws2811_led_t mix_rgb_alpha_no_blend(int rgb1, double alpha1, int rgb2, double alpha2);
+ws2811_led_t mix_rgb_alpha_preserve_lightness(int rgb1, double alpha1, int rgb2, double alpha2);
 void rgb2hsl(ws2811_led_t rgb, hsl_t* hsl);
 ws2811_led_t hsl2rgb(hsl_t* hsl);
+void rgb2rgb_array(int rgb_in, double* rgb_out);
 void test_rgb2hsl();
 
 /*!

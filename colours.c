@@ -50,6 +50,16 @@ void hsl_copy(const hsl_t* hsl_in, hsl_t* hsl_out)
     hsl_out->l = hsl_out->l;
 }
 
+/*!
+* \returns Array of doubles from 0 to 1
+*/
+void rgb2rgb_array(int rgb_in, double* rgb_out)
+{
+    rgb_out[0] = (double)((rgb_in >> 16) & 0xFF) / 0xFF;
+    rgb_out[1] = (double)((rgb_in >> 8) & 0xFF) / 0xFF;
+    rgb_out[2] = (double)(rgb_in & 0xFF) / 0xFF;
+}
+
 void rgb2hsl(ws2811_led_t rgb, hsl_t* hsl)
 {
     int r = ((rgb >> 16) & 0xFF);
@@ -168,6 +178,102 @@ ws2811_led_t lerp_rgb(const ws2811_led_t rgb1, const ws2811_led_t rgb2, const fl
     rgb2hsl(rgb2, &hsl2);
     lerp_hsl(&hsl1, &hsl2, t, &hsl_out);
     return hsl2rgb(&hsl_out);
+}
+
+
+/*!
+* \brief Mixes two colours with two alphas, alpha1 + alpha2 <= 1, over HSL gradient
+*/
+ws2811_led_t mix_rgb_alpha_over_hsl(int rgb1, double alpha1, int rgb2, double alpha2)
+{
+    assert(alpha1 >= 0.0);
+    assert(alpha2 >= 0.0);
+    assert(alpha1 + alpha2 <= 1.0);
+    hsl_t c1, c2, out;
+    rgb2hsl(rgb1, &c1);
+    rgb2hsl(rgb2, &c2);
+    float t = (float)(alpha1 / (alpha1 + alpha2));
+    lerp_hsl(&c1, &c2, 1 - t, &out);
+    int a = (int)(0xFF * alpha1 + 0xFF * alpha2);
+    return a << 24 | hsl2rgb(&out);
+}
+
+/*!
+* \brief Mixes two colours with two alphas, alpha1 + alpha2 <= 1 directly in RGB space
+*/
+ws2811_led_t mix_rgb_alpha_direct(int rgb1, double alpha1, int rgb2, double alpha2)
+{
+    assert(alpha1 >= 0.0);
+    assert(alpha2 >= 0.0);
+    assert(alpha1 + alpha2 <= 1.0);
+    int r = (int)(((rgb1 >> 16) & 0xFF) * alpha1 + ((rgb2 >> 16) & 0xFF) * alpha2);
+    int g = (int)(((rgb1 >> 8) & 0xFF) * alpha1 + ((rgb2 >> 8) & 0xFF) * alpha2);
+    int b = (int)(((rgb1) & 0xFF) * alpha1 + ((rgb2) & 0xFF) * alpha2);
+    int a = (int)(0xFF * alpha1 + 0xFF * alpha2);
+    return a << 24 | r << 16 | g << 8 | b;
+}
+
+/*!
+* \brief Fades from rgb1 to rgb2 through black, i.e. it never creates 'fake' intermediate colours
+* \returns Will return black when alpha1 = alpha2, will return rgb1 * alpha1 when alpha2 = 0 and vice versa 
+*/
+ws2811_led_t mix_rgb_alpha_through_black(int rgb1, double alpha1, int rgb2, double alpha2)
+{
+    assert(alpha1 >= 0.0);
+    assert(alpha2 >= 0.0);
+    assert(alpha1 + alpha2 <= 1.0);
+    int out = (alpha1 >= alpha2) ? rgb1 : rgb2;
+    double norm = max(alpha1, alpha2);
+    norm = 2. * norm - (alpha1 + alpha2); //this will transform norm to interval <0, alpha1 + alpha2>
+
+    int r = (int)(((out >> 16) & 0xFF) * norm);
+    int g = (int)(((out >> 8) & 0xFF) * norm);
+    int b = (int)(((out) & 0xFF) * norm);
+    int a = (int)(0xFF * alpha1 + 0xFF * alpha2);
+    return a << 24 | r << 16 | g << 8 | b;
+}
+
+/*!
+* \brief Calculates the final alpha, returns the colour with more alpha (so the blend is just 0 or 1)
+*/
+ws2811_led_t mix_rgb_alpha_no_blend(int rgb1, double alpha1, int rgb2, double alpha2)
+{
+    assert(alpha1 >= 0.0);
+    assert(alpha2 >= 0.0);
+    assert(alpha1 + alpha2 <= 1.0);
+    int out = (alpha1 >= alpha2) ? rgb1 : rgb2;
+
+    int a = (int)(0xFF * alpha1 + 0xFF * alpha2);
+    return a << 24 | out;
+}
+
+/*!
+* \brief Attempts to preserve the lightness of the blend
+*/
+ws2811_led_t mix_rgb_alpha_preserve_lightness(int rgb1, double alpha1, int rgb2, double alpha2)
+{
+    assert(alpha1 >= 0.0);
+    assert(alpha2 >= 0.0);
+    assert(alpha1 + alpha2 <= 1.0);
+
+    double rgb1a[3], rgb2a[3], rgb_out[3];
+    rgb2rgb_array(rgb1, rgb1a);
+    rgb2rgb_array(rgb2, rgb2a);
+    double l1 = 0, l2 = 0, l_out = 0;
+    for (int i = 0; i < 3; ++i)
+    {
+        l1 = max(rgb1a[i], l1);
+        l2 = max(rgb2a[i], l2);
+        rgb_out[i] = rgb1a[i] * alpha1 + rgb2a[i] * alpha2;
+        l_out = max(rgb_out[i], l_out);
+    }
+    double l_target = l1 * alpha1 + l2 * alpha2;
+    double norm = (l_out != 0) ? l_target / l_out : 1;
+    int a = (int)(0xFF * (alpha1 + alpha2));
+    int r = (int)(norm * rgb_out[0] * 0xFF);
+    int g = (int)(norm * rgb_out[1] * 0xFF);
+    int b = (int)(norm * rgb_out[2] * 0xFF);
+    return a << 24 | r << 16 | g << 8 | b;
 }
 
 void fill_gradient(ws2811_led_t* gradient, int offset, ws2811_led_t from_color, ws2811_led_t to_color, int steps, int next_steps, int max_index)

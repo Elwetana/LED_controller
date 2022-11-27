@@ -24,6 +24,77 @@
 //#define GAME_DEBUG
 static void(*button_handlers[3 * C_MAX_XBTN])(int);
 
+static void Player_hit_red(int player_index)
+{
+    rad_game_source.Player_hit_color(player_index, DC_RED);
+}
+
+static void Player_hit_green(int player_index)
+{
+    rad_game_source.Player_hit_color(player_index, DC_GREEN);
+}
+
+static void Player_hit_blue(int player_index)
+{
+    rad_game_source.Player_hit_color(player_index, DC_BLUE);
+}
+
+static void Player_hit_yellow(int player_index)
+{
+    rad_game_source.Player_hit_color(player_index, DC_YELLOW);
+}
+
+static void Player_move_left(int player_index)
+{
+    rad_game_source.Player_move(player_index, -1);
+}
+
+static void Player_move_right(int player_index)
+{
+    rad_game_source.Player_move(player_index, +1);
+}
+
+static void Player_start_pressed(int player_index)
+{
+    if (rad_game_source.Player_start) rad_game_source.Player_start(player_index);
+}
+
+static void Player_freq_inc(int player_index)
+{
+    (void)player_index;
+#ifdef TUNE_FREQ
+    rad_game_songs.freq += 0.01;
+    printf("Frequence increased to %f\n", rad_game_songs.freq);
+#endif
+}
+
+static void Player_freq_dec(int player_index)
+{
+    (void)player_index;
+#ifdef TUNE_FREQ
+    rad_game_songs.freq -= 0.01;
+    printf("Frequence lowered to %f\n", rad_game_songs.freq);
+#endif
+}
+
+static void Player_time_offset_inc(int player_index)
+{
+    (void)player_index;
+#ifdef TUNE_FREQ
+    rad_game_songs.time_offset += 5000;
+    printf("Time offset increased to %li us\n", rad_game_songs.time_offset);
+#endif
+}
+
+static void Player_time_offset_dec(int player_index)
+{
+    (void)player_index;
+#ifdef TUNE_FREQ
+    rad_game_songs.time_offset -= 5000;
+    printf("Time offset decreased to %li us\n", rad_game_songs.time_offset);
+#endif
+}
+
 void RadInputHandler_init()
 {
     button_handlers[C_MAX_XBTN + DPAD_L] = Player_move_left;

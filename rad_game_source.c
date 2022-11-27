@@ -242,79 +242,7 @@ void RadMovingObject_render(RadMovingObject* mo, int color, ws2811_t* ledstrip)
 
 /****************** Player input *******************/
 
-static void (*Player_hit_color)(int, enum ERAD_COLOURS);
-static void (*Player_move)(int, signed char);
-static void (*Player_start)(int) = 0x0;
-void Player_hit_red(int player_index)
-{
-    Player_hit_color(player_index, DC_RED);
-}
 
-void Player_hit_green(int player_index)
-{
-    Player_hit_color(player_index, DC_GREEN);
-}
-
-void Player_hit_blue(int player_index)
-{
-    Player_hit_color(player_index, DC_BLUE);
-}
-
-void Player_hit_yellow(int player_index)
-{
-    Player_hit_color(player_index, DC_YELLOW);
-}
-
-void Player_move_left(int player_index)
-{
-    Player_move(player_index, -1);
-}
-
-void Player_move_right(int player_index)
-{
-    Player_move(player_index, +1);
-}
-
-void Player_start_pressed(int player_index)
-{
-    if(Player_start) Player_start(player_index);
-}
-
-void Player_freq_inc(int player_index)
-{
-    (void)player_index;
-#ifdef TUNE_FREQ
-    rad_game_songs.freq += 0.01;
-    printf("Frequence increased to %f\n", rad_game_songs.freq);
-#endif
-}
-
-void Player_freq_dec(int player_index)
-{
-    (void)player_index;
-#ifdef TUNE_FREQ
-    rad_game_songs.freq -= 0.01;
-    printf("Frequence lowered to %f\n", rad_game_songs.freq);
-#endif
-}
-
-void Player_time_offset_inc(int player_index)
-{
-    (void)player_index;
-#ifdef TUNE_FREQ
-    rad_game_songs.time_offset += 5000;
-    printf("Time offset increased to %li us\n", rad_game_songs.time_offset);
-#endif
-}
-
-void Player_time_offset_dec(int player_index)
-{
-    (void)player_index;
-#ifdef TUNE_FREQ
-    rad_game_songs.time_offset -= 5000;
-    printf("Time offset decreased to %li us\n", rad_game_songs.time_offset);
-#endif
-}
 
 
 /****************** Common ready states stuff *******************/
@@ -394,44 +322,44 @@ static void RadGameMode_switch_mode(enum ERadGameModes game_mode)
     {
     case RGM_Oscillators:
         RGM_Oscillators_clear();
-        Player_hit_color = RGM_Oscillators_player_hit;
-        Player_move = RGM_Oscillators_player_move;
-        Player_start = 0x0;
+        rad_game_source.Player_hit_color = RGM_Oscillators_player_hit;
+        rad_game_source.Player_move = RGM_Oscillators_player_move;
+        rad_game_source.Player_start = 0x0;
         current_mode_update_leds = RGM_Oscillators_update_leds;
         break;
     case RGM_DDR:
         RGM_DDR_clear();
-        Player_hit_color = RGM_DDR_player_hit;
-        Player_move = RGM_DDR_player_move;
-        Player_start = 0x0;
+        rad_game_source.Player_hit_color = RGM_DDR_player_hit;
+        rad_game_source.Player_move = RGM_DDR_player_move;
+        rad_game_source.Player_start = 0x0;
         current_mode_update_leds = RGM_DDR_update_leds;
         break;
     case RGM_DDR_Ready:
         RGM_DDR_Ready_clear();
-        Player_hit_color = Ready_player_hit;
-        Player_move = Ready_player_move;
-        Player_start = GameMode_player_pressed_start;
+        rad_game_source.Player_hit_color = Ready_player_hit;
+        rad_game_source.Player_move = Ready_player_move;
+        rad_game_source.Player_start = GameMode_player_pressed_start;
         current_mode_update_leds = RGM_DDR_Ready_update_leds;
         break;
     case RGM_Osc_Ready:
         RGM_Osc_Ready_clear();
-        Player_hit_color = Ready_player_hit;
-        Player_move = RGM_Oscillators_player_move;
-        Player_start = GameMode_player_pressed_start;
+        rad_game_source.Player_hit_color = Ready_player_hit;
+        rad_game_source.Player_move = RGM_Oscillators_player_move;
+        rad_game_source.Player_start = GameMode_player_pressed_start;
         current_mode_update_leds = RGM_Oscillators_Ready_update_leds;
         break;
     case RGM_Show_Score:
         RGM_Show_Score_clear();
-        Player_hit_color = Ready_player_hit;
-        Player_move = Ready_player_move;
-        Player_start = GameMode_player_pressed_start;
+        rad_game_source.Player_hit_color = Ready_player_hit;
+        rad_game_source.Player_move = Ready_player_move;
+        rad_game_source.Player_start = GameMode_player_pressed_start;
         current_mode_update_leds = RGM_Show_Score_update_leds;
         break;
     case RGM_Game_Won:
         RGM_GameWon_clear();
-        Player_hit_color = Ready_player_hit;
-        Player_move = Ready_player_move;
-        Player_start = 0x0;
+        rad_game_source.Player_hit_color = Ready_player_hit;
+        rad_game_source.Player_move = Ready_player_move;
+        rad_game_source.Player_start = 0x0;
         current_mode_update_leds = RGM_GameWon_update_leds;
         break;
     case RGM_N_MODES:
@@ -574,6 +502,7 @@ void RadGameSource_init(int n_leds, int time_speed, uint64_t current_time)
     RadInputHandler_init();
     rad_game_source.start_time = current_time;
     rad_game_source.n_players = Controller_get_n_players();
+    rad_game_source.Player_start = 0x0;
     printf("Players detected: %i\n", rad_game_source.n_players);
     if (rad_game_source.n_players == 0)
     {

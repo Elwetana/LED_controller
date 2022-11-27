@@ -56,24 +56,15 @@ enum ERAD_COLOURS
     DC_YELLOW
 };
 
-void Player_move_left(int player_index);
-void Player_move_right(int player_index);
-void Player_freq_inc(int player_index);
-void Player_freq_dec(int player_index);
-void Player_time_offset_inc(int player_index);
-void Player_time_offset_dec(int player_index);
-void Player_hit_red(int player_index);
-void Player_hit_green(int player_index);
-void Player_hit_blue(int player_index);
-void Player_hit_yellow(int player_index);
-void Player_start_pressed(int player_index);
-
 typedef struct RadGameSource
 {
 	BasicSource basic_source;
 	uint64_t start_time;
 	int cur_frame;
 	int n_players;
+	void (*Player_hit_color)(int, enum ERAD_COLOURS);
+	void (*Player_move)(int, signed char);
+	void (*Player_start)(int);
 } RadGameSource;
 
 extern RadGameSource rad_game_source;

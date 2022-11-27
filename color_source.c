@@ -15,6 +15,35 @@
 #include "common_source.h"
 #include "color_source.h"
 
+
+//TODO allow this to be called somehow and from/to colours set somehow
+void render_blend_test(ws2811_t* ledstrip)
+{
+    int from = 0xFF0000;
+    int to = 0x00FF00;
+    const int row_length = 25;
+    for (int i = 0; i < row_length; ++i) {
+        double alpha = i / (double)row_length;
+        int a = (int)(0xFF * alpha);
+        //first row -- just alpha
+        ledstrip->channel[0].leds[i] = a << 16 | a << 8 | a;
+        //second row HSL blend
+        ledstrip->channel[0].leds[i + row_length] = mix_rgb_alpha_over_hsl(from, alpha, to, 1.0 - alpha);
+        //third row lightness preserving
+        ledstrip->channel[0].leds[i + 2 * row_length] = mix_rgb_alpha_preserve_lightness(from, alpha, to, 1.0 - alpha);
+        //fourth row direct blend
+        ledstrip->channel[0].leds[i + 3 * row_length] = mix_rgb_alpha_direct(from, alpha, to, 1.0 - alpha);
+        //fifth row through black
+        ledstrip->channel[0].leds[i + 4 * row_length] = mix_rgb_alpha_through_black(from, alpha, to, 1.0 - alpha);
+        //sixth row no blend
+        ledstrip->channel[0].leds[i + 5 * row_length] = mix_rgb_alpha_no_blend(from, alpha, to, 1.0 - alpha);
+        //seventh row alpha again
+        ledstrip->channel[0].leds[i + 6 * row_length] = a << 16 | a << 8 | a;
+        //eigth row -- black
+        ledstrip->channel[0].leds[i + 7 * row_length] = 0;
+    }
+}
+
 //returns 1 if leds were updated, 0 if update is not necessary
 int ColorSource_update_leds(int frame, ws2811_t* ledstrip)
 {

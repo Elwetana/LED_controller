@@ -34,9 +34,15 @@ static uint64_t button_states[C_MAX_CONTROLLERS][C_MAX_XBTN];
 
 #ifndef __linux__
 static WORD current_state[C_MAX_CONTROLLERS];
+static SHORT current_stick[5][C_MAX_CONTROLLERS];
 static WORD last_state[C_MAX_CONTROLLERS];
 static WORD processed[C_MAX_CONTROLLERS];
-static enum EButtons xMap[] = { DPAD_U, DPAD_D, DPAD_L, DPAD_R, XBTN_Start, XBTN_Back, XBTN_L3, XBTN_R3, XBTN_LB, XBTN_RB, XBTN_ERROR, XBTN_ERROR, XBTN_A, XBTN_B, XBTN_X, XBTN_Y };
+static enum EButtons xMap[] = { 
+    DPAD_U,     DPAD_D,     DPAD_L,     DPAD_R, 
+    XBTN_Start, XBTN_Back,  XBTN_L3,    XBTN_R3, 
+    XBTN_LB,    XBTN_RB,    XBTN_ERROR, XBTN_ERROR, 
+    XBTN_A,     XBTN_B,     XBTN_X,     XBTN_Y 
+};
 /*
 XINPUT_GAMEPAD_DPAD_UP	    0x0001
 XINPUT_GAMEPAD_DPAD_DOWN	0x0002
@@ -64,11 +70,17 @@ char* Controller_get_button_name(enum EButtons button)
 int Controller_get_button_windows(enum EButtons* button, enum EState* state, DWORD dwUserIndex)
 {
     XINPUT_STATE xstate;
-    if (processed[dwUserIndex] == 0)
+    if (processed[dwUserIndex] == 0 && current_stick[4][dwUserIndex] == 0)
     {
         DWORD dwResult = XInputGetState(dwUserIndex, &xstate);
         if (dwResult == ERROR_SUCCESS)
+        {
             current_state[dwUserIndex] = xstate.Gamepad.wButtons;
+            current_stick[0][dwUserIndex] = xstate.Gamepad.sThumbLX;
+            current_stick[1][dwUserIndex] = xstate.Gamepad.sThumbLY;
+            current_stick[2][dwUserIndex] = xstate.Gamepad.sThumbRX;
+            current_stick[3][dwUserIndex] = xstate.Gamepad.sThumbRY;
+        }
         else
             return -1;
     }
@@ -87,8 +99,18 @@ int Controller_get_button_windows(enum EButtons* button, enum EState* state, DWO
             }
         }
     }
+    if (current_stick[0][dwUserIndex] > 16383 || current_stick[0][dwUserIndex] <- 16383)
+    {
+        *state = BT_pressed;
+        *button = (current_stick[0][dwUserIndex] > 16383) ? XBTN_LST_R : XBTN_LST_L;
+        current_stick[0][dwUserIndex] = 0;
+        current_stick[4][dwUserIndex] = 1;
+        return 1;
+    }
+
     last_state[dwUserIndex] = current_state[dwUserIndex];
     processed[dwUserIndex] = 0;
+    current_stick[4][dwUserIndex] = 0;
     return 0;
 }
 
