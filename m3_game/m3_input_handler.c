@@ -38,6 +38,11 @@ static void Player_move_right(int player)
     match3_game_source.Player_move(player, +1);
 }
 
+static void Player_press_A(int player)
+{
+    match3_game_source.Player_press_button(player, M3_A);
+}
+
 
 void Match3InputHandler_init()
 {
@@ -45,8 +50,8 @@ void Match3InputHandler_init()
     button_handlers[C_MAX_XBTN + DPAD_R] = Player_move_right;
     button_handlers[C_MAX_XBTN + XBTN_LST_L] = Player_move_left;
     button_handlers[C_MAX_XBTN + XBTN_LST_R] = Player_move_right;
+    button_handlers[C_MAX_XBTN + XBTN_A] = Player_press_A;
     /*button_handlers[C_MAX_XBTN + XBTN_B] = Player_hit_red;
-    button_handlers[C_MAX_XBTN + XBTN_A] = Player_hit_green;
     button_handlers[C_MAX_XBTN + XBTN_X] = Player_hit_blue;
     button_handlers[C_MAX_XBTN + XBTN_Y] = Player_hit_yellow;
     button_handlers[C_MAX_XBTN + XBTN_L3] = Player_freq_dec;
