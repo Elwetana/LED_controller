@@ -109,6 +109,9 @@
     <ClCompile Include="..\m3_game\m3_input_handler.c">
       <Filter>Games</Filter>
     </ClCompile>
+    <ClCompile Include="..\m3_game\m3_field.c">
+      <Filter>Games</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\include\color_source.h">
@@ -223,6 +226,9 @@
       <Filter>Include</Filter>
     </ClInclude>
     <ClInclude Include="..\include\m3_input_handler.h">
+      <Filter>Include</Filter>
+    </ClInclude>
+    <ClInclude Include="..\include\m3_field.h">
       <Filter>Include</Filter>
     </ClInclude>
   </ItemGroup>
