@@ -22,7 +22,6 @@
 #include "m3_game_source.h"
 #include "m3_field.h"
 
-#define N_MAX_SEGMENTS 16
 const int C_MATCH_3_LENGTH = 3;
 
 
@@ -59,12 +58,31 @@ typedef struct TSegment {
 segment_t segments[N_MAX_SEGMENTS];
 int n_segments = 0;
 
+/* Forward declarations */
+static double calculate_segment_speed(int segment);
+static jewel_t make_jewel(jewel_type type);
+
+void Segments_print_info(int segment)
+{
+    assert(segment < n_segments);
+    printf("Segment id: %i, shift: %f, start: %i, length: %i ", segment, segments[segment].shift, segments[segment].start, segments[segment].length);
+    switch (segments[segment].segment_type)
+    {
+    case ST_MOVING:
+        printf("speed: %f, discomb.: %i\n", segments[segment].moving.speed, segments[segment].moving.discombobulation);
+        break;
+    case ST_COLLAPSING:
+        printf("collapse: %f\n", segments[segment].collapsing.collapse_progress);
+        break;
+    }
+}
+
 //! @brief Get the next segment (i.e. after the right one). To get the first one, call it with -1. 
 //! @param segment 
 //! @return segment index equal to \p segment or higher, that is of the type Moving, -1 if none was found
 const int Segments_get_next_moving(int segment)
 {
-    assert(segment < n_segments);
+    ASSERT(segment < n_segments, -1);
     do
     {
         if (++segment == n_segments)
@@ -132,19 +150,33 @@ const jewel_t Segments_get_jewel(int segment, int position)
     return field[segments[segment].start + position];
 }
 
-const unsigned char Segments_get_jewel_type(int segment, int position)
+const jewel_type Segments_get_jewel_type(int segment, int position)
 {
     assert(segment < n_segments);
     assert(position < Segments_get_length(segment));
     return field[segments[segment].start + position].type;
 }
 
-const unsigned char Segments_get_last_jewel_type(int segment)
+const jewel_type Segments_get_last_jewel_type(int segment)
 {
     assert(segment < n_segments);
     int segment_length = Segments_get_length(segment);
     int pos = segments[segment].start + segment_length - 1;
     return (pos >= 0) ? field[pos].type : 0xFF;
+}
+
+const int Segments_get_field_index(int segment, int position)
+{
+    assert(segment < n_segments);
+    assert(position < Segments_get_length(segment));
+    return segments[segment].start + position;
+}
+
+const int Segments_get_jewel_id(int segment, int position)
+{
+    assert(segment < n_segments);
+    assert(position < Segments_get_length(segment));
+    return field[Segments_get_field_index(segment, position)].unique_id;
 }
 
 void Segments_add_shift(int segment, int amount)
@@ -158,10 +190,11 @@ void Segments_set_discombobulation(int segment, int discombobulation)
 {
     assert(segment < n_segments);
     assert(segments[segment].segment_type == ST_MOVING);
+    assert(discombobulation >= 0);
     segments[segment].moving.discombobulation = discombobulation;
 }
 
-const unsigned int Segments_get_discombobulation(int segment)
+const int Segments_get_discombobulation(int segment)
 {
     assert(segment < n_segments);
     assert(segments[segment].segment_type == ST_MOVING);
@@ -175,60 +208,109 @@ const double Segments_get_collapse_progress(int segment)
     return segments[segment].collapsing.collapse_progress;
 }
 
-static double calculate_segment_speed(int segment);
+const int Segments_get_hole_position(int segment)
+{
+    assert(segment < n_segments);
+    double segment_position = Segments_get_position(segment);
+    double offset = segment_position - (int)trunc(segment_position);
+    int length = Segments_get_length(segment);
+    return length > 2 ? (int)(length * (1 - offset)) : length;
+}
 
 //! \brief Split segment at position, create new collapsing segment, stop all segments before and including segment
-//!     field: 0 1 2 3 4 X X 7 8 9 . . . 
-//!   segment:     ^     ^ ^ ^
-//!                |     | |  position = 5
-//!                |  collapse_length = 2
-//!                start = 2, length = 8
+//!     field: 0 1 2 3 4 5 6 7 8 9 . . . 
+//!      leds:     O O o X X X O O   O = led, o = hole, X = collapse
+//!       pos:     0 1 2 3 4 5 6 7
+//!   segment:     ^     ^     ^
+//!                |     |     position = 5
+//!                |  collapse_length = 3
+//!       start = 2, length = 7, shift 
+//! 
+//! After
+//!     field: 0 1 2 3 4 5 6 7 8 9 . . . 
+//!      leds:     O O . X X X O O
+//!       pos:     0 1   0 1 2 0 1
+//!   segment:     ^     ^     ^ new inserted (shift = 0)
+//!                |     | 
+//!          trimmed     collapsing
+//! 
+//! The hole can be in one of the three parts of the segment:
+//!     - between start and collapse => shift both collapse and new segment to right, 
+//!         recaulculate shift of the original segment, so that the hole stays in place
+//!     - inside collapse => shift both collapse and new segment by one, trunc shift
+//!         the old segment, the hole will jump (alternative would be to extend collapse
+//!         length by one)
+//!     - aftter collapse, in new segment => trunc shift of the old segment, calculate 
+//!         shift of the new segment so that the hole stays in place
 //! 
 //! \param  segment new segment will appear after it
 //! \param position new segment will start at position
-static void collapse_segment(const int segment, const int position, const int collapse_length)
+static void collapse_segment(const int segment, const int position, const int collapse_length, const int led_discombobulation)
 {
     assert(!(position < collapse_length));
+    int hole_position = Segments_get_hole_position(segment);
+
+    printf("Inserting new segment at position %i, hole %i, collapse %i, ld.: %i\n", position, hole_position, collapse_length, led_discombobulation);
+    Segments_print_info(segment);
+
     int n_inserts = 2;
     int segment_length = Segments_get_length(segment);
     int collapse_index = segment + 1;
     int new_moving_index = segment + 2;
-    if (position == segment_length - 1) //collapse is at the end
+    if (position == segment_length)     //collapse is at the end, there will be no new moving segment
     {
         n_inserts--;
-        new_moving_index = -1;
+        new_moving_index = 0;
     }
-    if (position == collapse_length)    //collapse at the beginning
+    if (position == collapse_length)    //collapse at the beginning, existing moving segment will be overwritten by the collapsing one
     {
         n_inserts--;
         collapse_index = segment;
+        new_moving_index--;
     }
 
     n_segments += n_inserts;
-    for (int si = n_segments - 1; si > segment + n_inserts - 1; --si)
+    //printf("N segments increased to %i\n", n_segments);
+    assert(n_segments <= N_MAX_SEGMENTS); //TODO handle this situation
+    for (int si = n_segments - 1; si > segment + n_inserts; --si)
     {
         segments[si] = segments[si - n_inserts];
         if(segments[si].segment_type == ST_MOVING)
             segments[si].moving.speed = 0;
     }
+
+    //if the hole is to the left of us, we have to shift position by one
+    //we also add our "parent" 
+    double collapse_add_shift = led_discombobulation;
     segment_t collapsing_segment = {
         .start = segments[segment].start + position - collapse_length,
         .length = collapse_length,
-        .shift = segments[segment].shift + position - collapse_length,
+        .shift = trunc(segments[segment].shift) + position - collapse_length + collapse_add_shift,
         .segment_type = ST_COLLAPSING,
-        .collapsing.collapse_progress = 1.0,
-        .debug = match3_game_source.basic_source.current_time / 1000L / 1000L
+        .collapsing.collapse_progress = 1.0
     };
-    if (collapse_index > segment) //the segment will be trimmed
+    if (collapse_index > segment) //the \p segment will be trimmed
     {
         segments[segment].length = position - collapse_length;
+        if (hole_position < position - collapse_length)
+        {
+            segments[segment].shift = trunc(segments[segment].shift) + (double)(segments[segment].length - hole_position) / segments[segment].length;
+        }
+        else
+        {
+            segments[segment].shift = trunc(segments[segment].shift);
+        }
     }
-    if (new_moving_index > -1) //new segment will be inserted to the right of the collapsing segment
+    if (new_moving_index > 0) //new segment will be inserted to the right of the collapsing segment
     {
+        double new_segment_shift = 0;
+        if (hole_position == position) new_segment_shift = 1.;
+        if (hole_position > position) new_segment_shift = (double)(segment_length - hole_position) / (segment_length - position);
+
         segment_t moving_segment = {
             .start = segments[segment].start + position,
             .length = segment_length - position,
-            .shift = segments[segment].shift + position,
+            .shift = trunc(segments[segment].shift) + position + collapse_add_shift + new_segment_shift,
             .segment_type = ST_MOVING,
             .moving.speed = 0,
             .moving.discombobulation = Segments_get_discombobulation(segment)
@@ -238,9 +320,14 @@ static void collapse_segment(const int segment, const int position, const int co
     segments[collapse_index] = collapsing_segment;
     if (new_moving_index > -1)
     {
-        double new_speed = calculate_segment_speed(new_moving_index);
-        if (new_speed < 0.) segments[new_moving_index].shift += 1.;
+        //printf("New segment: %i:%i:%f, len %i\n", new_moving_index, segments[new_moving_index].start, segments[new_moving_index].shift, segments[new_moving_index].length);
+        //double new_speed = calculate_segment_speed(new_moving_index);
+        //if (new_speed < 0.) segments[new_moving_index].shift += 1.;
     }
+    printf("Collapsing segment delta %f: ", segments[collapse_index].shift - segments[segment].shift - segments[segment].length);
+    Segments_print_info(collapse_index);
+    //if(new_moving_index > -1) \
+        printf("New segment: %i:%i:%f, len %i\n", new_moving_index, segments[new_moving_index].start, segments[new_moving_index].shift, segments[new_moving_index].length);
 }
 
 //! @brief This happens when the whole segment collapses, it is then completely removed, or when two segments are merged
@@ -255,6 +342,7 @@ static void delete_segment(const int left_segment, int shift_length)
         segments[segment].start -= shift_length;
     }
     n_segments--;
+    //printf("N segments decreasing to %i\n", n_segments);
 }
 
 static void merge_segments(const int left_segment, int right_segment)
@@ -294,10 +382,10 @@ static void merge_segments(const int left_segment, int right_segment)
 //! @param  position  position of the jewel with the type for which we check
 //! @param   segment  index of segment where the jewel is
 //! @return probably nothing interesting
-static const void evaluate_field(const int position, const int segment)
+static const void evaluate_field(const int segment, const int position, const int led_discombobulation)
 {
     assert(segments[segment].segment_type == ST_MOVING);
-    unsigned char type = Segments_get_jewel_type(segment, position);
+    jewel_type type = Segments_get_jewel_type(segment, position);
     int length = 1;
     int segment_length = Segments_get_length(segment);
 
@@ -314,12 +402,12 @@ static const void evaluate_field(const int position, const int segment)
     if (same_length < C_MATCH_3_LENGTH)
     {
         printf("Not enough jewels in match %i\n", same_length);
-        return -1;
+        return;
     }
 
     //we have a match, we have to split the segment and start collapse
-    printf("Segment %i split at position %i\n", segment, pos_end);
-    collapse_segment(segment, pos_end, same_length);
+    printf("Segment %i split at position %i, match length %i\n", segment, pos_end, same_length);
+    collapse_segment(segment, pos_end, same_length, led_discombobulation);
 }
 
 //! @brief Inserts a new \p jewel at \p position in \p insert_segment. All jewels in the field at \p position and higher 
@@ -328,26 +416,35 @@ static const void evaluate_field(const int position, const int segment)
 //! @param position 
 //! @param insert_segment 
 //! @param jewel 
-void Field_insert_and_evaluate(const int position, const int insert_segment, jewel_t jewel)
+void Field_insert_and_evaluate(const int insert_segment, const int position, jewel_type jewel_type, int led_discombobulation)
 {
     assert(insert_segment < n_segments);
     assert(position < Segments_get_length(insert_segment));
     assert(segments[insert_segment].segment_type == ST_MOVING);
 
+    printf("inserting into %i, pos %i, ld.: %i\n", insert_segment, position, led_discombobulation);
+    Segments_print_info(insert_segment);
     field_length += (field_length == C_MAX_FIELD_LENGTH - 1) ? 0 : 1; //if we are at the max field length, the last jewel will be simply overwritten
-    int fi_insert = segments[insert_segment].start + position;
+    int fi_insert = Segments_get_field_index(insert_segment, position);
     for (int fi = field_length - 1; fi > fi_insert; --fi)
     {
         field[fi] = field[fi - 1];
     }
-    field[fi_insert] = jewel;
+    field[fi_insert] = make_jewel(jewel_type);
+    segments[insert_segment].length++;
     for (int segment = insert_segment + 1; segment < n_segments; ++segment)
     {
         segments[segment].start += 1;
     }
-    segments[insert_segment].moving.discombobulation--;
-
-    evaluate_field(position, insert_segment);
+    if (position > 0) //if the bullet is just behind the segment, it is not inside and dicombobulation is 0
+    {
+        segments[insert_segment].moving.discombobulation--;
+        led_discombobulation--;
+    }
+    else
+        segments[insert_segment].shift -= 1.0;
+    evaluate_field(insert_segment, position, led_discombobulation);
+    Segments_print_info(insert_segment);
 }
 
 static void set_segment_speed(int segment, double target_speed, double time_delta)
@@ -373,8 +470,8 @@ static double calculate_segment_speed(int segment)
     int left_segment = Segments_get_prev_moving(segment);
     if(left_segment == -1)
         return match3_config.slow_forward_speed;
-    unsigned char left_type = Segments_get_last_jewel_type(left_segment);
-    unsigned char right_type = Segments_get_jewel_type(segment, 0);
+    jewel_type left_type = Segments_get_last_jewel_type(left_segment);
+    jewel_type right_type = Segments_get_jewel_type(segment, 0);
     if (left_type == right_type)
         return match3_config.retrograde_speed;
     return 0.;
@@ -391,41 +488,39 @@ void Segments_update()
 {
     double time_delta = (double)(match3_game_source.basic_source.time_delta / 1000L) / 1e6;
 
-    //check speed of all segments and update as needed
-    for (int segment = 0; segment < n_segments; ++segment)
-    {
-        if (segments[segment].segment_type != ST_MOVING)
-            continue;
-        double target_speed = calculate_segment_speed(segment);
-        set_segment_speed(segment, target_speed, time_delta);
-        if (segments[segment].moving.speed == 0)
-            continue;
-        segments[segment].shift += segments[segment].moving.speed * time_delta;
-    }
-
-
+    int is_collapse = 0;
     //update collapsing segments
-    for (int segment = n_segments; segment >= 0; --segment)
+    for (int segment = n_segments - 1; segment >= 0; --segment)
     {
         if (segments[segment].segment_type != ST_COLLAPSING)
             continue;
         segments[segment].collapsing.collapse_progress -= time_delta / match3_config.collapse_time;
+        if (segments[segment].collapsing.collapse_progress < 0)
+        {
+            printf("Removing segment %i, length is %i\n", segment, segments[segment].length);
+            delete_segment(segment, 0);
+        }
+        else
+            is_collapse++;
+    }
+
+    //check speed of all segments and update as needed
+    if (is_collapse == 0)
+    {
+        for (int segment = 0; segment < n_segments; ++segment)
+        {
+            if (segments[segment].segment_type != ST_MOVING)
+                continue;
+            double target_speed = calculate_segment_speed(segment);
+            set_segment_speed(segment, target_speed, time_delta);
+            if (segments[segment].moving.speed == 0)
+                continue;
+            segments[segment].shift += segments[segment].moving.speed * time_delta;
+        }
     }
 
     //finally, we can check for segments to merge and delete
     int segment = n_segments - 1;
-    while (segment >= 0)
-    {
-        if (segments[segment].segment_type == ST_COLLAPSING && segments[segment].collapsing.collapse_progress < 0)
-        {
-            delete_segment(segment, 0);
-            int t = match3_game_source.basic_source.current_time / 1000L / 1000L - segments[segment].debug;
-            printf("Removing jewels at segment %i, length is %i after %i ms\n", segment, segments[segment].length, t);
-        }
-        segment--;
-    }
-
-    segment = n_segments - 1;
     while (segment > 0)
     {
         if (segments[segment].segment_type != ST_MOVING)
@@ -442,14 +537,16 @@ void Segments_update()
         int left_length = Segments_get_length(left_segment) + Segments_get_discombobulation(left_segment);
         double visual_distance = trunc(Segments_get_position(segment)) - trunc(Segments_get_position(left_segment)) - left_length;
         //if the left segment is moving right, or right segment is moving left, we have to decrease the visual distance by one in each case
-        if (segments[segment].moving.speed < 0) visual_distance -= 1;
+        //if (segments[segment].moving.speed < 0) visual_distance -= 1;
         if (segments[left_segment].moving.speed > 0) visual_distance -= 1;
-        printf("Distance between %i and %i is %f\n", left_segment, segment, visual_distance);
+        //printf("Distance between %i and %i is %f\n", left_segment, segment, visual_distance);
         if (visual_distance < 1.)
         {
-            printf("Merging segments: left %i\n", left_segment);
+            printf("Merging segments: left %i, right %i\n", left_segment, segment);
+            int merge_position = Segments_get_length(left_segment) - 1;
+            int left_discomb = Segments_get_discombobulation(left_segment);
             merge_segments(left_segment, segment);
-            evaluate_field(left_length, left_segment);
+            evaluate_field(left_segment, merge_position, left_discomb);
         }
         segment--;
     }
@@ -458,16 +555,25 @@ void Segments_update()
         printf("YOU WIN\n");
 }
 
+static jewel_t make_jewel(jewel_type type)
+{
+    static int unique_id = 0;
+    double shift = random_01() * M_PI;
+    jewel_t j = {
+        .type = type,
+        .unique_id = unique_id++,
+        .sin_phase = sin(shift),
+        .cos_phase = cos(shift)
+    };
+    return j;
+}
 
 void Field_init()
 {
     field_length = match3_game_source.basic_source.n_leds / 2;
     for (int i = 0; i < field_length; ++i)
     {
-        field[i].type = (unsigned char)trunc(random_01() * (double)(N_GEM_COLORS - 1));
-        double shift = random_01() * M_PI;
-        field[i].sin_phase = sin(shift);
-        field[i].cos_phase = cos(shift);
+        field[i] = make_jewel((jewel_type)trunc(random_01() * (double)(N_GEM_COLORS - 1)));
     }
     segments[0].start = 0;
     segments[0].shift = 80.01;

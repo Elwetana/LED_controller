@@ -2,11 +2,21 @@
 #define __M3_GAME_SOURCE_H__
 
 #define N_GEM_COLORS 6
+//#define DEBUG_M3
+
+#ifdef DEBUG_M3
+#define ASSERT(a,b) assert((a))
+#else
+#define ASSERT(a, b) if(!(a)) { printf("Assertion failed: " #a " at line %i, file %s", __LINE__, __FILE__); return (b); }
+#endif // DEBUG_M3
+
 
 enum EM3_BUTTONS
 {
 	M3_A,
-	M3_B
+	M3_B,
+	M3_Y,
+	M3_DUP
 };
 
 typedef struct Match3GameSource
@@ -34,7 +44,9 @@ struct Match3Config
 	double gem_freq[N_GEM_COLORS];  //in Hertz
 	int player_colour;				//0xAARRGGBB
 	int collapse_colour;
-	double player_move_cooldown;    //in seconds
+	double player_move_cooldown;    //in miliseconds
+	double player_catch_cooldown;   //in miliseconds
+	int player_catch_distance;		//in leds
 	int player_dit_length;          //in milliseconds
 	int player_n_dits;              //it will be in config, no need for define
 	unsigned char player_patterns[4][4]; //first index is player, second index is dit, each byte specifies pulse function for that dit
@@ -42,7 +54,8 @@ struct Match3Config
 	double normal_forward_speed;	//normal forward speed (leds/second)
 	double retrograde_speed;		//speed when backing down attracted, by jewel of the same type (leds/second)
 	double slow_forward_speed;		//speed when not the first segment (leds/second)
-	double bullet_speed;			//leds per second
+	double bullet_speed;			//in leds per second
+	double emitor_cooldown;			//in miliseconds
 };
 
 extern const struct Match3Config match3_config;

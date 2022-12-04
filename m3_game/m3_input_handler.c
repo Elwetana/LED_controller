@@ -21,17 +21,12 @@
 #include "m3_input_handler.h"
 #include "controller.h"
 
-//#define GAME_DEBUG
 static void(*button_handlers[3 * C_MAX_XBTN])(int);
-
-
-
 
 static void Player_move_left(int player)
 {
     match3_game_source.Player_move(player, -1);
 }
-
 
 static void Player_move_right(int player)
 {
@@ -43,6 +38,20 @@ static void Player_press_A(int player)
     match3_game_source.Player_press_button(player, M3_A);
 }
 
+static void Player_press_B(int player)
+{
+    match3_game_source.Player_press_button(player, M3_B);
+}
+
+static void Player_press_Y(int player)
+{
+    match3_game_source.Player_press_button(player, M3_Y);
+}
+
+static void Player_press_DUP(int player)
+{
+    match3_game_source.Player_press_button(player, M3_DUP);
+}
 
 void Match3InputHandler_init()
 {
@@ -51,7 +60,10 @@ void Match3InputHandler_init()
     button_handlers[C_MAX_XBTN + XBTN_LST_L] = Player_move_left;
     button_handlers[C_MAX_XBTN + XBTN_LST_R] = Player_move_right;
     button_handlers[C_MAX_XBTN + XBTN_A] = Player_press_A;
-    /*button_handlers[C_MAX_XBTN + XBTN_B] = Player_hit_red;
+    button_handlers[C_MAX_XBTN + DPAD_U] = Player_press_DUP;
+    button_handlers[C_MAX_XBTN + XBTN_B] = Player_press_B;
+    button_handlers[C_MAX_XBTN + XBTN_Y] = Player_press_Y;
+    /*
     button_handlers[C_MAX_XBTN + XBTN_X] = Player_hit_blue;
     button_handlers[C_MAX_XBTN + XBTN_Y] = Player_hit_yellow;
     button_handlers[C_MAX_XBTN + XBTN_L3] = Player_freq_dec;

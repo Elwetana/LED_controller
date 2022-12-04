@@ -42,11 +42,13 @@
 /* Config data */
 const struct Match3Config match3_config = {
     .n_half_grad = 4,
-    .collapse_time = 5,
+    .collapse_time = 2,
     .gem_freq = { 0.5, 0.75, 1.0, 1.5, 1.25 },
     .player_colour = 0xFFFFFF,
     .collapse_colour = 0xFFD700,
-    .player_move_cooldown = 0.2,
+    .player_move_cooldown = 200,
+    .player_catch_cooldown = 100,
+    .player_catch_distance = 2,
     .player_dit_length = 250,
     .player_n_dits = 4,
     .player_patterns = { 
@@ -56,18 +58,20 @@ const struct Match3Config match3_config = {
         {2, 3, 0, 0}
     },
     .max_accelaration = 0.05,
-    .normal_forward_speed = 0.05,
-    .retrograde_speed = -0.025,
+    .normal_forward_speed = 0.2,
+    .retrograde_speed = -0.3,
     .slow_forward_speed = 0.01,
-    .bullet_speed = 2
+    .bullet_speed = 3,
+    .emitor_cooldown = 150
 };
-
 
 #define N_MAX_BULLETS 16
 
 /* Config data end */
 
 //! \brief all pulse functions expect progress prg going from 0 to 1
+//! @param prg progress from 0 to 1
+//! @return alpha from 0 to 1
 double saw_tooth(double prg)
 {
     return 1.0 - prg;
@@ -137,7 +141,7 @@ double(*pulse_functions[4])(double) = { 0x0, saw_tooth, saw_tooth_first_half, sa
 
 //! Jewels fired by the players
 typedef struct TBullet {
-    jewel_t jewel;
+    jewel_type jewel_type;
     double position; //!< relative to field
     double speed;    //!< could be positive or negative, in leds/second
     int player;      //!< index into players; player that fired the bullet
@@ -147,27 +151,46 @@ bullet_t bullets[N_MAX_BULLETS];
 //! number of bullets
 n_bullets = 0;
 
+//! Emitor fires the bullets
+//! there is only one emitor, so we don't need typedef for this struct
+struct {
+    jewel_type jewel_type;
+    double last_fire;
+    const int length;
+} emitor = {
+    .last_fire = 0, 
+    .jewel_type = 0,
+    .length = 3
+};
+
 //! Players
 typedef struct TPlayer {
     double position;
     double last_move;
+    double last_catch;
 } player_t;
 player_t players[C_MAX_CONTROLLERS];
 
 int* canvas3;
 int* zbuffer;
+
+#ifdef DEBUG_M3
+int* debug_fi_current;
+int* debug_fi_previous;
+#endif // DEBUG_M3
+
 const int C_LED_Z = 1;          //!< 0 means there is nothing in z buffer, so led with index 0 must be 1
-const int C_BULLET_Z = 4096;    //!< bullets z index will be C_BULLET_Z + bullet
 const int C_SEGMENT_SHIFT = 10; //!< z buffer for jewels is (segment_index << C_SEGMENT_SHIFT) | field_index
+const int C_BULLET_Z = N_MAX_SEGMENTS << 10;    //!< bullets z index will be C_BULLET_Z + bullet
 
 
-void bullet_into_jewel(int bullet);
+void bullet_into_jewel(int bullet_pos);
 
 /************** Implementation start ********************/
 
-inline double seconds_from_start()
+inline double miliseconds_from_start()
 {
-    return (double)((match3_game_source.basic_source.current_time - match3_game_source.start_time) / 1000l) / 1e6;
+    return (double)((match3_game_source.basic_source.current_time - match3_game_source.start_time) / 1000l) / 1e3;
 }
 
 
@@ -178,41 +201,90 @@ static void Player_move(int player_index, signed char direction)
     //printf("Player %i moved in direction %i\n", player_index, direction);
     assert(player_index <= match3_game_source.n_players);
     assert(direction * direction == 1);
-    double t = seconds_from_start();
+    double t = miliseconds_from_start();
     if (t - players[player_index].last_move > match3_config.player_move_cooldown)
     {
         players[player_index].position += direction;
         players[player_index].last_move = t;
     }
     players[player_index].position = max(0, players[player_index].position);
-    players[player_index].position = min(players[player_index].position, match3_game_source.basic_source.n_leds - 1);
+    players[player_index].position = min(players[player_index].position, match3_game_source.basic_source.n_leds - 1 - emitor.length);
 }
 
-static void PLayer_press_button(int player, enum EM3_BUTTONS button)
+static void Player_catch(int player_index)
 {
-    printf("Catch bullet attempted\n");
-    double min_d = C_MAX_FIELD_LENGTH * C_MAX_FIELD_LENGTH;
-    int min_bullet = -1;
-    for (int bullet = 0; bullet < n_bullets; ++bullet)
+    //printf("Catch bullet attempted\n");
+    double t = miliseconds_from_start();
+    if (t - players[player_index].last_catch < match3_config.player_catch_cooldown)
+        return;
+    players[player_index].last_catch = t;
+
+    int player_pos = (int)players[player_index].position;
+    int dist = 0;
+    int catch = 999;
+    while (dist <= match3_config.player_catch_distance && catch == 999)
     {
-        double d = bullets[bullet].position - players[player].position;
-        d *= d;
-        if (d < min_d)
-        {
-            min_d = d;
-            min_bullet = bullet;
-        }
+        if (zbuffer[player_pos + dist] >= C_BULLET_Z) catch = dist;
+        if (zbuffer[player_pos - dist] >= C_BULLET_Z) catch = -dist;
+        dist++;
     }
-    if (min_d != -1 && min_d < 9)
+    if (catch == 999)
     {
-        printf("Bullet caught %i\n", min_bullet);
-        bullet_into_jewel(min_bullet);
+        printf("bullet missed\n");
     }
     else
-        printf("bullet missed %f\n", min_d);
-
+    {
+        printf("Bullet caught %i\n", player_pos + catch);
+        bullet_into_jewel(player_pos + catch);
+    }
 }
 
+static void Player_fire()
+{
+    double t = miliseconds_from_start();
+    if (t - emitor.last_fire < match3_config.emitor_cooldown)
+        return;
+    emitor.last_fire = t;
+   
+    assert(emitor.jewel_type < N_GEM_COLORS);
+    bullets[n_bullets].jewel_type = emitor.jewel_type;
+    bullets[n_bullets].speed = -match3_config.bullet_speed; // +random_01();
+    bullets[n_bullets].position = match3_game_source.basic_source.n_leds - 1 - emitor.length;
+    n_bullets++;
+}
+
+static void Player_reload()
+{
+    emitor.jewel_type = (emitor.jewel_type + 1) % N_GEM_COLORS;
+}
+
+static void print_info(int player_index)
+{
+    int player_pos = (int)players[player_index].position;
+    if (zbuffer[player_pos] > 0 && zbuffer[player_pos] < C_BULLET_Z) Segments_print_info(zbuffer[player_pos] >> C_SEGMENT_SHIFT);
+}
+
+static void Player_press_button(int player, enum EM3_BUTTONS button)
+{
+    switch (button)
+    {
+    case M3_A:
+        Player_catch(player);
+        break;
+    case M3_B:
+        Player_fire();
+        break;
+    case M3_Y:
+        print_info(player);
+        break;
+    case M3_DUP:
+        Player_reload();
+        break;
+    default:
+        printf("This is not possible\n");
+        break;
+    }
+}
 
 void delete_bullet(int bullet)
 {
@@ -245,45 +317,46 @@ void update_bullets()
         if (!remove_bullet[bullet])
             continue;
         delete_bullet(bullet);
-    }
-
-    //test hack
-    if (random_01() < (0.005 / (n_bullets + 1) ))
-    {
-        bullets[n_bullets].jewel.type = (unsigned char)trunc(random_01() * N_GEM_COLORS);
-        bullets[n_bullets].speed = -match3_config.bullet_speed; // +random_01();
-        bullets[n_bullets].position = match3_game_source.basic_source.n_leds - 1;
-        n_bullets++;
-        printf("bullet fired\n");
+        //TODO -- update segment shift if inside segment, otherwise discombobulation is lost
     }
 }
 
-void bullet_into_jewel(int bullet)
+void bullet_into_jewel(int bullet_led)
 {
     //insert new jewel in the field
-    int bullet_pos = (int)bullets[bullet].position;
+    int bullet = zbuffer[bullet_led] - C_BULLET_Z;
+    while (zbuffer[bullet_led] >= C_BULLET_Z) 
+        bullet_led++;
 
-    if (zbuffer[bullet_pos + 1] == 0)  //we are not in a segment, nothing can be inserted
+    if (zbuffer[bullet_led] == 0)  //we are not in a segment, nothing can be inserted TODO -- we could check to the left of the bullet
         return;
 
-    int segment = zbuffer[bullet_pos + 1] >> C_SEGMENT_SHIFT;
-    int fi_insert = (zbuffer[bullet_pos + 1] & ((1 << C_SEGMENT_SHIFT) - 1)) - 1;
-    Field_insert_and_evaluate(fi_insert, segment, bullets[bullet].jewel);
-    printf("Inserted jewel type %i at position %i\n", bullets[bullet].jewel.type, fi_insert);
+    //zbuffer[led] = C_LED_Z + (segment << C_SEGMENT_SHIFT | pos);
+    int segment = zbuffer[bullet_led] >> C_SEGMENT_SHIFT;
+    int insert_pos = ((zbuffer[bullet_led] - C_LED_Z) & ((1 << C_SEGMENT_SHIFT) - 1));
+    int clean_led = (int)Segments_get_position(segment) + insert_pos;
+    printf("Inserting jewel type %i at position %i, dis.: %i\n", bullets[bullet].jewel_type, Segments_get_field_index(segment, insert_pos), bullet_led - clean_led);
+    Field_insert_and_evaluate(segment, insert_pos, bullets[bullet].jewel_type, bullet_led - clean_led);
     //destroy the bullet
     delete_bullet(bullet);
 }
 
+ws2811_led_t get_jewel_color(jewel_type jewel_type)
+{
+    int gradient_index = (2 * match3_config.n_half_grad + 1) * jewel_type + match3_config.n_half_grad;
+    return match3_game_source.basic_source.gradient.colors[gradient_index];
+}
+
 void render_players()
 {
-    double d = 1000. * seconds_from_start() / (double)match3_config.player_dit_length;
-    int dit = (int)trunc(d) % match3_config.player_n_dits;
+    double d = miliseconds_from_start() / (double)match3_config.player_dit_length;
+    int dit = (int)d % match3_config.player_n_dits;
     double prg = d - trunc(d);
 
     for (int player = 0; player < match3_game_source.n_players; ++player)
     {
         //player is displayed when its patter is on or when it is just moving
-        int is_moving = (seconds_from_start() - players[player].last_move) < 2 * match3_config.player_move_cooldown;
+        int is_moving = (miliseconds_from_start() - players[player].last_move) < 2 * match3_config.player_move_cooldown;
         if (match3_config.player_patterns[player][dit] || is_moving)
         {
             double pos = trunc(players[player].position);
@@ -304,10 +377,15 @@ void render_bullets()
     for (int bullet = 0; bullet < n_bullets; ++bullet)
     {
         int led = (int)bullets[bullet].position;
+        double frac = bullets[bullet].position - led;
+        assert(frac >= 0);
+        assert(frac < 1.);
+        frac *= 2;
+        while (frac > 1.) frac -= 1;
+        double alpha = saw_tooth(frac);
         zbuffer[led] = C_BULLET_Z + bullet;
-        int gradient_index = (2 * match3_config.n_half_grad + 1) * bullets[bullet].jewel.type + match3_config.n_half_grad;
-        int bullet_colour = match3_game_source.basic_source.gradient.colors[gradient_index];
-        canvas3[led] = bullet_colour | 0xFF << 24;
+        int colour = get_jewel_color(bullets[bullet].jewel_type);
+        canvas3[led] = colour | (int)(0xFF * alpha) << 24;
     }
 }
 
@@ -318,7 +396,7 @@ void render_bullets_alpha()
         int led = (int)bullets[bullet].position;
         for (int i = 1; i < 4; ++i)
         {
-            int alpha = (0.25 + (double)i / 8.) * 0xFF;
+            int alpha = (int)((0.25 + (double)i / 8.) * 0xFF);
             int canvas_colour = canvas3[led + i] & 0xFFFFFF; 
             canvas3[led + i] = alpha << 24 | canvas_colour;
             canvas_colour = canvas3[led - i] & 0xFFFFFF;
@@ -336,11 +414,14 @@ void render_collapsing_segments()
         int segment_position = (int)trunc(Segments_get_position(segment));
         double collapse_progress = 4. * Segments_get_collapse_progress(segment);
         while (collapse_progress > 1) collapse_progress--;
-        for (int fi = 0; fi < segment_length; ++fi)  //fi -- field_index 
+        for (int pos = 0; pos < segment_length; ++pos)
         {
-            int led = fi + segment_position;
+            int led = pos + segment_position;
             canvas3[led] = ((int)(0xFF * collapse_progress) << 24) | match3_config.collapse_colour;;
             zbuffer[led] = 0;
+#ifdef DEBUG_M3
+            debug_fi_current[led] = 1 + Segments_get_field_index(segment, pos);
+#endif // DEBUG_M3
         }
         segment = Segments_get_next_collapsing(segment);
     }
@@ -361,22 +442,21 @@ void render_moving_segments()
     {
         int segment_length = Segments_get_length(segment);
         int segment_position = (int)trunc(Segments_get_position(segment));
-        double offset = Segments_get_position(segment) - segment_position;
-        int hole_position = (int)(segment_length * (1 - offset));
+        int hole_position = Segments_get_hole_position(segment);
         int hole_direction = -Segments_get_direction(segment);
 
         int led_discombobulation = 0;
-        for (int fi = 0; fi < segment_length; ++fi)  //fi -- field_index 
+        for (int pos = 0; pos < segment_length; ++pos)
         {
-            int led = fi + segment_position + led_discombobulation;
-            if (fi * hole_direction <= hole_position * hole_direction)
+            int led = pos + segment_position + led_discombobulation;
+            if (pos >= hole_position)
             {
-                led -= hole_direction;
+                led++;
             }
             if ((led + hole_direction) >= match3_game_source.basic_source.n_leds)
                 continue;
 
-            if (fi == hole_position) //we will outptut two leds for this fi, one for the hole, one for the jewel
+            if (pos == hole_position) //we will outptut two leds for this pos, one for the hole, one for the jewel
             {
                 if (zbuffer[led + hole_direction] > 0) //if there is bullet on the hole position, we have to shift even more
                 {
@@ -400,16 +480,16 @@ void render_moving_segments()
             if (led >= match3_game_source.basic_source.n_leds)
                 continue;
 
-            if (fi == 0 && led_discombobulation > 0)
+            if (pos == 0 && led_discombobulation > 0)
             {
-                //printf("segment %i, fi %i, dsc %i\n", segment, fi, led_discombobulation);
+                //printf("segment %i, pos %i, dsc %i\n", segment, pos, led_discombobulation);
                 Segments_add_shift(segment, led_discombobulation);
                 segment_position += led_discombobulation;
                 led_discombobulation = 0;
             }
 
-            jewel_t jewel = Segments_get_jewel(segment, fi);
-            unsigned char type = jewel.type;
+            jewel_t jewel = Segments_get_jewel(segment, pos);
+            jewel_type type = jewel.type;
             //this will transform ampl to <0, 2 * N_HALF_GRAD>
             double ampl = (sins[type] * jewel.cos_phase + coss[type] * jewel.sin_phase + 1) * match3_config.n_half_grad;
             int gradient_index = (int)ampl;
@@ -420,14 +500,25 @@ void render_moving_segments()
             assert(gradient_index + 1 < match3_game_source.basic_source.gradient.n_colors);
             gradient_index = (2 * match3_config.n_half_grad + 1) * type + match3_config.n_half_grad;
 
-            int colour = 0xFF << 24 | match3_game_source.basic_source.gradient.colors[gradient_index];
-            int z_index = C_LED_Z + (segment << C_SEGMENT_SHIFT | fi);
+            canvas3[led] = 0xFF << 24 | match3_game_source.basic_source.gradient.colors[gradient_index];
+            zbuffer[led] = C_LED_Z + (segment << C_SEGMENT_SHIFT | pos);
 
-            canvas3[led] = colour;
-            zbuffer[led] = z_index;
+#ifdef DEBUG_M3
+            debug_fi_current[led] = 1 + Segments_get_jewel_id(segment, pos);
+#endif // DEBUG_M3
         }
         Segments_set_discombobulation(segment, led_discombobulation);
         segment = Segments_get_next_moving(segment);
+    }
+}
+
+void render_emitor()
+{
+    int from = match3_game_source.basic_source.n_leds - 1 - emitor.length;
+    int to = match3_game_source.basic_source.n_leds;
+    for (int led = from; led < to; ++led)
+    {
+        canvas3[led] = get_jewel_color(emitor.jewel_type) | 0xFF << 24;
     }
 }
 
@@ -446,27 +537,41 @@ void render_field(int frame, ws2811_t* ledstrip)
     //render all objects to canvas and zbuffer
     render_bullets();
     render_moving_segments();
-    render_bullets_alpha();
+    //render_bullets_alpha();
     render_players();
+    render_emitor();
     render_collapsing_segments();
 
     //output canvas into leds
+#ifdef DEBUG_M3
+    static int leds_moved_all = 0;
+    int leds_moved = 0;
+#endif // DEBUG_M3
+
     for (int led = 0; led < match3_game_source.basic_source.n_leds; ++led)
     {
         double canvas_alpha = (double)((canvas3[led] & 0xFF000000) >> 24) / (double)0xFF;
         int canvas_colour = canvas3[led] & 0xFFFFFF;
-        //debug
-        int segment = -1;
-        if (zbuffer[led] < C_BULLET_Z) segment = zbuffer[led] >> C_SEGMENT_SHIFT;
-        if (segment > 0) 
-            canvas_alpha = canvas_alpha / (segment + 1);
-        //debug end
         ledstrip->channel[0].leds[led] = multiply_rgb_color(canvas_colour, canvas_alpha);
-        if (led == 0)
-        {
-            //printf("%i %f\n", gradient_index, blend);
-        }
+#ifdef DEBUG_M3
+        if(debug_fi_current[led] != debug_fi_previous[led]) leds_moved++;
+        debug_fi_previous[led] = 0;
+#endif // DEBUG_M3
     }
+
+#ifdef DEBUG_M3
+    if (frame > 2)
+    {
+        leds_moved_all += leds_moved;
+        if(leds_moved > 6)
+            printf("LEDs moved this frame %i, average %f\n", leds_moved, (double)leds_moved_all / frame);
+    }
+    int* tmp = debug_fi_previous;
+    debug_fi_previous = debug_fi_current;
+    debug_fi_current = tmp;
+#else
+    (void)frame;
+#endif // DEBUG_M3
 }
 
 //! The update has the following phases:
@@ -477,10 +582,10 @@ void render_field(int frame, ws2811_t* ledstrip)
 
 int Match3GameSource_update_leds(int frame, ws2811_t* ledstrip)
 {
+    Match3InputHandler_process_input();
     update_bullets();
     Segments_update();
     render_field(frame, ledstrip);
-    Match3InputHandler_process_input();
     return 1;
 }
 
@@ -537,10 +642,15 @@ void Match3GameSource_init(int n_leds, int time_speed, uint64_t current_time)
     Match3InputHandler_init();
     match3_game_source.start_time = current_time;
     match3_game_source.Player_move = Player_move;
-    match3_game_source.Player_press_button = PLayer_press_button;
+    match3_game_source.Player_press_button = Player_press_button;
     //Game_source_init_objects();
     canvas3 = malloc(sizeof(int) * match3_game_source.basic_source.n_leds);
     zbuffer = malloc(sizeof(int) * match3_game_source.basic_source.n_leds);
+#ifdef DEBUG_M3
+    debug_fi_current = malloc(sizeof(int) * match3_game_source.basic_source.n_leds);
+    debug_fi_previous = malloc(sizeof(int) * match3_game_source.basic_source.n_leds);
+#endif // DEBUG_M3
+
     match3_game_source.n_players = Controller_get_n_players();
     Field_init();
     Match3GameSource_init_player_position();
@@ -550,6 +660,11 @@ void Match3GameSource_destruct()
 {
     free(canvas3);
     free(zbuffer);
+#ifdef DEBUG_M3
+    free(debug_fi_current);
+    free(debug_fi_previous);
+#endif // DEBUG_M3
+
     Field_destruct();
 }
 
