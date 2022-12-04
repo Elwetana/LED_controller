@@ -43,6 +43,11 @@ static void Player_press_B(int player)
     match3_game_source.Player_press_button(player, M3_B);
 }
 
+static void Player_press_X(int player)
+{
+    match3_game_source.Player_press_button(player, M3_X);
+}
+
 static void Player_press_Y(int player)
 {
     match3_game_source.Player_press_button(player, M3_Y);
@@ -63,9 +68,8 @@ void Match3InputHandler_init()
     button_handlers[C_MAX_XBTN + DPAD_U] = Player_press_DUP;
     button_handlers[C_MAX_XBTN + XBTN_B] = Player_press_B;
     button_handlers[C_MAX_XBTN + XBTN_Y] = Player_press_Y;
+    button_handlers[C_MAX_XBTN + XBTN_X] = Player_press_X;
     /*
-    button_handlers[C_MAX_XBTN + XBTN_X] = Player_hit_blue;
-    button_handlers[C_MAX_XBTN + XBTN_Y] = Player_hit_yellow;
     button_handlers[C_MAX_XBTN + XBTN_L3] = Player_freq_dec;
     button_handlers[C_MAX_XBTN + XBTN_R3] = Player_freq_inc;
     button_handlers[C_MAX_XBTN + XBTN_LB] = Player_time_offset_dec;

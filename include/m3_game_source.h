@@ -2,12 +2,14 @@
 #define __M3_GAME_SOURCE_H__
 
 #define N_GEM_COLORS 6
-//#define DEBUG_M3
+#define DEBUG_M3
 
 #ifdef DEBUG_M3
-#define ASSERT(a,b) assert((a))
+#define ASSERT_M3(a,b) assert((a))
+#define ASSERT_M3_CONTINUE(a) assert((a))
 #else
-#define ASSERT(a, b) if(!(a)) { printf("Assertion failed: " #a " at line %i, file %s", __LINE__, __FILE__); return (b); }
+#define ASSERT_M3(a, b) if(!(a)) { printf("Assertion failed: " #a " at line %i, file %s", __LINE__, __FILE__); return (b); }
+#define ASSERT_M3_CONTINUE(a) if(!(a)) printf("Assertion failed: " #a " at line %i, file %s", __LINE__, __FILE__)
 #endif // DEBUG_M3
 
 
@@ -15,6 +17,7 @@ enum EM3_BUTTONS
 {
 	M3_A,
 	M3_B,
+	M3_X,
 	M3_Y,
 	M3_DUP
 };
@@ -26,12 +29,11 @@ typedef struct Match3GameSource
 	int cur_frame;
 	int n_players;
 	void (*Player_press_button)(int, enum EM3_BUTTONS);
-	//void (*Player_hit_color)(int, enum ERAD_COLOURS);
 	void (*Player_move)(int, signed char);
-	//void (*Player_start)(int);
 } Match3GameSource;
 
 extern Match3GameSource match3_game_source;
+inline double miliseconds_from_start();
 
 struct Match3Config
 {
@@ -56,6 +58,7 @@ struct Match3Config
 	double slow_forward_speed;		//speed when not the first segment (leds/second)
 	double bullet_speed;			//in leds per second
 	double emitor_cooldown;			//in miliseconds
+	double unswap_timeout;			//in miliseconds
 };
 
 extern const struct Match3Config match3_config;

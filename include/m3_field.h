@@ -36,6 +36,7 @@ const int Segments_get_jewel_id(int segment, int position);
 //const int Field_evaluate(const int field_index, const int segment);
 void Field_init();
 void Field_insert_and_evaluate(const int segment, const int position, jewel_type jewel_type, int led_discombobulation);
+void Field_swap_and_evaluate(const int swap_segment, const int left_position, int led_discombobulation);
 void Field_destruct();
 
 
