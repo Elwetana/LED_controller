@@ -182,6 +182,7 @@ xcopy /y $(ProjectDir)..\rad_game\config_rad  $(ProjectDir)\rad_game\</Command>
     <ClCompile Include="..\m3_game\m3_field.c" />
     <ClCompile Include="..\m3_game\m3_game.c" />
     <ClCompile Include="..\m3_game\m3_input_handler.c" />
+    <ClCompile Include="..\m3_game\m3_players.c" />
     <ClCompile Include="..\m3_game_source.c" />
     <ClCompile Include="..\rad_game\ddr_game.c" />
     <ClCompile Include="..\rad_game\nonplaying_states.c" />
@@ -235,6 +236,7 @@ xcopy /y $(ProjectDir)..\rad_game\config_rad  $(ProjectDir)\rad_game\</Command>
     <ClInclude Include="..\include\m3_game.h" />
     <ClInclude Include="..\include\m3_game_source.h" />
     <ClInclude Include="..\include\m3_input_handler.h" />
+    <ClInclude Include="..\include\m3_players.h" />
     <ClInclude Include="..\include\nonplaying_states.h" />
     <ClInclude Include="..\include\oscillators.h" />
     <ClInclude Include="..\include\rad_game_source.h" />

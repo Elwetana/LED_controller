@@ -464,7 +464,7 @@ static void swap_jewels(const int swap_segment, const int left_position)
     field[right_index] = tmp;
 }
 
-void Field_swap_and_evaluate(const int swap_segment, const int left_position, int led_discombobulation)
+const int Field_swap_and_evaluate(const int swap_segment, const int left_position, int led_discombobulation)
 {
     ASSERT_M3(swap_segment < n_segments, (void)0);
     ASSERT_M3(left_position < segments[swap_segment].length - 1, (void)0);
@@ -476,6 +476,7 @@ void Field_swap_and_evaluate(const int swap_segment, const int left_position, in
     if (right_eval || left_eval)
     {
         printf("Swap successful\n");
+        return 0;
     }
     else
     {
@@ -483,6 +484,7 @@ void Field_swap_and_evaluate(const int swap_segment, const int left_position, in
         unswaps[n_unswaps].segment = swap_segment;
         unswaps[n_unswaps].left_position = left_position;
         n_unswaps++;
+        return -1;
     }
 }
 

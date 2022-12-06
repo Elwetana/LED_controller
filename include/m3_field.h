@@ -2,8 +2,6 @@
 #define __M3_FIELD_H__
 
 #define C_MAX_FIELD_LENGTH 1024
-#define N_MAX_SEGMENTS 32
-
 
 typedef unsigned char jewel_type;
 
@@ -36,7 +34,7 @@ const int Segments_get_jewel_id(int segment, int position);
 //const int Field_evaluate(const int field_index, const int segment);
 void Field_init();
 void Field_insert_and_evaluate(const int segment, const int position, jewel_type jewel_type, int led_discombobulation);
-void Field_swap_and_evaluate(const int swap_segment, const int left_position, int led_discombobulation);
+const int Field_swap_and_evaluate(const int swap_segment, const int left_position, int led_discombobulation);
 void Field_destruct();
 
 

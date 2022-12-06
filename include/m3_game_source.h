@@ -12,15 +12,23 @@
 #define ASSERT_M3_CONTINUE(a) if(!(a)) printf("Assertion failed: " #a " at line %i, file %s", __LINE__, __FILE__)
 #endif // DEBUG_M3
 
+//this could be moved to more widely shared .h
+#define ANSI_COLOR_RED     "\x1b[31m"
+#define ANSI_COLOR_GREEN   "\x1b[32m"
+#define ANSI_COLOR_YELLOW  "\x1b[33m"
+#define ANSI_COLOR_BLUE    "\x1b[34m"
+#define ANSI_COLOR_MAGENTA "\x1b[35m"
+#define ANSI_COLOR_CYAN    "\x1b[36m"
+#define ANSI_COLOR_RESET   "\x1b[0m"
 
-enum EM3_BUTTONS
+
+enum EMatch3GamePhase
 {
-	M3_A,
-	M3_B,
-	M3_X,
-	M3_Y,
-	M3_DUP
+	M3GP_SELECT,
+	M3GP_PLAY,
+	M3GP_END
 };
+
 
 typedef struct Match3GameSource
 {
@@ -28,12 +36,27 @@ typedef struct Match3GameSource
 	uint64_t start_time;
 	int cur_frame;
 	int n_players;
-	void (*Player_press_button)(int, enum EM3_BUTTONS);
-	void (*Player_move)(int, signed char);
+	enum EMatch3GamePhase current_phase;
 } Match3GameSource;
 
 extern Match3GameSource match3_game_source;
+
+
+#define N_MAX_SEGMENTS 32
+extern const int C_LED_Z;
+extern const int C_SEGMENT_SHIFT;
+extern const int C_BULLET_Z;
+
+
 inline double miliseconds_from_start();
+void m3_print_info(int led);
+
+const int Match3_Emitor_get_length();
+const int Match3_Emitor_fire();
+const int Match3_Emitor_reload(int dir);
+const int Match3_Game_catch_bullet(int led);
+const int Match3_Game_swap_jewels(int led, int dir);
+
 
 struct Match3Config
 {

@@ -18,68 +18,56 @@
 
 #include "common_source.h"
 #include "m3_game_source.h"
+#include "m3_players.h"
 #include "m3_input_handler.h"
 #include "controller.h"
 
-static void(*button_handlers[3 * C_MAX_XBTN])(int);
+static void(*button_handlers[3 * C_MAX_XBTN])(int, enum EM3_BUTTONS);
+enum EM3_BUTTONS button_names[C_MAX_XBTN] = { M3B_N_BUTTONS };
 
 static void Player_move_left(int player)
 {
-    match3_game_source.Player_move(player, -1);
+    Match3_Player_move(player, -1);
 }
 
 static void Player_move_right(int player)
 {
-    match3_game_source.Player_move(player, +1);
+    Match3_Player_move(player, +1);
 }
 
-static void Player_press_A(int player)
+void Match3_InputHandler_init()
 {
-    match3_game_source.Player_press_button(player, M3_A);
-}
+    button_names[XBTN_A] = M3B_A;
+    button_names[XBTN_B] = M3B_B;
+    button_names[XBTN_X] = M3B_X;
+    button_names[XBTN_Y] = M3B_Y;
+    button_names[DPAD_U] = M3B_DUP;
+    button_names[DPAD_R] = M3B_DRIGHT;
+    button_names[DPAD_D] = M3B_DDOWN;
+    button_names[DPAD_L] = M3B_DLEFT;
 
-static void Player_press_B(int player)
-{
-    match3_game_source.Player_press_button(player, M3_B);
-}
 
-static void Player_press_X(int player)
-{
-    match3_game_source.Player_press_button(player, M3_X);
-}
-
-static void Player_press_Y(int player)
-{
-    match3_game_source.Player_press_button(player, M3_Y);
-}
-
-static void Player_press_DUP(int player)
-{
-    match3_game_source.Player_press_button(player, M3_DUP);
-}
-
-void Match3InputHandler_init()
-{
-    button_handlers[C_MAX_XBTN + DPAD_L] = Player_move_left;
-    button_handlers[C_MAX_XBTN + DPAD_R] = Player_move_right;
     button_handlers[C_MAX_XBTN + XBTN_LST_L] = Player_move_left;
     button_handlers[C_MAX_XBTN + XBTN_LST_R] = Player_move_right;
-    button_handlers[C_MAX_XBTN + XBTN_A] = Player_press_A;
-    button_handlers[C_MAX_XBTN + DPAD_U] = Player_press_DUP;
-    button_handlers[C_MAX_XBTN + XBTN_B] = Player_press_B;
-    button_handlers[C_MAX_XBTN + XBTN_Y] = Player_press_Y;
-    button_handlers[C_MAX_XBTN + XBTN_X] = Player_press_X;
+    button_handlers[C_MAX_XBTN + DPAD_U] = Match3_Player_press_button;
+    button_handlers[C_MAX_XBTN + DPAD_R] = Match3_Player_press_button;
+    button_handlers[C_MAX_XBTN + DPAD_L] = Match3_Player_press_button;
+    button_handlers[C_MAX_XBTN + XBTN_A] = Match3_Player_press_button;
+    button_handlers[C_MAX_XBTN + XBTN_B] = Match3_Player_press_button;
+    button_handlers[C_MAX_XBTN + XBTN_X] = Match3_Player_press_button;
+    button_handlers[C_MAX_XBTN + XBTN_Y] = Match3_Player_press_button;
     /*
     button_handlers[C_MAX_XBTN + XBTN_L3] = Player_freq_dec;
     button_handlers[C_MAX_XBTN + XBTN_R3] = Player_freq_inc;
     button_handlers[C_MAX_XBTN + XBTN_LB] = Player_time_offset_dec;
     button_handlers[C_MAX_XBTN + XBTN_RB] = Player_time_offset_inc;
-    button_handlers[C_MAX_XBTN + XBTN_Start] = Player_start_pressed;*/
+    button_handlers[C_MAX_XBTN + XBTN_Start] = Player_start_pressed;
+    */
 
     Controller_init();
 }
 
-int Match3InputHandler_process_input()
+int Match3_InputHandler_process_input()
 {
     enum EButtons button;
     enum EState state;
@@ -95,7 +83,8 @@ int Match3InputHandler_process_input()
             int button_index = state * C_MAX_XBTN + button;
             if (button_handlers[button_index])
             {
-                button_handlers[button_index](player);
+                assert(button_names[button] != M3B_N_BUTTONS);
+                button_handlers[button_index](player, button_names[button]);
             }
             i = Controller_get_button(match3_game_source.basic_source.current_time, &button, &state, player);
         }
