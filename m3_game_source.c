@@ -66,21 +66,16 @@ const struct Match3Config match3_config = {
     .slow_forward_speed = 0.01,
     .bullet_speed = 3,
     .emitor_cooldown = 150,
-    .unswap_timeout = 150
+    .unswap_timeout = 150,
+    .highlight_timeout = 500
 };
 /* Config data end */
 
 
 /** Private properties **/
 
-enum EMatch3GamePhase
-{
-    M3GP_SELECT,
-    M3GP_PLAY,
-    M3GP_END,
-    M3GP_N_PHASES
-} current_phase = M3GP_SELECT;
 int current_level = 0;
+int end_phase_requested = 0;
 
 /* 
  * General description of rendering moving objects:
@@ -146,28 +141,31 @@ const int C_BULLET_Z = N_MAX_SEGMENTS << 10;    //!< bullets z index will be C_B
 
 /************** Utility functions ************************/
 
-double miliseconds_from_start()
+double miliseconds_from_start(void)
 {
     return (double)((match3_game_source.basic_source.current_time - match3_game_source.start_time) / 1000l) / 1e3;
 }
 
-/*********************************************************/
-
-static void level_won()
+void match3_announce(char* message)
 {
-    printf(ANSI_COLOR_RED "YOU WIN" ANSI_COLOR_RESET);
+    printf(ANSI_COLOR_RED "%s\n" ANSI_COLOR_RESET, message);
 }
 
-
-static void level_lost()
+static int is_announcement_in_progress(void)
 {
-    printf(ANSI_COLOR_RED "YOU LOSE" ANSI_COLOR_RESET);
+    //TODO check if sound_player is playing
+    return 0;
 }
-
 
 /***************** Application Flow **********************/
 
-
+void Match3_GameSource_finish_phase(enum EMatch3GamePhase phase)
+{
+    if (phase == match3_game_source.game_phase)
+    {
+        end_phase_requested = 1;
+    }
+}
 
 match3_LevelDefinition_t level_definitions[MATCH3_N_LEVELS] = 
 {
@@ -180,52 +178,109 @@ match3_LevelDefinition_t level_definitions[MATCH3_N_LEVELS] =
     }
 };
 
-
-static void select_update(int frame, ws2811_t* ledstrip)
+static void select_phase_init(void)
 {
-
-    Match3_Game_render_leds(frame, ledstrip);
+    Match3_Players_init();
+    match3_announce("Select your roles: X for pitcher, Y for catcher, B for switcher. Press A to highlight your cursor");
 }
 
-static void play_update(int frame, ws2811_t* ledstrip)
+static void select_phase_update(void)
+{
+    if (is_announcement_in_progress())
+        Match3_InputHandler_drain_input();
+    else
+        Match3_InputHandler_process_input();
+    Match3_Game_render_select();
+}
+
+static void play_phase_init(void)
+{
+    Field_init(level_definitions[current_level]);
+    match3_game_source.level_phase = M3LP_IN_PROGRESS;
+    match3_announce("Get ready! Go!");
+}
+
+static void play_phase_update(void)
 {
     Match3_InputHandler_process_input();
     Match3_Bullets_update();
     Segments_update();
     Match3_Game_render_field();
-    Match3_Game_render_leds(frame, ledstrip);
+    if (match3_game_source.level_phase == M3LP_LEVEL_LOST || match3_game_source.level_phase == M3LP_LEVEL_WON)
+    {
+        Match3_GameSource_finish_phase(M3GP_PLAY);
+    }
 }
 
-static void play_init()
+static void end_phase_init(void)
 {
-    Field_init(level_definitions[current_level]);
+    //TODO -- queue announcements
     Match3_Players_init();
+    switch (match3_game_source.level_phase)
+    {
+    case M3LP_LEVEL_LOST:
+        match3_announce("You lost!");
+        match3_announce("Press start to retry");
+        break;
+    case M3LP_LEVEL_WON:
+        match3_announce("You win!");
+        match3_announce("Press start to continue");
+        current_level++;
+        if (current_level == MATCH3_N_LEVELS)
+        {
+            match3_announce("Game won");
+        }
+        break;
+    case M3LP_IN_PROGRESS:
+    case M3LP_N_PHASES:
+    default:
+        printf("Level must be either won or lost");
+        assert(0);
+    }
+}
+
+static void end_phase_update(void)
+{
+    if (current_level < MATCH3_N_LEVELS)
+    {
+        Match3_InputHandler_process_input();
+        //TODO -- render score?
+    }
+    else
+    {
+        //TODO -- display clues
+    }
 }
 
 
 struct
 {
-    const void (*init)();
-    const void (*update)(int frame, ws2811_t* ledstrip);
-} phase_definitions[M3GP_N_PHASES - 1] = 
+    const void (*init)(void);
+    const void (*update)(void);
+} phase_definitions[M3GP_N_PHASES] = 
 {
     {
-        .init = play_init,
-        .update = play_update
+        .init = select_phase_init,
+        .update = select_phase_update
+    },
+    {
+        .init = play_phase_init,
+        .update = play_phase_update
     }
 };
 
-
-
-//! The update has the following phases:
-//!  - if collapse is in progress, just render and check if the collapse is over
-//!  - check input, start moving players and/or start swapping jewels
-//!  - render field, possibly just collapsing, leaving holes for the players
-//!  - render player(s), possibly just moving
-
 int Match3GameSource_update_leds(int frame, ws2811_t* ledstrip)
 {
-    phase_definitions[current_phase].update(frame, ledstrip);
+    phase_definitions[match3_game_source.game_phase].update();
+    Match3_Game_render_leds(frame, ledstrip);
+    //check phase/level progress
+    if (end_phase_requested)
+    {
+        enum EMatch3GamePhase phase = match3_game_source.game_phase;
+        match3_game_source.game_phase = ((int)phase + 1) % M3GP_N_PHASES;
+        end_phase_requested = 0;
+        phase_definitions[match3_game_source.game_phase].init();
+    }
     return 1;
 }
 
@@ -274,7 +329,7 @@ void Match3GameSource_init(int n_leds, int time_speed, uint64_t current_time)
 
     match3_game_source.start_time = current_time;
     match3_game_source.n_players = Controller_get_n_players();
-    phase_definitions[current_phase].init();
+    phase_definitions[match3_game_source.game_phase].init();
 }
 
 void Match3GameSource_destruct()
@@ -294,5 +349,6 @@ void Match3GameSource_construct()
 
 match3_GameSource_t match3_game_source = {
     .basic_source.construct = Match3GameSource_construct,
-    .level_phase = M3LP_IN_PROGRESS
+    .level_phase = M3LP_IN_PROGRESS,
+    .game_phase = M3GP_SELECT
 };

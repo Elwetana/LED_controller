@@ -544,7 +544,7 @@ static void unswap_update(double time_delta)
 //!     -- otherwise, if two neighboring segments have the same jewel type at the matching ends, 
 //!        the left segment moves at slow speed, and right segment at retrograde speed
 //!     -- otherwise, the left segment moves at the slow speed and and the right segment stands
-void Segments_update()
+void Segments_update(void)
 {
     double time_delta = (double)(match3_game_source.basic_source.time_delta / 1000L) / 1e6;
     
@@ -655,7 +655,7 @@ void Field_init(match3_LevelDefinition_t level_definition)
     n_segments = 1;
 }
 
-void Field_destruct()
+void Field_destruct(void)
 {
     //free(field);
 }

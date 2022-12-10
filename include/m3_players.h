@@ -11,14 +11,16 @@ enum EM3_BUTTONS
     M3B_DRIGHT,
     M3B_DDOWN,
     M3B_DLEFT,
+    M3B_START,
     M3B_N_BUTTONS
 };
 
 const int Match3_Player_get_position(int player_index);
 const int Match3_Player_is_moving(int player_index);
+const int Match3_Player_get_highlight(void);
 
 void Match3_Player_move(int player, signed char direction);
 void Match3_Player_press_button(int player, enum EM3_BUTTONS button);
-void Match3_Players_init();
+void Match3_Players_init(void);
 
 #endif /* __M3_PLAYERS_H__ */

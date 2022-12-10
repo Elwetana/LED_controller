@@ -148,11 +148,19 @@ ws2811_led_t get_jewel_color(jewel_type jewel_type)
 
 /***************** Renderigs *******************************/
 
-static void render_players()
+static void render_players(void)
 {
     double d = miliseconds_from_start() / (double)match3_config.player_dit_length;
     int dit = (int)d % match3_config.player_n_dits;
     double prg = d - trunc(d);
+
+    int highlited_player = Match3_Player_get_highlight();
+    if (highlited_player > -1)  //we shall only paint this one player and nothing else -- only available in select phase
+    {
+        int pos = Match3_Player_get_position(highlited_player);
+        canvas3[pos] = match3_config.player_colour | 0xFF << 24;
+        return;
+    }
 
     for (int player = 0; player < match3_game_source.n_players; ++player)
     {
@@ -167,7 +175,7 @@ static void render_players()
     }
 }
 
-static void render_bullets()
+static void render_bullets(void)
 {
     int n_bullets = Match3_Bullets_get_n();
     for (int bullet = 0; bullet < n_bullets; ++bullet)
@@ -184,7 +192,7 @@ static void render_bullets()
     }
 }
 
-static void render_bullets_alpha()
+static void render_bullets_alpha(void)
 {
     int n_bullets = Match3_Bullets_get_n();
     for (int bullet = 0; bullet < n_bullets; ++bullet)
@@ -201,7 +209,7 @@ static void render_bullets_alpha()
     }
 }
 
-static void render_collapsing_segments()
+static void render_collapsing_segments(void)
 {
     int segment = Segments_get_next_collapsing(-1);
     while (segment > -1)
@@ -223,7 +231,7 @@ static void render_collapsing_segments()
     }
 }
 
-static void render_moving_segments()
+static void render_moving_segments(void)
 {
     double sins[N_GEM_COLORS] = { 0 };
     double coss[N_GEM_COLORS] = { 0 };
@@ -314,7 +322,7 @@ static void render_moving_segments()
     }
 }
 
-static void render_emitor()
+static void render_emitor(void)
 {
     int from = match3_game_source.basic_source.n_leds - 1 - Match3_Emitor_get_length();
     int to = match3_game_source.basic_source.n_leds;
@@ -324,6 +332,15 @@ static void render_emitor()
     }
 }
 
+static void clear_canvas(void)
+{
+    //clear z-buffer
+    memset(zbuffer, 0, sizeof(int) * match3_game_source.basic_source.n_leds);
+    //clear canvas
+    memset(canvas3, 0, sizeof(int) * match3_game_source.basic_source.n_leds);
+
+}
+
 
 //! \brief Calculate actual positions of field segments, bullets and players during normal play
 //! 
@@ -331,19 +348,21 @@ static void render_emitor()
 //!  1. render bullets
 //!  2. render jewels (i.e segments), may be affected bullets
 //!  3. render players (no z-checks, painted over everything)
-void Match3_Game_render_field()
+void Match3_Game_render_field(void)
 {
-    //clear z-buffer
-    memset(zbuffer, 0, sizeof(int) * match3_game_source.basic_source.n_leds);
-    //clear canvas
-    memset(canvas3, 0, sizeof(int) * match3_game_source.basic_source.n_leds);
-
+    clear_canvas();
     //render all objects to canvas and zbuffer
     render_bullets();
     render_moving_segments();
     render_players();
     render_emitor();
     render_collapsing_segments();
+}
+
+void Match3_Game_render_select(void)
+{
+    clear_canvas();
+    render_players();
 }
 
 
@@ -385,7 +404,7 @@ void Match3_Game_render_leds(int frame, ws2811_t* ledstrip)
 #endif // DEBUG_M3
 }
 
-void Match3_Game_init()
+void Match3_Game_init(void)
 {
     canvas3 = malloc(sizeof(int) * match3_game_source.basic_source.n_leds);
     zbuffer = malloc(sizeof(int) * match3_game_source.basic_source.n_leds);
@@ -396,7 +415,7 @@ void Match3_Game_init()
 
 }
 
-void Match3_Game_destruct()
+void Match3_Game_destruct(void)
 {
     free(canvas3);
     free(zbuffer);

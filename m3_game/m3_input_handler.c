@@ -37,7 +37,7 @@ static void Player_move_right(int player, enum EM3_BUTTONS button)
     Match3_Player_move(player, +1);
 }
 
-void Match3_InputHandler_init()
+void Match3_InputHandler_init(void)
 {
     button_names[XBTN_A] = M3B_A;
     button_names[XBTN_B] = M3B_B;
@@ -47,6 +47,7 @@ void Match3_InputHandler_init()
     button_names[DPAD_R] = M3B_DRIGHT;
     button_names[DPAD_D] = M3B_DDOWN;
     button_names[DPAD_L] = M3B_DLEFT;
+    button_names[XBTN_Start] = M3B_START;
 
 
     button_handlers[C_MAX_XBTN + XBTN_LST_L] = Player_move_left;
@@ -58,6 +59,7 @@ void Match3_InputHandler_init()
     button_handlers[C_MAX_XBTN + XBTN_B] = Match3_Player_press_button;
     button_handlers[C_MAX_XBTN + XBTN_X] = Match3_Player_press_button;
     button_handlers[C_MAX_XBTN + XBTN_Y] = Match3_Player_press_button;
+    button_handlers[C_MAX_XBTN + XBTN_Start] = Match3_Player_press_button;
     /*
     button_handlers[C_MAX_XBTN + XBTN_L3] = Player_freq_dec;
     button_handlers[C_MAX_XBTN + XBTN_R3] = Player_freq_inc;
@@ -69,7 +71,22 @@ void Match3_InputHandler_init()
     Controller_init();
 }
 
-int Match3_InputHandler_process_input()
+void Match3_InputHandler_drain_input(void)
+{
+    enum EButtons button;
+    enum EState state;
+    for (int player = 0; player < match3_game_source.n_players; player++)
+    {
+        int i = Controller_get_button(match3_game_source.basic_source.current_time, &button, &state, player);
+        while (i > 0)
+        {
+            i = Controller_get_button(match3_game_source.basic_source.current_time, &button, &state, player);
+        }
+    }
+    return;
+}
+
+int Match3_InputHandler_process_input(void)
 {
     enum EButtons button;
     enum EState state;

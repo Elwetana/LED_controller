@@ -170,7 +170,7 @@ static void init_hw()
 #endif /* __linux__ */
 
 
-void SoundPlayer_mix_effect(int samples_read)
+static void SoundPlayer_mix_effect(int samples_read)
 {
     int effect_offset = effects[current_effect].position;
     int samples_to_modify = effects[current_effect].n_samples - effect_offset;

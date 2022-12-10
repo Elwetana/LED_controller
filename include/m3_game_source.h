@@ -21,6 +21,15 @@
 #define ANSI_COLOR_CYAN    "\x1b[36m"
 #define ANSI_COLOR_RESET   "\x1b[0m"
 
+
+enum EMatch3GamePhase
+{
+	M3GP_SELECT,
+	M3GP_PLAY,
+	M3GP_END,
+	M3GP_N_PHASES
+};
+
 enum EMatch3LevelPhase
 {
 	M3LP_IN_PROGRESS,
@@ -29,7 +38,6 @@ enum EMatch3LevelPhase
 	M3LP_N_PHASES
 };
 
-
 typedef struct Match3GameSource
 {
 	BasicSource basic_source;
@@ -37,6 +45,7 @@ typedef struct Match3GameSource
 	int cur_frame;
 	int n_players;
 	enum EMatch3LevelPhase level_phase;	
+	enum EMatch3GamePhase game_phase;
 } match3_GameSource_t;
 
 extern match3_GameSource_t match3_game_source;
@@ -56,7 +65,10 @@ extern const int C_LED_Z;
 extern const int C_SEGMENT_SHIFT;
 extern const int C_BULLET_Z;
 
-double miliseconds_from_start();
+double miliseconds_from_start(void);
+void match3_announce(char* message);
+
+void Match3_GameSource_finish_phase(enum EMatch3GamePhase phase);
 
 typedef unsigned char jewel_type;
 
@@ -84,6 +96,7 @@ struct Match3Config
 	double bullet_speed;			//in leds per second
 	double emitor_cooldown;			//in miliseconds
 	double unswap_timeout;			//in miliseconds
+	double highlight_timeout;		//in miliseconds
 };
 
 extern const struct Match3Config match3_config;

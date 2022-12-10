@@ -12,7 +12,7 @@ typedef struct TJewel {
 } jewel_t;
 
 void Segments_print_info(int segment);
-void Segments_update();
+void Segments_update(void);
 const int Segments_get_next_moving(int segment);
 const int Segments_get_next_collapsing(int segment);
 const double Segments_get_position(int segment);      //!< returns position relative to the LEDs
@@ -33,7 +33,7 @@ const int Segments_get_jewel_id(int segment, int position);
 void Field_init(match3_LevelDefinition_t level_definition);
 void Field_insert_and_evaluate(const int segment, const int position, jewel_type jewel_type, int led_discombobulation);
 const int Field_swap_and_evaluate(const int swap_segment, const int left_position, int led_discombobulation);
-void Field_destruct();
+void Field_destruct(void);
 
 
 #endif /* __M3_FIELD_H__ */

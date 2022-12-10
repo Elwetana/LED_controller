@@ -65,7 +65,7 @@ int Ready_update_leds(ws2811_t* ledstrip, void (*get_intervals)(int, int*, int*)
     }
     if (state == 1 || state == 3)       //press start to begin or name of the player is playing
     {
-        int n = SoundPlayer_play(SE_N_EFFECTS);
+        long n = SoundPlayer_play(SE_N_EFFECTS);
         if (n == -1)
         {
             GameMode_clear_current_player();
@@ -102,7 +102,7 @@ int Ready_update_leds(ws2811_t* ledstrip, void (*get_intervals)(int, int*, int*)
     }
     if(state == 4)                      //let's go is playing
     {
-        int n = SoundPlayer_play(SE_N_EFFECTS);
+        long n = SoundPlayer_play(SE_N_EFFECTS);
         if (n == -1)
         {
             printf("Everyone is ready to play\n");
