@@ -39,6 +39,8 @@ srcs = Split('''
     m3_game/m3_game.c
     m3_game/m3_input_handler.c
     m3_game/m3_field.c
+    m3_game/m3_players.c
+    m3_game/m3_bullets.c
 ''')
 
 

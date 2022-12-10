@@ -25,13 +25,15 @@
 static void(*button_handlers[3 * C_MAX_XBTN])(int, enum EM3_BUTTONS);
 enum EM3_BUTTONS button_names[C_MAX_XBTN] = { M3B_N_BUTTONS };
 
-static void Player_move_left(int player)
+static void Player_move_left(int player, enum EM3_BUTTONS button)
 {
+    (void)button;
     Match3_Player_move(player, -1);
 }
 
-static void Player_move_right(int player)
+static void Player_move_right(int player, enum EM3_BUTTONS button)
 {
+    (void)button;
     Match3_Player_move(player, +1);
 }
 

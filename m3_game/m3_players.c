@@ -20,6 +20,7 @@
 #include "controller.h"
 #include "common_source.h"
 #include "m3_game_source.h"
+#include "m3_bullets.h"
 #include "m3_players.h"
 
 enum EPlayerType
@@ -27,6 +28,7 @@ enum EPlayerType
     PT_Pitcher,
     PT_Catcher,
     PT_Swapper,
+    PT_Universal,
     PT_N_PlayerTypes
 };
 
@@ -60,6 +62,8 @@ static int PlayerType_can_move(enum EPlayerType pt)
         return 1;
     case PT_Swapper:
         return 1;
+    case PT_Universal:
+        return 1;
     case PT_N_PlayerTypes:
         assert(0);
         break;
@@ -67,6 +71,7 @@ static int PlayerType_can_move(enum EPlayerType pt)
         assert(0);
         break;
     }
+    return 0;
 }
 
 /* player input handling */
@@ -126,7 +131,7 @@ static void print_info(int player_index)
 
 void Pitcher_press_button(int player_index, enum EM3_BUTTONS button)
 {
-    ASSERT_M3(players[player_index].type == PT_Pitcher);
+    ASSERT_M3_CONTINUE(players[player_index].type == PT_Pitcher);
     switch (button)
     {
     case M3B_A:
@@ -135,6 +140,7 @@ void Pitcher_press_button(int player_index, enum EM3_BUTTONS button)
     case M3B_B:
     case M3B_X:
     case M3B_Y:
+        break;
     case M3B_DUP:
         Player_reload(1);
         break;
@@ -155,7 +161,7 @@ void Pitcher_press_button(int player_index, enum EM3_BUTTONS button)
 
 void Catcher_press_button(int player_index, enum EM3_BUTTONS button)
 {
-    ASSERT_M3(players[player_index].type == PT_Catcher);
+    ASSERT_M3_CONTINUE(players[player_index].type == PT_Catcher);
     switch (button)
     {
     case M3B_A:
@@ -184,7 +190,7 @@ void Catcher_press_button(int player_index, enum EM3_BUTTONS button)
 
 void Swapper_press_button(int player_index, enum EM3_BUTTONS button)
 {
-    ASSERT_M3(players[player_index].type == PT_Swapper);
+    ASSERT_M3_CONTINUE(players[player_index].type == PT_Swapper);
     switch (button)
     {
     case M3B_A:
@@ -208,8 +214,44 @@ void Swapper_press_button(int player_index, enum EM3_BUTTONS button)
         Match3_Player_move(player_index, -1);
         break;
     case M3B_N_BUTTONS:
-        break;
     default:
+        printf("Switch not complete in Catcher press button");
+        assert(0);
+        break;
+    }
+}
+
+void Universal_press_button(int player_index, enum EM3_BUTTONS button)
+{
+    ASSERT_M3_CONTINUE(players[player_index].type == PT_Universal);
+    switch (button)
+    {
+    case M3B_A:
+        Player_catch(player_index);
+        break;
+    case M3B_B:
+        Player_fire();
+        break;
+    case M3B_X:
+        break;
+    case M3B_Y:
+        break;
+    case M3B_DUP:
+        Player_reload(1);
+        break;
+    case M3B_DRIGHT:
+        Player_swap_jewels(player_index, +1);
+        break;
+    case M3B_DDOWN:
+        Player_reload(-1);
+        break;
+    case M3B_DLEFT:
+        Player_swap_jewels(player_index, -1);
+        break;
+    case M3B_N_BUTTONS:
+    default:
+        printf("Switch not complete in Catcher press button");
+        assert(0);
         break;
     }
 }
@@ -217,7 +259,8 @@ void Swapper_press_button(int player_index, enum EM3_BUTTONS button)
 void(*game_phase_action_map[PT_N_PlayerTypes])(int, enum EM3_BUTTONS) = {
     Pitcher_press_button,
     Catcher_press_button,
-    Swapper_press_button
+    Swapper_press_button,
+    Universal_press_button
 };
 
 
@@ -235,6 +278,6 @@ void Match3_Players_init()
     {
         players[i].position = (int)d * (i + 1);
         players[i].last_move = 0;
-        players[i].type = PT_N_PlayerTypes;
+        players[i].type = PT_Universal;
     }
 }

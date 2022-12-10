@@ -3,8 +3,6 @@
 
 #define C_MAX_FIELD_LENGTH 1024
 
-typedef unsigned char jewel_type;
-
 //! playing field
 typedef struct TJewel {
     jewel_type type;
@@ -32,7 +30,7 @@ const int Segments_get_field_index(int segment, int position);
 const int Segments_get_jewel_id(int segment, int position);
 
 //const int Field_evaluate(const int field_index, const int segment);
-void Field_init();
+void Field_init(match3_LevelDefinition_t level_definition);
 void Field_insert_and_evaluate(const int segment, const int position, jewel_type jewel_type, int led_discombobulation);
 const int Field_swap_and_evaluate(const int swap_segment, const int left_position, int led_discombobulation);
 void Field_destruct();

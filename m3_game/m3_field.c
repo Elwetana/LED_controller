@@ -27,6 +27,7 @@ const int C_MATCH_3_LENGTH = 3;
 
 jewel_t field[C_MAX_FIELD_LENGTH];
 int field_length = 0;
+double speed_bias = 1.;
 
 enum ESegmentType {
     ST_MOVING,
@@ -220,6 +221,7 @@ const int Segments_get_hole_position(int segment)
     ASSERT_M3(segment < n_segments, 0);
     double segment_position = Segments_get_position(segment);
     double offset = segment_position - (int)trunc(segment_position);
+    offset = offset < 0 ? offset + 1 : offset;
     int length = Segments_get_length(segment);
     return length > 2 ? (int)(length * (1 - offset)) : length;
 }
@@ -612,7 +614,7 @@ void Segments_update()
     }
 
     if (n_segments == 0)
-        printf("YOU WIN\n");
+        match3_game_source.level_phase = M3LP_LEVEL_WON;
 }
 
 static jewel_t make_jewel(jewel_type type)
@@ -628,15 +630,25 @@ static jewel_t make_jewel(jewel_type type)
     return j;
 }
 
-void Field_init()
+void Field_init(match3_LevelDefinition_t level_definition)
 {
-    field_length = match3_game_source.basic_source.n_leds / 2;
-    for (int i = 0; i < field_length; ++i)
+    assert(level_definition.n_gem_colours <= N_GEM_COLORS);
+    assert(level_definition.field_length <= C_MAX_FIELD_LENGTH);
+    field_length = level_definition.field_length;
+    speed_bias = level_definition.speed_bias;
+    double same_gem_bias = level_definition.same_gem_bias;
+    jewel_type last_type = (jewel_type)(random_01() * (double)level_definition.n_gem_colours);
+    for (int i = field_length - 1; i >= 0; --i)
     {
-        field[i] = make_jewel((jewel_type)trunc(random_01() * (double)(N_GEM_COLORS - 1)));
+        if (random_01() > same_gem_bias)
+        {
+            last_type = (jewel_type)(random_01() * (double)level_definition.n_gem_colours);
+            same_gem_bias *= 0.9;
+        }
+        field[i] = make_jewel(last_type);
     }
     segments[0].start = 0;
-    segments[0].shift = 80.01;
+    segments[0].shift = level_definition.start_offset;
     segments[0].length = field_length;
     segments[0].segment_type = ST_MOVING;
     segments[0].moving.speed = match3_config.normal_forward_speed;

@@ -21,12 +21,12 @@
 #define ANSI_COLOR_CYAN    "\x1b[36m"
 #define ANSI_COLOR_RESET   "\x1b[0m"
 
-
-enum EMatch3GamePhase
+enum EMatch3LevelPhase
 {
-	M3GP_SELECT,
-	M3GP_PLAY,
-	M3GP_END
+	M3LP_IN_PROGRESS,
+	M3LP_LEVEL_WON,
+	M3LP_LEVEL_LOST,
+	M3LP_N_PHASES
 };
 
 
@@ -36,27 +36,29 @@ typedef struct Match3GameSource
 	uint64_t start_time;
 	int cur_frame;
 	int n_players;
-	enum EMatch3GamePhase current_phase;
-} Match3GameSource;
+	enum EMatch3LevelPhase level_phase;	
+} match3_GameSource_t;
 
-extern Match3GameSource match3_game_source;
+extern match3_GameSource_t match3_game_source;
 
+typedef struct Match3LevelDefinition
+{
+	const int field_length;
+	const int n_gem_colours;
+	const double same_gem_bias;
+	const int start_offset;
+	const double speed_bias;
+} match3_LevelDefinition_t;
 
+#define MATCH3_N_LEVELS 5
 #define N_MAX_SEGMENTS 32
 extern const int C_LED_Z;
 extern const int C_SEGMENT_SHIFT;
 extern const int C_BULLET_Z;
 
+double miliseconds_from_start();
 
-inline double miliseconds_from_start();
-void m3_print_info(int led);
-
-const int Match3_Emitor_get_length();
-const int Match3_Emitor_fire();
-const int Match3_Emitor_reload(int dir);
-const int Match3_Game_catch_bullet(int led);
-const int Match3_Game_swap_jewels(int led, int dir);
-
+typedef unsigned char jewel_type;
 
 struct Match3Config
 {
