@@ -90,7 +90,7 @@ void Segments_print_info(int segment)
 //! @brief Get the next segment (i.e. after the right one). To get the first one, call it with -1. 
 //! @param segment 
 //! @return segment index equal to \p segment or higher, that is of the type Moving, -1 if none was found
-const int Segments_get_next_moving(int segment)
+int Segments_get_next_moving(int segment)
 {
     ASSERT_M3(segment < n_segments, -1);
     do
@@ -101,7 +101,7 @@ const int Segments_get_next_moving(int segment)
     return segment;
 }
 
-const int Segments_get_prev_moving(int segment)
+int Segments_get_prev_moving(int segment)
 {
     ASSERT_M3(segment < n_segments, -1);
     ASSERT_M3(segment >= 0, -1);
@@ -112,7 +112,7 @@ const int Segments_get_prev_moving(int segment)
     return segment;
 }
 
-const int Segments_get_next_collapsing(int segment)
+int Segments_get_next_collapsing(int segment)
 {
     ASSERT_M3(segment < n_segments, -1);
     do {
@@ -122,19 +122,19 @@ const int Segments_get_next_collapsing(int segment)
     return segment;
 }
 
-const double Segments_get_position(int segment)
+double Segments_get_position(int segment)
 {
     ASSERT_M3(segment < n_segments, 0);
     return segments[segment].shift;
 }
 
-const int Segments_get_length(int segment)
+int Segments_get_length(int segment)
 {
     ASSERT_M3(segment < n_segments, 1);
     return segments[segment].length;
 }
 
-const int Segments_get_direction(int segment)
+int Segments_get_direction(int segment)
 {
     ASSERT_M3(segment < n_segments, 0);
     ASSERT_M3(segments[segment].segment_type == ST_MOVING, 0);
@@ -153,21 +153,21 @@ const int Segments_get_direction(int segment)
     return 0;
 }
 
-const jewel_t Segments_get_jewel(int segment, int position)
+jewel_t Segments_get_jewel(int segment, int position)
 {
     ASSERT_M3(segment < n_segments, field[segments[0].start]);
     ASSERT_M3(position < Segments_get_length(segment), field[segments[segment].start]);
     return field[segments[segment].start + position];
 }
 
-const jewel_type Segments_get_jewel_type(int segment, int position)
+jewel_type Segments_get_jewel_type(int segment, int position)
 {
     ASSERT_M3(segment < n_segments, (jewel_type)0);
     ASSERT_M3(position < Segments_get_length(segment), (jewel_type)0);
     return field[segments[segment].start + position].type;
 }
 
-const jewel_type Segments_get_last_jewel_type(int segment)
+jewel_type Segments_get_last_jewel_type(int segment)
 {
     ASSERT_M3(segment < n_segments, (jewel_type)0);
     int segment_length = Segments_get_length(segment);
@@ -175,14 +175,14 @@ const jewel_type Segments_get_last_jewel_type(int segment)
     return (pos >= 0) ? field[pos].type : 0xFF;
 }
 
-const int Segments_get_field_index(int segment, int position)
+int Segments_get_field_index(int segment, int position)
 {
     ASSERT_M3(segment < n_segments, segments[0].start);
     ASSERT_M3(position < Segments_get_length(segment), segments[segment].start);
     return segments[segment].start + position;
 }
 
-const int Segments_get_jewel_id(int segment, int position)
+int Segments_get_jewel_id(int segment, int position)
 {
     ASSERT_M3(segment < n_segments, -1);
     ASSERT_M3(position < Segments_get_length(segment), -1);
@@ -211,7 +211,7 @@ void Segments_add_bullet(int segment, int bullet_index, int segment_position)
     segments[segment].n_bullets = n + 1;
 }
 
-const int Segments_get_n_bullets(int segment)
+int Segments_get_n_bullets(int segment)
 {
     ASSERT_M3(segment < n_segments, (void)0);
     return segments[segment].n_bullets;
@@ -232,21 +232,21 @@ void Segments_set_discombobulation(int segment, int discombobulation)
     segments[segment].moving.discombobulation = discombobulation;
 }
 
-const int Segments_get_discombobulation(int segment)
+int Segments_get_discombobulation(int segment)
 {
     ASSERT_M3(segment < n_segments, 0);
     ASSERT_M3(segments[segment].segment_type == ST_MOVING, 0);
     return segments[segment].moving.discombobulation;
 }
 
-const double Segments_get_collapse_progress(int segment)
+double Segments_get_collapse_progress(int segment)
 {
     ASSERT_M3(segment < n_segments, 0.);
     ASSERT_M3(segments[segment].segment_type == ST_COLLAPSING, 0.);
     return segments[segment].collapsing.collapse_progress;
 }
 
-const int Segments_get_hole_position(int segment)
+int Segments_get_hole_position(int segment)
 {
     ASSERT_M3(segment < n_segments, 0);
     double segment_position = Segments_get_position(segment);
@@ -379,8 +379,6 @@ static void collapse_segment(const int segment, const int position, const int co
     }
     printf("Collapsing segment delta %f: ", segments[collapse_index].shift - segments[segment].shift - segments[segment].length);
     Segments_print_info(collapse_index);
-    //if(new_moving_index > -1) \
-        printf("New segment: %i:%i:%f, len %i\n", new_moving_index, segments[new_moving_index].start, segments[new_moving_index].shift, segments[new_moving_index].length);
 }
 
 //! @brief This happens when the whole segment collapses, it is then completely removed, or when two segments are merged
@@ -435,11 +433,10 @@ static void merge_segments(const int left_segment, int right_segment)
 //! @param  position  position of the jewel with the type for which we check
 //! @param   segment  index of segment where the jewel is
 //! @return probably nothing interesting
-static const int evaluate_field(const int segment, const int position)
+static int evaluate_field(const int segment, const int position)
 {
     ASSERT_M3(segments[segment].segment_type == ST_MOVING, (void)0);
     jewel_type type = Segments_get_jewel_type(segment, position);
-    int length = 1;
     int segment_length = Segments_get_length(segment);
 
     int pos_end = position + 1;
@@ -518,7 +515,7 @@ static void swap_jewels(const int swap_segment, const int left_position)
     field[right_index] = tmp;
 }
 
-const int Field_swap_and_evaluate(const int swap_segment, const int left_position)
+int Field_swap_and_evaluate(const int swap_segment, const int left_position)
 {
     ASSERT_M3(swap_segment < n_segments, (void)0);
     ASSERT_M3(left_position < segments[swap_segment].length - 1, (void)0);
@@ -547,8 +544,8 @@ static void set_segment_speed(int segment, double target_speed, double time_delt
     double max_change = match3_config.max_accelaration * time_delta;
     //printf("Max change %f\n", max_change);
     segments[segment].moving.speed = (segments[segment].moving.speed < target_speed) ?
-        min(target_speed, segments[segment].moving.speed + max_change) :
-        max(target_speed, segments[segment].moving.speed - max_change);
+        fmin(target_speed, segments[segment].moving.speed + max_change) :
+        fmax(target_speed, segments[segment].moving.speed - max_change);
 }
 
 static double calculate_segment_speed(int segment)
@@ -594,7 +591,7 @@ static void unswap_update(double time_delta)
 //!        the left segment moves at slow speed, and right segment at retrograde speed
 //!     -- otherwise, the left segment moves at the slow speed and and the right segment stands
 //! @returns 1 if collapse is in progress
-const int Segments_update(void)
+int Segments_update(void)
 {
     double time_delta = (double)(match3_game_source.basic_source.time_delta / 1000L) / 1e6;
     

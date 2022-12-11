@@ -74,9 +74,7 @@ void Match3_print_info(int led)
 
 /************ Game interactions *************************/
 
-const int swap_jewels(player_pos, dir);
-
-const int Match3_Game_catch_bullet(int led)
+int Match3_Game_catch_bullet(int led)
 {
     int dist = 0;
     int catch = 999;
@@ -114,29 +112,26 @@ const int Match3_Game_catch_bullet(int led)
     Field_insert_and_evaluate(segment, position, jt, bullet_index);
     //destroy the bullet
     Match3_Bullets_delete(bullet_index);
+    return 0;
 }
 
-const int Match3_Game_swap_jewels(int led, int dir)
+
+int Match3_Game_swap_jewels(int led, int dir)
 {
     if (zbuffer[led] < C_BULLET_Z && zbuffer[led + dir] < C_BULLET_Z &&
         zbuffer[led] > 0 && zbuffer[led + dir] > 0)
     {
         printf("Switching bullets at position %i\n", led);
-        return swap_jewels(led, dir);
+        int left_led = (dir > 0) ? led : led - 1;
+        int segment, switch_pos;
+        Match3_get_segment_and_position(zbuffer[left_led], &segment, &switch_pos);
+        return Field_swap_and_evaluate(segment, switch_pos);
     }
     else
     {
         printf("Cannot switch jewels here\n");
         return 1;
     }
-}
-
-static const int swap_jewels(int player_led, int dir)
-{
-    int left_led = (dir > 0) ? player_led : player_led - 1;
-    int segment, switch_pos;
-    Match3_get_segment_and_position(zbuffer[left_led], &segment, &switch_pos);
-    return Field_swap_and_evaluate(segment, switch_pos);
 }
 
 ws2811_led_t get_jewel_color(jewel_type jewel_type)
@@ -191,6 +186,7 @@ static void render_bullets(void)
     }
 }
 
+/*
 static void render_bullets_alpha(void)
 {
     int n_bullets = Match3_Bullets_get_n();
@@ -207,6 +203,7 @@ static void render_bullets_alpha(void)
         }
     }
 }
+*/
 
 static void render_collapsing_segments(void)
 {
@@ -337,7 +334,7 @@ static void render_moving_segments(void)
             //this will transform ampl to <0, 2 * N_HALF_GRAD>
             double ampl = (sins[type] * jewel.cos_phase + coss[type] * jewel.sin_phase + 1) * match3_config.n_half_grad;
             int gradient_index = (int)ampl;
-            double blend = ampl - (int)ampl;
+            //double blend = ampl - (int)ampl;
             gradient_index += (2 * match3_config.n_half_grad + 1) * type;
             ASSERT_M3_CONTINUE(gradient_index >= type * (2 * match3_config.n_half_grad + 1));
             ASSERT_M3_CONTINUE(gradient_index < (type + 1)* (2 * match3_config.n_half_grad + 1));

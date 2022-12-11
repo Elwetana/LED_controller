@@ -15,9 +15,9 @@ enum EM3_BUTTONS
     M3B_N_BUTTONS
 };
 
-const int Match3_Player_get_position(int player_index);
-const int Match3_Player_is_moving(int player_index);
-const int Match3_Player_get_highlight(void);
+int Match3_Player_get_position(int player_index);
+int Match3_Player_is_moving(int player_index);
+int Match3_Player_get_highlight(void);
 
 int Match3_Player_process_event(void);
 void Match3_Player_move(int player, signed char direction);

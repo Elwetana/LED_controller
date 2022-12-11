@@ -48,7 +48,7 @@ struct {
     double highlight_start;
 } player_highlight;
 
-const int Match3_Player_get_highlight(void)
+int Match3_Player_get_highlight(void)
 {
     if (miliseconds_from_start() - player_highlight.highlight_start < match3_config.highlight_timeout)
         return player_highlight.player_index;
@@ -56,12 +56,12 @@ const int Match3_Player_get_highlight(void)
 }
 
 
-const int Match3_Player_get_position(int player_index)
+int Match3_Player_get_position(int player_index)
 {
     return (int)players[player_index].position;
 }
 
-const int Match3_Player_is_moving(int player_index)
+int Match3_Player_is_moving(int player_index)
 {
     return (miliseconds_from_start() - players[player_index].last_move) < 2 * match3_config.player_move_cooldown;
 }
@@ -103,8 +103,8 @@ void Match3_Player_move(int player_index, signed char direction)
         players[player_index].position += direction;
         players[player_index].last_move = t;
     }
-    players[player_index].position = max(0, players[player_index].position);
-    players[player_index].position = min(players[player_index].position, match3_game_source.basic_source.n_leds - 1 - Match3_Emitor_get_length());
+    players[player_index].position = fmax(0, players[player_index].position);
+    players[player_index].position = fmin(players[player_index].position, match3_game_source.basic_source.n_leds - 1 - Match3_Emitor_get_length());
 }
 
 static void Player_catch(int player_index)
@@ -135,12 +135,13 @@ static void Player_swap_jewels(int player_index, int direction)
     Match3_Game_swap_jewels(led, direction);
 }
 
+/*
 static void print_info(int player_index)
 {
     int player_pos = (int)players[player_index].position;
     Match3_print_info(player_pos);
 }
-
+*/
 
 /** Handlers for normal play **/
 
@@ -297,13 +298,13 @@ static int is_valid_assignment()
         if (players[pi].type == PT_Universal) n_univesal++;
         if (players[pi].is_ready == 1) n_ready++;
     }
-    char buf[64];
     if (n_ready != match3_game_source.n_players)
     {
         //don't announce anything
         return -1;
     }
 #ifndef DEBUG_M3
+    char buf[64];
     if (n_pitchers != 1)
     {
         match3_announce("The level cannot start, there must be exactly one pitcher");

@@ -259,8 +259,8 @@ static void end_phase_update(void)
 
 struct
 {
-    const void (*init)(void);
-    const void (*update)(void);
+    void (*const init)(void);
+    void (*const update)(void);
 } phase_definitions[M3GP_N_PHASES] = 
 {
     {
@@ -296,7 +296,7 @@ int Match3GameSource_update_leds(int frame, ws2811_t* ledstrip)
 //msg = mode?xxxxxx
 void Match3GameSource_process_message(const char* msg)
 {
-    /*
+    
     char* sep = strchr(msg, '?');
     if (sep == NULL)
     {
@@ -321,13 +321,13 @@ void Match3GameSource_process_message(const char* msg)
     payload[63] = 0x0;
     if (!strncasecmp(target, "mode", 5))
     {
-        enum GameModes gm_before = GameObjects_get_current_mode();
-        GameObjects_set_level_by_message(payload);
-        printf("Sent code: %s, game mode before: %i\n", payload, gm_before);
+        //enum GameModes gm_before = GameObjects_get_current_mode();
+        //GameObjects_set_level_by_message(payload);
+        printf("Sent code: %s, game mode before: %i\n", payload, /*gm_before*/0);
     }
     else
         printf("GameSource: Unknown target: %s, payload was: %s\n", target, payload);
-    */
+    
 }
 
 void Match3GameSource_init(int n_leds, int time_speed, uint64_t current_time)

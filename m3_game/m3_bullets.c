@@ -35,7 +35,7 @@ typedef struct TBullet {
 //! array of bullets
 bullet_t bullets[N_MAX_BULLETS];
 //! number of bullets
-n_bullets = 0;
+int n_bullets = 0;
 
 //! Emitor fires the bullets
 //! there is only one emitor, so we don't need typedef for this struct
@@ -52,12 +52,12 @@ struct {
 
 /******************* Emitor *****************************/
 
-const int Match3_Emitor_get_length()
+int Match3_Emitor_get_length()
 {
     return emitor.length;
 }
 
-const int Match3_Emitor_fire()
+int Match3_Emitor_fire()
 {
     double t = miliseconds_from_start();
     if (t - emitor.last_fire < match3_config.emitor_cooldown)
@@ -74,27 +74,27 @@ const int Match3_Emitor_fire()
     return 0;
 }
 
-const int Match3_Emitor_reload(int dir)
+int Match3_Emitor_reload(int dir)
 {
     emitor.jewel_type = (emitor.jewel_type + dir) % N_GEM_COLORS;
     return 1;
 }
 
-const jewel_type Match3_Emitor_get_jewel_type()
+jewel_type Match3_Emitor_get_jewel_type()
 {
     return emitor.jewel_type;
 }
 
 /******************** Bullets *****************************/
 
-const double Match3_Bullets_get_position(int bullet_index)
+double Match3_Bullets_get_position(int bullet_index)
 {
     ASSERT_M3(bullet_index < n_bullets, 0);
     ASSERT_M3(!bullets[bullet_index].marked_for_delete, 0);
     return bullets[bullet_index].position;
 }
 
-const jewel_type Match3_Bullets_get_jewel_type(int bullet_index)
+jewel_type Match3_Bullets_get_jewel_type(int bullet_index)
 {
     ASSERT_M3(bullet_index < n_bullets, 0);
     ASSERT_M3(!bullets[bullet_index].marked_for_delete, 0);
@@ -107,7 +107,7 @@ unsigned char Match3_Bullets_is_live(int bullet_index)
     return !bullets[bullet_index].marked_for_delete;
 }
 
-const int Match3_Bullets_get_n()
+int Match3_Bullets_get_n()
 {
     return n_bullets;
 }
@@ -136,7 +136,7 @@ void Match3_Bullets_set_segment_info(int bullet_index, int segment_info)
     bullets[bullet_index].segment_info = segment_info;
 }
 
-const int Match3_Bullets_get_segment_info(int bullet_index)
+int Match3_Bullets_get_segment_info(int bullet_index)
 {
     ASSERT_M3(bullet_index < n_bullets, (void)0);
     return bullets[bullet_index].segment_info;

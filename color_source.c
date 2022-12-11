@@ -13,6 +13,7 @@
 #endif // __linux__
 
 #include "common_source.h"
+#include "colours.h"
 #include "color_source.h"
 
 
