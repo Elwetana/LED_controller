@@ -69,7 +69,7 @@ const int Match3_Emitor_fire()
     bullets[n_bullets].speed = -match3_config.bullet_speed; // +random_01();
     bullets[n_bullets].position = match3_game_source.basic_source.n_leds - 1 - emitor.length;
     bullets[n_bullets].segment_info = 0;
-    //bullets[n_bullets].last_frame = 0;
+    bullets[n_bullets].marked_for_delete = 0;
     n_bullets++;
     return 0;
 }
@@ -164,6 +164,7 @@ void Match3_Bullets_update()
             Match3_get_segment_and_position(bullets[bullet].segment_info, &segment, &pos);
             Segments_add_shift(segment, 1);
         }
+        bullets[bullet].segment_info = 0;
     }
     //remove bullets that are over limit
     for (int bullet = n_bullets - 1; bullet >= 0; --bullet)

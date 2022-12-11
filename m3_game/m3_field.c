@@ -192,7 +192,6 @@ const int Segments_get_jewel_id(int segment, int position)
 void Segments_add_shift(int segment, int amount)
 {
     ASSERT_M3(segment < n_segments, (void)0);
-    ASSERT_M3(segments[segment].segment_type == ST_MOVING, (void)0);
     printf("Shifting segment %i by %i\n", segment, amount);
     segments[segment].shift += amount;
 }
@@ -290,7 +289,7 @@ static void collapse_segment(const int segment, const int position, const int co
     ASSERT_M3(!(position < collapse_length), (void)0);
     int hole_position = Segments_get_hole_position(segment);
 
-    printf("Inserting new segment at position %i, hole %i, collapse %i\n", position, hole_position, collapse_length);
+    printf("Inserting new segment at position %i, hole %i, collapse %i at frame %i\n", position, hole_position, collapse_length, match3_game_source.cur_frame);
     Segments_print_info(segment);
 
     int n_inserts = 2;
@@ -337,7 +336,8 @@ static void collapse_segment(const int segment, const int position, const int co
         .length = collapse_length,
         .shift = floor(segments[segment].shift) + position - collapse_length + bullets_left + hole_left,
         .segment_type = ST_COLLAPSING,
-        .collapsing.collapse_progress = 1.0
+        .collapsing.collapse_progress = 1.0,
+        .debug = match3_game_source.cur_frame
     };
     if (collapse_index > segment) //the \p segment will be trimmed
     {
@@ -364,14 +364,16 @@ static void collapse_segment(const int segment, const int position, const int co
             .shift = trunc(segments[segment].shift) + position + bullets_left + bullets_collapsing + hole_left + new_segment_shift,
             .segment_type = ST_MOVING,
             .moving.speed = 0,
-            .moving.discombobulation = bullets_right
+            .moving.discombobulation = bullets_right,
+            .debug = match3_game_source.cur_frame
         };
         segments[new_moving_index] = moving_segment;
     }
     segments[collapse_index] = collapsing_segment;
     if (new_moving_index > -1)
     {
-        //printf("New segment: %i:%i:%f, len %i\n", new_moving_index, segments[new_moving_index].start, segments[new_moving_index].shift, segments[new_moving_index].length);
+        printf("New segment: ");
+        Segments_print_info(new_moving_index);
         //double new_speed = calculate_segment_speed(new_moving_index);
         //if (new_speed < 0.) segments[new_moving_index].shift += 1.;
     }

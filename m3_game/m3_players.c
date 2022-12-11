@@ -426,10 +426,39 @@ void End_phase_press_button(int player_index, enum EM3_BUTTONS button)
 typedef void(*action_map[PT_N_PlayerTypes])(int, enum EM3_BUTTONS);
 action_map game_phase_action_maps[M3GP_N_PHASES];
 
+typedef struct TMatch3EventInfo {
+    int player;
+    enum EM3_BUTTONS button;
+} match3_EventInfo_t;
+
+#define M3_N_MAX_EVENTS 100
+match3_EventInfo_t event_queue[M3_N_MAX_EVENTS];
+int n_events;
+
+void push_event_to_queue(int player, enum EM3_BUTTONS button)
+{
+    event_queue[n_events].player = player;
+    event_queue[n_events].button = button;
+    n_events++;
+}
+
+//! @brief Process at most one event from queue
+//! @param  
+int Match3_Player_process_event(void)
+{
+    if (n_events == 0)
+        return -1;
+    game_phase_action_maps[match3_game_source.game_phase][players[event_queue[0].player].type](event_queue[0].player, event_queue[0].button);
+    for (int i = 0; i < n_events - 1; ++i)
+        event_queue[i] = event_queue[i + 1];
+    n_events--;
+    return n_events;
+}
+
 void Match3_Player_press_button(int player, enum EM3_BUTTONS button)
 {
     assert(players[player].type < PT_N_PlayerTypes);
-    game_phase_action_maps[match3_game_source.game_phase][players[player].type](player, button);
+    push_event_to_queue(player, button);
 }
 
 void Match3_Players_init(void)

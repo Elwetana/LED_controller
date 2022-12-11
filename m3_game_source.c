@@ -65,7 +65,7 @@ const struct Match3Config match3_config = {
     .retrograde_speed = -0.4,
     .slow_forward_speed = 0.1,
     .bullet_speed = 5,
-    .emitor_cooldown = 150,
+    .emitor_cooldown = 500,
     .unswap_timeout = 150,
     .highlight_timeout = 500
 };
@@ -190,6 +190,7 @@ static void select_phase_update(void)
         Match3_InputHandler_drain_input();
     else
         Match3_InputHandler_process_input();
+    Match3_Player_process_event();
     Match3_Game_render_select();
 }
 
@@ -203,6 +204,8 @@ static void play_phase_init(void)
 static void play_phase_update(void)
 {
     Match3_InputHandler_process_input();
+    int n = Match3_Player_process_event();
+    if (n > 0) printf("Remaining event queue %i\n", n);
     Match3_Bullets_update();
     Segments_update();
     Match3_Game_render_field();
@@ -244,6 +247,7 @@ static void end_phase_update(void)
     if (current_level < MATCH3_N_LEVELS)
     {
         Match3_InputHandler_process_input();
+        Match3_Player_process_event();
         //TODO -- render score?
     }
     else
@@ -266,11 +270,16 @@ struct
     {
         .init = play_phase_init,
         .update = play_phase_update
+    },
+    {
+        .init = end_phase_init,
+        .update = end_phase_update
     }
 };
 
 int Match3GameSource_update_leds(int frame, ws2811_t* ledstrip)
 {
+    match3_game_source.cur_frame = frame;
     phase_definitions[match3_game_source.game_phase].update();
     Match3_Game_render_leds(frame, ledstrip);
     //check phase/level progress

@@ -19,6 +19,7 @@ const int Match3_Player_get_position(int player_index);
 const int Match3_Player_is_moving(int player_index);
 const int Match3_Player_get_highlight(void);
 
+int Match3_Player_process_event(void);
 void Match3_Player_move(int player, signed char direction);
 void Match3_Player_press_button(int player, enum EM3_BUTTONS button);
 void Match3_Players_init(void);

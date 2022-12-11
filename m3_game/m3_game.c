@@ -74,7 +74,6 @@ void Match3_print_info(int led)
 
 /************ Game interactions *************************/
 
-void bullet_into_jewel(int bullet_pos);
 const int swap_jewels(player_pos, dir);
 
 const int Match3_Game_catch_bullet(int led)
@@ -217,6 +216,7 @@ static void render_collapsing_segments(void)
     {
         int led_discombobulation = 0;
         int bullet_leaving = (Segments_get_n_bullets(segment) > 0 && Segments_get_bullet(segment, 0).segment_position == 0) ? 1 : 0;
+        int leaving_bullet_index = bullet_leaving ? Segments_get_bullet(segment, 0).bullet_index : -1;
         Segments_reset_bullets(segment);
         int segment_length = Segments_get_length(segment);
         int segment_position = (int)floor(Segments_get_position(segment));
@@ -225,6 +225,14 @@ static void render_collapsing_segments(void)
         for (int pos = 0; pos < segment_length; ++pos)
         {
             int led = pos + segment_position + led_discombobulation;
+            if (bullet_leaving == 1 && pos == 0 && led_discombobulation == 0) //bullet has already left
+            {
+                bullet_leaving = 2;
+                led++;
+                segment_position++;
+                if (led > last_led)
+                    continue;
+            }
             //check collision with bullets
             while (zbuffer[led] > 0)
             {
@@ -236,15 +244,6 @@ static void render_collapsing_segments(void)
                 if (led > last_led)
                     break;
             }
-            if (bullet_leaving == 1 && pos == 0 && led_discombobulation == 0) //bullet has already left
-            {
-                bullet_leaving = 2;
-                led++;
-                segment_position++;
-                Segments_add_shift(segment, 1);
-                if (led > last_led)
-                    continue;
-            }
             canvas3[led] = ((int)(0xFF * collapse_progress) << 24) | match3_config.collapse_colour;;
             zbuffer[led] = 0;
 #ifdef DEBUG_M3
@@ -253,6 +252,7 @@ static void render_collapsing_segments(void)
         }
         if (bullet_leaving == 2)
         {
+            printf("Collapsing segment %i moved by bullet %i\n", segment, leaving_bullet_index);
             Segments_add_shift(segment, 1);
         }
         segment = Segments_get_next_collapsing(segment);
@@ -296,6 +296,15 @@ static void render_moving_segments(void)
             if (led < 0)
                 continue;
 
+            if (bullet_leaving == 1 && pos == 0 && led_discombobulation == 0) //bullet has already left
+            {
+                bullet_leaving = 2;
+                led++;
+                led_discombobulation++;
+                if (led > last_led)
+                    continue;
+            }
+
             if (pos == hole_position) //we will outptut two leds for this pos, one for the hole, one for the jewel
             {
                 if (zbuffer[led + hole_direction] > 0) //if there is bullet on the hole position, we have to shift even more
@@ -323,15 +332,6 @@ static void render_moving_segments(void)
             if (led > last_led)
                 continue;
 
-            if (bullet_leaving == 1 && pos == 0 && led_discombobulation == 0) //bullet has already left
-            {
-                bullet_leaving = 2;
-                led++;
-                led_discombobulation++;
-                if (led > last_led)
-                    continue;
-            }
-
             jewel_t jewel = Segments_get_jewel(segment, pos);
             jewel_type type = jewel.type;
             //this will transform ampl to <0, 2 * N_HALF_GRAD>
@@ -346,7 +346,6 @@ static void render_moving_segments(void)
 
             canvas3[led] = 0xFF << 24 | match3_game_source.basic_source.gradient.colors[gradient_index];
             zbuffer[led] = Match3_get_segment_info(segment, pos);
-
 
 #ifdef DEBUG_M3
             debug_fi_current[led] = 1 + Segments_get_jewel_id(segment, pos);
