@@ -55,10 +55,15 @@ static double(*pulse_functions[4])(double) = { 0x0, saw_tooth, saw_tooth_first_h
 
 /************* Utility functions ************************/
 
-static void get_segment_and_position(int led, int* segment, int* position)
+void Match3_get_segment_and_position(const int segment_info, int* segment, int* position)
 {
-    *segment = zbuffer[led] >> C_SEGMENT_SHIFT;
-    *position = ((zbuffer[led] - C_LED_Z) & ((1 << C_SEGMENT_SHIFT) - 1));
+    *segment = segment_info >> C_SEGMENT_SHIFT;
+    *position = ((segment_info - C_LED_Z) & ((1 << C_SEGMENT_SHIFT) - 1));
+}
+
+int Match3_get_segment_info(const int segment, const int position)
+{
+    return C_LED_Z + (segment << C_SEGMENT_SHIFT | position);
 }
 
 void Match3_print_info(int led)
@@ -76,6 +81,7 @@ const int Match3_Game_catch_bullet(int led)
 {
     int dist = 0;
     int catch = 999;
+    int bullet_index = -1;
     while (dist <= match3_config.player_catch_distance && catch == 999)
     {
         if (zbuffer[led + dist] >= C_BULLET_Z) catch = dist;
@@ -87,12 +93,28 @@ const int Match3_Game_catch_bullet(int led)
         printf("bullet missed\n");
         return 1;
     }
-    else
+    bullet_index = zbuffer[led + catch] - C_BULLET_Z;
+    if (!Match3_Bullets_is_live(bullet_index))
     {
-        printf("Bullet caught %i\n", led + catch);
-        bullet_into_jewel(led + catch);
-        return 0;
+        printf("bullet was already caught\n");
+        return 2;
     }
+    int segment_info = Match3_Bullets_get_segment_info(bullet_index);
+    if (segment_info == 0) //we are not in a segment, nothing can be inserted TODO -- we could check to the left of the bullet
+    {
+        printf("cannot catch bullet outside segment\n");
+        return 3;
+    }
+    printf("Bullet %i caught at %i\n", bullet_index, led + catch);
+
+    //insert new jewel in the field
+    int segment, position;
+    Match3_get_segment_and_position(segment_info, &segment, &position);
+    jewel_type jt = Match3_Bullets_get_jewel_type(bullet_index);
+    printf("Inserting jewel type %i at position %i\n", jt, Segments_get_field_index(segment, position));
+    Field_insert_and_evaluate(segment, position, jt, bullet_index);
+    //destroy the bullet
+    Match3_Bullets_delete(bullet_index);
 }
 
 const int Match3_Game_swap_jewels(int led, int dir)
@@ -110,34 +132,12 @@ const int Match3_Game_swap_jewels(int led, int dir)
     }
 }
 
-static void bullet_into_jewel(int bullet_led)
-{
-    //insert new jewel in the field
-    int bullet = zbuffer[bullet_led] - C_BULLET_Z;
-    while (zbuffer[bullet_led] >= C_BULLET_Z)
-        bullet_led++;
-
-    if (zbuffer[bullet_led] == 0)  //we are not in a segment, nothing can be inserted TODO -- we could check to the left of the bullet
-        return;
-
-    //zbuffer[led] = C_LED_Z + (segment << C_SEGMENT_SHIFT | pos);
-    int segment, insert_pos;
-    get_segment_and_position(bullet_led, &segment, &insert_pos);
-    int clean_led = (int)Segments_get_position(segment) + insert_pos;
-    jewel_type jt = Match3_Bullets_get_jewel_type(bullet);
-    printf("Inserting jewel type %i at position %i, dis.: %i\n", jt, Segments_get_field_index(segment, insert_pos), bullet_led - clean_led);
-    Field_insert_and_evaluate(segment, insert_pos, jt, bullet_led - clean_led);
-    //destroy the bullet
-    Match3_Bullets_delete(bullet);
-}
-
 static const int swap_jewels(int player_led, int dir)
 {
     int left_led = (dir > 0) ? player_led : player_led - 1;
     int segment, switch_pos;
-    get_segment_and_position(left_led, &segment, &switch_pos);
-    int led_discomb = left_led - (int)Segments_get_position(segment) - switch_pos;
-    return Field_swap_and_evaluate(segment, switch_pos, led_discomb);
+    Match3_get_segment_and_position(zbuffer[left_led], &segment, &switch_pos);
+    return Field_swap_and_evaluate(segment, switch_pos);
 }
 
 ws2811_led_t get_jewel_color(jewel_type jewel_type)
@@ -211,21 +211,49 @@ static void render_bullets_alpha(void)
 
 static void render_collapsing_segments(void)
 {
+    int last_led = match3_game_source.basic_source.n_leds - 1 - Match3_Emitor_get_length();
     int segment = Segments_get_next_collapsing(-1);
     while (segment > -1)
     {
+        int led_discombobulation = 0;
+        int bullet_leaving = (Segments_get_n_bullets(segment) > 0 && Segments_get_bullet(segment, 0).segment_position == 0) ? 1 : 0;
+        Segments_reset_bullets(segment);
         int segment_length = Segments_get_length(segment);
-        int segment_position = (int)trunc(Segments_get_position(segment));
+        int segment_position = (int)floor(Segments_get_position(segment));
         double collapse_progress = 4. * Segments_get_collapse_progress(segment);
         while (collapse_progress > 1) collapse_progress--;
         for (int pos = 0; pos < segment_length; ++pos)
         {
-            int led = pos + segment_position;
+            int led = pos + segment_position + led_discombobulation;
+            //check collision with bullets
+            while (zbuffer[led] > 0)
+            {
+                ASSERT_M3_CONTINUE(zbuffer[led] >= C_BULLET_Z); //we should never render one segment over another
+                //Match3_Bullets_set_segment_info(zbuffer[led] - C_BULLET_Z, Match3_get_segment_info(segment, pos));
+                Segments_add_bullet(segment, zbuffer[led] - C_BULLET_Z, pos);
+                led += 1;
+                led_discombobulation++;
+                if (led > last_led)
+                    break;
+            }
+            if (bullet_leaving == 1 && pos == 0 && led_discombobulation == 0) //bullet has already left
+            {
+                bullet_leaving = 2;
+                led++;
+                segment_position++;
+                Segments_add_shift(segment, 1);
+                if (led > last_led)
+                    continue;
+            }
             canvas3[led] = ((int)(0xFF * collapse_progress) << 24) | match3_config.collapse_colour;;
             zbuffer[led] = 0;
 #ifdef DEBUG_M3
             debug_fi_current[led] = 1 + Segments_get_field_index(segment, pos);
 #endif // DEBUG_M3
+        }
+        if (bullet_leaving == 2)
+        {
+            Segments_add_shift(segment, 1);
         }
         segment = Segments_get_next_collapsing(segment);
     }
@@ -245,8 +273,10 @@ static void render_moving_segments(void)
     int segment = Segments_get_next_moving(-1);
     while (segment > -1)
     {
+        int bullet_leaving = (Segments_get_n_bullets(segment) > 0 && Segments_get_bullet(segment, 0).segment_position == 0);
+        Segments_reset_bullets(segment);
         int segment_length = Segments_get_length(segment);
-        int segment_position = (int)trunc(Segments_get_position(segment));
+        int segment_position = (int)floor(Segments_get_position(segment));
         int hole_position = Segments_get_hole_position(segment);
         int hole_direction = -Segments_get_direction(segment);
 
@@ -263,7 +293,7 @@ static void render_moving_segments(void)
                 match3_game_source.level_phase = M3LP_LEVEL_LOST;
                 continue;
             }
-            if ((led + hole_direction) < 0)
+            if (led < 0)
                 continue;
 
             if (pos == hole_position) //we will outptut two leds for this pos, one for the hole, one for the jewel
@@ -271,8 +301,10 @@ static void render_moving_segments(void)
                 if (zbuffer[led + hole_direction] > 0) //if there is bullet on the hole position, we have to shift even more
                 {
                     ASSERT_M3_CONTINUE(zbuffer[led + hole_direction] >= C_BULLET_Z); //we should never render one field over another
+                    Match3_Bullets_set_segment_info(zbuffer[led + hole_direction] - C_BULLET_Z, Match3_get_segment_info(segment, pos));
+                    Segments_add_bullet(segment, zbuffer[led + hole_direction] - C_BULLET_Z, pos);
                     led += 1;
-                    ++led_discombobulation;
+                    led_discombobulation++;
                 }
             }
             if (led > last_led)
@@ -281,21 +313,23 @@ static void render_moving_segments(void)
             while (zbuffer[led] > 0)
             {
                 ASSERT_M3_CONTINUE(zbuffer[led] >= C_BULLET_Z); //we should never render one segment over another
+                Match3_Bullets_set_segment_info(zbuffer[led] - C_BULLET_Z, Match3_get_segment_info(segment, pos));
+                Segments_add_bullet(segment, zbuffer[led] - C_BULLET_Z, pos);
                 led += 1;
-                ++led_discombobulation;
+                led_discombobulation++;
                 if (led > last_led)
                     break;
             }
-
             if (led > last_led)
                 continue;
 
-            if (pos == 0 && led_discombobulation > 0)
+            if (bullet_leaving == 1 && pos == 0 && led_discombobulation == 0) //bullet has already left
             {
-                //printf("segment %i, pos %i, dsc %i\n", segment, pos, led_discombobulation);
-                Segments_add_shift(segment, led_discombobulation);
-                segment_position += led_discombobulation;
-                led_discombobulation = 0;
+                bullet_leaving = 2;
+                led++;
+                led_discombobulation++;
+                if (led > last_led)
+                    continue;
             }
 
             jewel_t jewel = Segments_get_jewel(segment, pos);
@@ -311,13 +345,18 @@ static void render_moving_segments(void)
             gradient_index = (2 * match3_config.n_half_grad + 1) * type + match3_config.n_half_grad;
 
             canvas3[led] = 0xFF << 24 | match3_game_source.basic_source.gradient.colors[gradient_index];
-            zbuffer[led] = C_LED_Z + (segment << C_SEGMENT_SHIFT | pos);
+            zbuffer[led] = Match3_get_segment_info(segment, pos);
+
 
 #ifdef DEBUG_M3
             debug_fi_current[led] = 1 + Segments_get_jewel_id(segment, pos);
 #endif // DEBUG_M3
         }
         Segments_set_discombobulation(segment, led_discombobulation);
+        if (bullet_leaving == 2)
+        {
+            Segments_add_shift(segment, 1);
+        }
         segment = Segments_get_next_moving(segment);
     }
 }

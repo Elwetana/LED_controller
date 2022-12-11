@@ -48,6 +48,8 @@ typedef struct TSegment {
     int start;      //!< this is index into field
     int length;
     double shift;   //!< offset againt start, first led of the field is start + shift
+    match3_BulletInfo_t bullets[N_MAX_BULLETS];
+    int n_bullets;
     int debug;
     enum ESegmentType segment_type;
     union {
@@ -191,7 +193,36 @@ void Segments_add_shift(int segment, int amount)
 {
     ASSERT_M3(segment < n_segments, (void)0);
     ASSERT_M3(segments[segment].segment_type == ST_MOVING, (void)0);
+    printf("Shifting segment %i by %i\n", segment, amount);
     segments[segment].shift += amount;
+}
+
+void Segments_reset_bullets(int segment)
+{
+    ASSERT_M3(segment < n_segments, (void)0);
+    segments[segment].n_bullets = 0;
+}
+
+void Segments_add_bullet(int segment, int bullet_index, int segment_position)
+{
+    ASSERT_M3(segment < n_segments, (void)0);
+    int n = segments[segment].n_bullets;
+    segments[segment].bullets[n].bullet_index = bullet_index;
+    segments[segment].bullets[n].segment_position = segment_position;
+    segments[segment].n_bullets = n + 1;
+}
+
+const int Segments_get_n_bullets(int segment)
+{
+    ASSERT_M3(segment < n_segments, (void)0);
+    return segments[segment].n_bullets;
+}
+
+match3_BulletInfo_t Segments_get_bullet(int segment, int segment_bullet_index)
+{
+    ASSERT_M3(segment < n_segments, (void)0);
+    ASSERT_M3(segment_bullet_index < segments[segment].n_bullets, (void)0);
+    return segments[segment].bullets[segment_bullet_index];
 }
 
 void Segments_set_discombobulation(int segment, int discombobulation)
@@ -220,8 +251,7 @@ const int Segments_get_hole_position(int segment)
 {
     ASSERT_M3(segment < n_segments, 0);
     double segment_position = Segments_get_position(segment);
-    double offset = segment_position - (int)trunc(segment_position);
-    offset = offset < 0 ? offset + 1 : offset;
+    double offset = segment_position - (int)floor(segment_position);
     int length = Segments_get_length(segment);
     return length > 2 ? (int)(length * (1 - offset)) : length;
 }
@@ -252,14 +282,15 @@ const int Segments_get_hole_position(int segment)
 //!     - aftter collapse, in new segment => trunc shift of the old segment, calculate 
 //!         shift of the new segment so that the hole stays in place
 //! 
-//! \param  segment new segment will appear after it
-//! \param position new segment will start at position
-static void collapse_segment(const int segment, const int position, const int collapse_length, const int led_discombobulation)
+//! \param  segment new collapsing segment will appear after it
+//! \param position new moving segment will start at position
+//! \param led_discombobulation 
+static void collapse_segment(const int segment, const int position, const int collapse_length)
 {
     ASSERT_M3(!(position < collapse_length), (void)0);
     int hole_position = Segments_get_hole_position(segment);
 
-    printf("Inserting new segment at position %i, hole %i, collapse %i, ld.: %i\n", position, hole_position, collapse_length, led_discombobulation);
+    printf("Inserting new segment at position %i, hole %i, collapse %i\n", position, hole_position, collapse_length);
     Segments_print_info(segment);
 
     int n_inserts = 2;
@@ -277,6 +308,17 @@ static void collapse_segment(const int segment, const int position, const int co
         collapse_index = segment;
         new_moving_index--;
     }
+    int bullets_left = 0, bullets_collapsing = 0, bullets_right = 0;
+    for (int i = 0; i < Segments_get_n_bullets(segment); ++i)
+    {
+        int pos = Segments_get_bullet(segment, i).segment_position;
+        if (pos < position - collapse_length)
+            bullets_left++;
+        else if (pos < position)
+            bullets_collapsing++;
+        else
+            bullets_right++;
+    }
 
     n_segments += n_inserts;
     //printf("N segments increased to %i\n", n_segments);
@@ -289,25 +331,25 @@ static void collapse_segment(const int segment, const int position, const int co
     }
 
     //if the hole is to the left of us, we have to shift position by one
-    //we also add our "parent" 
-    double collapse_add_shift = led_discombobulation;
+    int hole_left = (hole_position < position - collapse_length) ? 1 : 0;
     segment_t collapsing_segment = {
         .start = segments[segment].start + position - collapse_length,
         .length = collapse_length,
-        .shift = trunc(segments[segment].shift) + position - collapse_length + collapse_add_shift,
+        .shift = floor(segments[segment].shift) + position - collapse_length + bullets_left + hole_left,
         .segment_type = ST_COLLAPSING,
         .collapsing.collapse_progress = 1.0
     };
     if (collapse_index > segment) //the \p segment will be trimmed
     {
         segments[segment].length = position - collapse_length;
-        if (hole_position < position - collapse_length)
+        segments[segment].moving.discombobulation = bullets_left;
+        if (hole_left)
         {
-            segments[segment].shift = trunc(segments[segment].shift) + (double)(segments[segment].length - hole_position) / segments[segment].length;
+            segments[segment].shift = floor(segments[segment].shift) + (double)(segments[segment].length - hole_position) / segments[segment].length;
         }
         else
         {
-            segments[segment].shift = trunc(segments[segment].shift);
+            segments[segment].shift = floor(segments[segment].shift);
         }
     }
     if (new_moving_index > 0) //new segment will be inserted to the right of the collapsing segment
@@ -319,10 +361,10 @@ static void collapse_segment(const int segment, const int position, const int co
         segment_t moving_segment = {
             .start = segments[segment].start + position,
             .length = segment_length - position,
-            .shift = trunc(segments[segment].shift) + position + collapse_add_shift + new_segment_shift,
+            .shift = trunc(segments[segment].shift) + position + bullets_left + bullets_collapsing + hole_left + new_segment_shift,
             .segment_type = ST_MOVING,
             .moving.speed = 0,
-            .moving.discombobulation = Segments_get_discombobulation(segment)
+            .moving.discombobulation = bullets_right
         };
         segments[new_moving_index] = moving_segment;
     }
@@ -391,7 +433,7 @@ static void merge_segments(const int left_segment, int right_segment)
 //! @param  position  position of the jewel with the type for which we check
 //! @param   segment  index of segment where the jewel is
 //! @return probably nothing interesting
-static const int evaluate_field(const int segment, const int position, const int led_discombobulation)
+static const int evaluate_field(const int segment, const int position)
 {
     ASSERT_M3(segments[segment].segment_type == ST_MOVING, (void)0);
     jewel_type type = Segments_get_jewel_type(segment, position);
@@ -416,7 +458,7 @@ static const int evaluate_field(const int segment, const int position, const int
 
     //we have a match, we have to split the segment and start collapse
     printf("Segment %i split at position %i, match length %i\n", segment, pos_end, same_length);
-    collapse_segment(segment, pos_end, same_length, led_discombobulation);
+    collapse_segment(segment, pos_end, same_length);
     return 1;
 }
 
@@ -426,13 +468,13 @@ static const int evaluate_field(const int segment, const int position, const int
 //! @param position 
 //! @param insert_segment 
 //! @param jewel 
-void Field_insert_and_evaluate(const int insert_segment, const int position, jewel_type jewel_type, int led_discombobulation)
+void Field_insert_and_evaluate(const int insert_segment, const int position, jewel_type jewel_type, int bullet_index)
 {
     ASSERT_M3(insert_segment < n_segments, (void)0);
     ASSERT_M3(position < Segments_get_length(insert_segment), (void)0);
     ASSERT_M3(segments[insert_segment].segment_type == ST_MOVING, (void)0);
 
-    printf("inserting into %i, pos %i, ld.: %i\n", insert_segment, position, led_discombobulation);
+    printf("inserting into %i, pos %i\n", insert_segment, position);
     Segments_print_info(insert_segment);
     field_length += (field_length == C_MAX_FIELD_LENGTH - 1) ? 0 : 1; //if we are at the max field length, the last jewel will be simply overwritten
     int fi_insert = Segments_get_field_index(insert_segment, position);
@@ -446,14 +488,22 @@ void Field_insert_and_evaluate(const int insert_segment, const int position, jew
     {
         segments[segment].start += 1;
     }
-    if (position > 0) //if the bullet is just behind the segment, it is not inside and dicombobulation is 0
+    segments[insert_segment].moving.discombobulation--;
+    int deleting = 0;
+    for (int sbi = 0; sbi < segments[insert_segment].n_bullets; ++sbi)
     {
-        segments[insert_segment].moving.discombobulation--;
-        led_discombobulation--;
+        if (segments[insert_segment].bullets[sbi].bullet_index == bullet_index)
+        {
+            deleting = 1;
+            segments[insert_segment].n_bullets--;
+        }
+        if (deleting)
+        {
+            segments[insert_segment].bullets[sbi] = segments[insert_segment].bullets[sbi + 1];
+        }
     }
-    else
-        segments[insert_segment].shift -= 1.0;
-    evaluate_field(insert_segment, position, led_discombobulation);
+    assert(deleting);
+    evaluate_field(insert_segment, position);
     Segments_print_info(insert_segment);
 }
 
@@ -466,16 +516,13 @@ static void swap_jewels(const int swap_segment, const int left_position)
     field[right_index] = tmp;
 }
 
-const int Field_swap_and_evaluate(const int swap_segment, const int left_position, int led_discombobulation)
+const int Field_swap_and_evaluate(const int swap_segment, const int left_position)
 {
     ASSERT_M3(swap_segment < n_segments, (void)0);
     ASSERT_M3(left_position < segments[swap_segment].length - 1, (void)0);
 
     swap_jewels(swap_segment, left_position);
-    int right_eval = evaluate_field(swap_segment, left_position + 1, led_discombobulation);
-    int left_eval = evaluate_field(swap_segment, left_position, led_discombobulation);
-
-    if (right_eval || left_eval)
+    if (evaluate_field(swap_segment, left_position + 1) || evaluate_field(swap_segment, left_position))
     {
         printf("Swap successful\n");
         return 0;
@@ -544,7 +591,8 @@ static void unswap_update(double time_delta)
 //!     -- otherwise, if two neighboring segments have the same jewel type at the matching ends, 
 //!        the left segment moves at slow speed, and right segment at retrograde speed
 //!     -- otherwise, the left segment moves at the slow speed and and the right segment stands
-void Segments_update(void)
+//! @returns 1 if collapse is in progress
+const int Segments_update(void)
 {
     double time_delta = (double)(match3_game_source.basic_source.time_delta / 1000L) / 1e6;
     
@@ -566,19 +614,20 @@ void Segments_update(void)
             is_collapse++;
     }
 
+    //if collapse is in progress, we are done
+    if (is_collapse > 0)
+        return 1;
+
     //check speed of all segments and update as needed
-    if (is_collapse == 0)
+    for (int segment = 0; segment < n_segments; ++segment)
     {
-        for (int segment = 0; segment < n_segments; ++segment)
-        {
-            if (segments[segment].segment_type != ST_MOVING)
-                continue;
-            double target_speed = calculate_segment_speed(segment);
-            set_segment_speed(segment, target_speed, time_delta);
-            if (segments[segment].moving.speed == 0)
-                continue;
-            segments[segment].shift += segments[segment].moving.speed * time_delta;
-        }
+        if (segments[segment].segment_type != ST_MOVING)
+            continue;
+        double target_speed = calculate_segment_speed(segment);
+        set_segment_speed(segment, target_speed, time_delta);
+        if (segments[segment].moving.speed == 0)
+            continue;
+        segments[segment].shift += segments[segment].moving.speed * time_delta;
     }
 
     //finally, we can check for segments to merge and delete
@@ -597,24 +646,31 @@ void Segments_update(void)
             continue;
         }
         int left_length = Segments_get_length(left_segment) + Segments_get_discombobulation(left_segment);
-        double visual_distance = trunc(Segments_get_position(segment)) - trunc(Segments_get_position(left_segment)) - left_length;
+        double visual_distance = floor(Segments_get_position(segment)) - floor(Segments_get_position(left_segment)) - left_length;
+        double real_distance = Segments_get_position(segment) - Segments_get_position(left_segment) - left_length;
         //if the left segment is moving right, or right segment is moving left, we have to decrease the visual distance by one in each case
         //if (segments[segment].moving.speed < 0) visual_distance -= 1;
         if (segments[left_segment].moving.speed > 0) visual_distance -= 1;
-        //printf("Distance between %i and %i is %f\n", left_segment, segment, visual_distance);
+        if (segments[left_segment].moving.speed > 0) real_distance -= 1;
+        if (visual_distance < 2.)
+        {
+            //printf("Distance between %i and %i is %f (real) %f\n", left_segment, segment, visual_distance, real_distance);
+        }
+        if (visual_distance < 0)
+            printf("WTF?\n");
         if (visual_distance < 1.)
         {
             printf("Merging segments: left %i, right %i\n", left_segment, segment);
             int merge_position = Segments_get_length(left_segment) - 1;
-            int left_discomb = Segments_get_discombobulation(left_segment);
             merge_segments(left_segment, segment);
-            evaluate_field(left_segment, merge_position, left_discomb);
+            evaluate_field(left_segment, merge_position);
         }
         segment--;
     }
 
     if (n_segments == 0)
         match3_game_source.level_phase = M3LP_LEVEL_WON;
+    return 0;
 }
 
 static jewel_t make_jewel(jewel_type type)
@@ -652,6 +708,8 @@ void Field_init(match3_LevelDefinition_t level_definition)
     segments[0].length = field_length;
     segments[0].segment_type = ST_MOVING;
     segments[0].moving.speed = match3_config.normal_forward_speed;
+    segments[0].moving.discombobulation = 0;
+    segments[0].n_bullets = 0;
     n_segments = 1;
 }
 

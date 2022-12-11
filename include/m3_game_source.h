@@ -61,6 +61,8 @@ typedef struct Match3LevelDefinition
 
 #define MATCH3_N_LEVELS 5
 #define N_MAX_SEGMENTS 32
+#define N_MAX_BULLETS 16
+
 extern const int C_LED_Z;
 extern const int C_SEGMENT_SHIFT;
 extern const int C_BULLET_Z;

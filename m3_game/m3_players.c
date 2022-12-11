@@ -303,6 +303,7 @@ static int is_valid_assignment()
         //don't announce anything
         return -1;
     }
+#ifndef DEBUG_M3
     if (n_pitchers != 1)
     {
         match3_announce("The level cannot start, there must be exactly one pitcher");
@@ -320,6 +321,7 @@ static int is_valid_assignment()
         match3_announce("The level cannot start, not all players have selected their professions");
         return -4;
     }
+#endif // !DEBUG_M3
     return 1;
 }
 

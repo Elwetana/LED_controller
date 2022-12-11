@@ -11,8 +11,13 @@ typedef struct TJewel {
     int unique_id;
 } jewel_t;
 
+typedef struct TMatch3BulletInfo {
+    int bullet_index;
+    int segment_position;
+} match3_BulletInfo_t;
+
 void Segments_print_info(int segment);
-void Segments_update(void);
+const int Segments_update(void);
 const int Segments_get_next_moving(int segment);
 const int Segments_get_next_collapsing(int segment);
 const double Segments_get_position(int segment);      //!< returns position relative to the LEDs
@@ -23,6 +28,12 @@ const jewel_t Segments_get_jewel(int segment, int position); //!< gets jewel at 
 const jewel_type Segments_get_jewel_type(int segment, int position);
 const jewel_type Segments_get_last_jewel_type(int segment);
 void Segments_add_shift(int segment, int amount);
+
+void Segments_reset_bullets(int segment);
+void Segments_add_bullet(int segment, int bullet_index, int segment_position);
+const int Segments_get_n_bullets(int segment);
+match3_BulletInfo_t Segments_get_bullet(int segment, int segment_bullet_index);
+
 void Segments_set_discombobulation(int segment, int discombobulation);
 const int Segments_get_discombobulation(int segment);
 const double Segments_get_collapse_progress(int segment);
@@ -31,8 +42,8 @@ const int Segments_get_jewel_id(int segment, int position);
 
 //const int Field_evaluate(const int field_index, const int segment);
 void Field_init(match3_LevelDefinition_t level_definition);
-void Field_insert_and_evaluate(const int segment, const int position, jewel_type jewel_type, int led_discombobulation);
-const int Field_swap_and_evaluate(const int swap_segment, const int left_position, int led_discombobulation);
+void Field_insert_and_evaluate(const int insert_segment, const int position, jewel_type jewel_type, int bullet_index);
+const int Field_swap_and_evaluate(const int swap_segment, const int left_position);
 void Field_destruct(void);
 
 

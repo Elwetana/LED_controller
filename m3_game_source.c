@@ -62,9 +62,9 @@ const struct Match3Config match3_config = {
     },
     .max_accelaration = 0.05,
     .normal_forward_speed = 0.2,
-    .retrograde_speed = -0.3,
-    .slow_forward_speed = 0.01,
-    .bullet_speed = 3,
+    .retrograde_speed = -0.4,
+    .slow_forward_speed = 0.1,
+    .bullet_speed = 5,
     .emitor_cooldown = 150,
     .unswap_timeout = 150,
     .highlight_timeout = 500
@@ -170,11 +170,11 @@ void Match3_GameSource_finish_phase(enum EMatch3GamePhase phase)
 match3_LevelDefinition_t level_definitions[MATCH3_N_LEVELS] = 
 {
     {
-        .field_length = 100,
+        .field_length = 50,
         .n_gem_colours = 4,
         .same_gem_bias = 0.75,
         .speed_bias = 1,
-        .start_offset = -50
+        .start_offset = 100
     }
 };
 
