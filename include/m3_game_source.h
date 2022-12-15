@@ -46,6 +46,7 @@ typedef struct Match3GameSource
 	int n_players;
 	enum EMatch3LevelPhase level_phase;	
 	enum EMatch3GamePhase game_phase;
+	ws2811_led_t jewel_colors[N_GEM_COLORS * 9]; //for half_grad == 4
 } match3_GameSource_t;
 
 extern match3_GameSource_t match3_game_source;
@@ -70,6 +71,7 @@ extern const int C_BULLET_Z;
 double miliseconds_from_start(void);
 void match3_announce(char* message);
 
+int Match3_GameSource_is_clue_level();
 void Match3_GameSource_finish_phase(enum EMatch3GamePhase phase);
 
 typedef unsigned char jewel_type;

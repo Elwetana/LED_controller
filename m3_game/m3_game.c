@@ -137,7 +137,8 @@ int Match3_Game_swap_jewels(int led, int dir)
 ws2811_led_t get_jewel_color(jewel_type jewel_type)
 {
     int gradient_index = (2 * match3_config.n_half_grad + 1) * jewel_type + match3_config.n_half_grad;
-    return match3_game_source.basic_source.gradient.colors[gradient_index];
+    //return match3_game_source.basic_source.gradient.colors[gradient_index];
+    return match3_game_source.jewel_colors[gradient_index];
 }
 
 /***************** Renderigs *******************************/
@@ -158,6 +159,8 @@ static void render_players(void)
 
     for (int player = 0; player < match3_game_source.n_players; ++player)
     {
+        if (!Match3_Player_is_rendered(player)) 
+            continue;
         //player is displayed when its pattern is on or when it is just moving
         int is_moving = Match3_Player_is_moving(player);
         if (match3_config.player_patterns[player][dit] || is_moving)
@@ -339,9 +342,10 @@ static void render_moving_segments(void)
             ASSERT_M3_CONTINUE(gradient_index >= type * (2 * match3_config.n_half_grad + 1));
             ASSERT_M3_CONTINUE(gradient_index < (type + 1)* (2 * match3_config.n_half_grad + 1));
             ASSERT_M3_CONTINUE(gradient_index + 1 < match3_game_source.basic_source.gradient.n_colors);
-            gradient_index = (2 * match3_config.n_half_grad + 1) * type + match3_config.n_half_grad;
+            //gradient_index = (2 * match3_config.n_half_grad + 1) * type + match3_config.n_half_grad;
 
-            canvas3[led] = 0xFF << 24 | match3_game_source.basic_source.gradient.colors[gradient_index];
+            //canvas3[led] = 0xFF << 24 | match3_game_source.basic_source.gradient.colors[gradient_index];
+            canvas3[led] = 0xFF << 24 | match3_game_source.jewel_colors[gradient_index];
             zbuffer[led] = Match3_get_segment_info(segment, pos);
 
 #ifdef DEBUG_M3

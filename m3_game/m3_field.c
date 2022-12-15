@@ -17,6 +17,7 @@
 #endif // __linux__
 
 
+#include "colours.h"
 #include "controller.h"
 #include "common_source.h"
 #include "m3_game_source.h"
@@ -457,6 +458,9 @@ static int evaluate_field(const int segment, const int position)
 
     //we have a match, we have to split the segment and start collapse
     printf("Segment %i split at position %i, match length %i\n", segment, pos_end, same_length);
+    char buf[50];
+    sprintf(buf, "DING %i (match found)", same_length - C_MATCH_3_LENGTH + 1);
+    match3_announce(buf);
     collapse_segment(segment, pos_end, same_length);
     return 1;
 }
@@ -502,6 +506,7 @@ void Field_insert_and_evaluate(const int insert_segment, const int position, jew
         }
     }
     assert(deleting);
+    match3_announce("DONG (bullet into jewel)");
     evaluate_field(insert_segment, position);
     Segments_print_info(insert_segment);
 }
@@ -519,6 +524,11 @@ int Field_swap_and_evaluate(const int swap_segment, const int left_position)
 {
     ASSERT_M3(swap_segment < n_segments, (void)0);
     ASSERT_M3(left_position < segments[swap_segment].length - 1, (void)0);
+    if (field[left_position].type == field[left_position + 1].type)
+    {
+        printf("Cannot pretend to swap jewels of the same type");
+        return  -1;
+    }
 
     swap_jewels(swap_segment, left_position);
     if (evaluate_field(swap_segment, left_position + 1) || evaluate_field(swap_segment, left_position))
@@ -546,6 +556,8 @@ static void set_segment_speed(int segment, double target_speed, double time_delt
     segments[segment].moving.speed = (segments[segment].moving.speed < target_speed) ?
         fmin(target_speed, segments[segment].moving.speed + max_change) :
         fmax(target_speed, segments[segment].moving.speed - max_change);
+    if (segments[segment].moving.speed == 0)
+        segments[segment].shift = floor(segments[segment].shift);
 }
 
 static double calculate_segment_speed(int segment)
@@ -655,8 +667,7 @@ int Segments_update(void)
         {
             //printf("Distance between %i and %i is %f (real) %f\n", left_segment, segment, visual_distance, real_distance);
         }
-        if (visual_distance < 0)
-            printf("WTF?\n");
+        ASSERT_M3_CONTINUE(!(visual_distance < 0));
         if (visual_distance < 1.)
         {
             printf("Merging segments: left %i, right %i\n", left_segment, segment);
@@ -685,10 +696,54 @@ static jewel_t make_jewel(jewel_type type)
     return j;
 }
 
+static void init_jewel_colors(int n_gem_colours, int offset)
+{
+    const int lg = 2 * match3_config.n_half_grad + 1;
+    const double w = 0.25;
+    const double o = (1. - w) / 2.;
+    hsl_t col;
+    int angle = 360 / n_gem_colours;
+    for (int a = 0; a < n_gem_colours; ++a)
+    {
+        col.h = (double)((a * angle + offset) % 360) / 360.;
+        col.s = 1;
+        for (int l = 0; l < lg; ++l)
+        {
+            col.l = o + w * (double)l / (double)(lg - 1);
+            match3_game_source.jewel_colors[a * lg + l] = hsl2rgb(&col);
+        }
+    }
+}
+
+static void make_initial_segment(double start_offset)
+{
+    segments[0].start = 0;
+    segments[0].shift = start_offset;
+    segments[0].length = field_length;
+    segments[0].segment_type = ST_MOVING;
+    segments[0].moving.speed = match3_config.normal_forward_speed;
+    segments[0].moving.discombobulation = 0;
+    segments[0].n_bullets = 0;
+    n_segments = 1;
+}
+
+void Field_init_with_clue(const jewel_type field_def[], const int def_length)
+{
+    init_jewel_colors(6, 50);
+    speed_bias = 1;
+    field_length = def_length;
+    for (int fi = 0; fi < field_length; ++fi)
+    {
+        field[fi] = make_jewel(field_def[fi]);
+    }
+    make_initial_segment((double)(match3_game_source.basic_source.n_leds - field_length) / 2.);
+}
+
 void Field_init(match3_LevelDefinition_t level_definition)
 {
     assert(level_definition.n_gem_colours <= N_GEM_COLORS);
     assert(level_definition.field_length <= C_MAX_FIELD_LENGTH);
+    init_jewel_colors(level_definition.n_gem_colours, 50);
     field_length = level_definition.field_length;
     speed_bias = level_definition.speed_bias;
     double same_gem_bias = level_definition.same_gem_bias;
@@ -702,14 +757,7 @@ void Field_init(match3_LevelDefinition_t level_definition)
         }
         field[i] = make_jewel(last_type);
     }
-    segments[0].start = 0;
-    segments[0].shift = level_definition.start_offset;
-    segments[0].length = field_length;
-    segments[0].segment_type = ST_MOVING;
-    segments[0].moving.speed = match3_config.normal_forward_speed;
-    segments[0].moving.discombobulation = 0;
-    segments[0].n_bullets = 0;
-    n_segments = 1;
+    make_initial_segment(level_definition.start_offset);
 }
 
 void Field_destruct(void)

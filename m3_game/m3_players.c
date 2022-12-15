@@ -55,14 +55,22 @@ int Match3_Player_get_highlight(void)
     return -1;
 }
 
+int Match3_Player_is_rendered(int player_index)
+{
+    ASSERT_M3(player_index < match3_game_source.n_players, 1);
+    //return players[player_index].type != PT_Pitcher;
+    return PlayerType_can_move(players[player_index].type);
+}
 
 int Match3_Player_get_position(int player_index)
 {
+    ASSERT_M3(player_index < match3_game_source.n_players, 1);
     return (int)players[player_index].position;
 }
 
 int Match3_Player_is_moving(int player_index)
 {
+    ASSERT_M3(player_index < match3_game_source.n_players, 0);
     return (miliseconds_from_start() - players[player_index].last_move) < 2 * match3_config.player_move_cooldown;
 }
 
@@ -257,6 +265,8 @@ void Universal_press_button(int player_index, enum EM3_BUTTONS button)
         Player_fire();
         break;
     case M3B_X:
+        //cheat lose
+        //match3_game_source.level_phase = M3LP_LEVEL_LOST;
         break;
     case M3B_Y:
         break;
@@ -273,6 +283,8 @@ void Universal_press_button(int player_index, enum EM3_BUTTONS button)
         Player_swap_jewels(player_index, -1);
         break;
     case M3B_START:
+        //cheat win
+        match3_game_source.level_phase = M3LP_LEVEL_WON;
         break;
     case M3B_N_BUTTONS:
     default:
@@ -289,19 +301,25 @@ static int is_valid_assignment()
 {
     int n_pitchers = 0;
     int n_catchers = 0;
-    int n_univesal = 0;
+    int n_universal = 0;
     int n_ready = 0;
     for (int pi = 0; pi < match3_game_source.n_players; ++pi)
     {
         if (players[pi].type == PT_Catcher) n_catchers++;
         if (players[pi].type == PT_Pitcher) n_pitchers++;
-        if (players[pi].type == PT_Universal) n_univesal++;
+        if (players[pi].type == PT_Universal) n_universal++;
         if (players[pi].is_ready == 1) n_ready++;
     }
     if (n_ready != match3_game_source.n_players)
     {
         //don't announce anything
         return -1;
+    }
+    if (Match3_GameSource_is_clue_level())
+    {
+        for (int pi = 0; pi < match3_game_source.n_players; ++pi)
+            players[pi].type = PT_Swapper;
+        return 1;
     }
 #ifndef DEBUG_M3
     char buf[64];
@@ -317,7 +335,7 @@ static int is_valid_assignment()
         match3_announce("The level cannot start, there must be at least one catcher");
         return -3;
     }
-    if (n_univesal > 0)
+    if (n_universal > 0)
     {
         match3_announce("The level cannot start, not all players have selected their professions");
         return -4;
@@ -336,7 +354,7 @@ static void assign_type(int player_index, enum EPlayerType player_type)
     match3_announce(buf);
 }
 
-static void end_selection(int player_index)
+static void ready_check(int player_index, enum EMatch3GamePhase phase)
 {
     players[player_index].is_ready = 1;
     char buf[64];
@@ -344,7 +362,7 @@ static void end_selection(int player_index)
     match3_announce(buf);
     if (is_valid_assignment() == 1)
     {
-        Match3_GameSource_finish_phase(M3GP_SELECT);
+        Match3_GameSource_finish_phase(phase);
     }
 }
 
@@ -380,7 +398,7 @@ void Select_phase_press_button(int player_index, enum EM3_BUTTONS button)
     case M3B_DLEFT:
         break;
     case M3B_START:
-        end_selection(player_index);
+        ready_check(player_index, M3GP_SELECT);
         break;
     case M3B_N_BUTTONS:
     default:
@@ -413,7 +431,7 @@ void End_phase_press_button(int player_index, enum EM3_BUTTONS button)
     case M3B_DLEFT:
         break;
     case M3B_START:
-        end_selection(player_index);
+        ready_check(player_index, M3GP_END);
         break;
     case M3B_N_BUTTONS:
     default:

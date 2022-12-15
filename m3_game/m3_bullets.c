@@ -32,8 +32,10 @@ typedef struct TBullet {
     int segment_info;
     unsigned char marked_for_delete;
 } bullet_t;
+
 //! array of bullets
 bullet_t bullets[N_MAX_BULLETS];
+
 //! number of bullets
 int n_bullets = 0;
 
@@ -71,6 +73,7 @@ int Match3_Emitor_fire()
     bullets[n_bullets].segment_info = 0;
     bullets[n_bullets].marked_for_delete = 0;
     n_bullets++;
+    match3_announce("WHAM (bullet fired)");
     return 0;
 }
 

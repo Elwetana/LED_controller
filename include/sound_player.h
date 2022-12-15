@@ -36,6 +36,7 @@ void SoundPlayer_init(int frame_time);
  * @return current timestamp (i.e. how much of the song was already played) in us
  */
 long SoundPlayer_play(enum ESoundEffects new_effect);
+enum ESoundEffects SoundPlayer_get_current_effect();
 
 void SoundPlayer_stop();
 

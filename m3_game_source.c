@@ -8,8 +8,13 @@
  [x] Emittor
  [ ] Sounds
  [ ] Music
- [x] Players -- what's their gameplay?
- [ ] Game phases/levels
+ [x] Players
+ [x] Game phases/levels
+ [ ] Last level with clues
+ [ ] Better pitcher gameplay
+ [ ] End level/game screen
+ [ ] Playtesting, tune the constants
+ [ ] Tune colours, rendering of bullets
 
 */
 #include <stdint.h>
@@ -62,13 +67,66 @@ const struct Match3Config match3_config = {
     },
     .max_accelaration = 0.05,
     .normal_forward_speed = 0.2,
-    .retrograde_speed = -0.4,
+    .retrograde_speed = -0.5,
     .slow_forward_speed = 0.1,
     .bullet_speed = 5,
     .emitor_cooldown = 500,
     .unswap_timeout = 150,
     .highlight_timeout = 500
 };
+
+match3_LevelDefinition_t level_definitions[MATCH3_N_LEVELS] =
+{
+    //level 1
+    {
+        .field_length = 100,
+        .n_gem_colours = 4,
+        .same_gem_bias = 0.75,
+        .speed_bias = 1,
+        .start_offset = -50
+    },
+
+    //level 2
+    {
+        .field_length = 150,
+        .n_gem_colours = 4,
+        .same_gem_bias = 0.6,
+        .speed_bias = 1.1,
+        .start_offset = -100
+    },
+
+    //level 3
+    {
+        .field_length = 200,
+        .n_gem_colours = 5,
+        .same_gem_bias = 0.6,
+        .speed_bias = 1.2,
+        .start_offset = -100
+    },
+
+    //level 4
+    {
+        .field_length = 250,
+        .n_gem_colours = 5,
+        .same_gem_bias = 0.5,
+        .speed_bias = 1.3,
+        .start_offset = -150
+    },
+
+    //level 5
+    {
+        .field_length = 300,
+        .n_gem_colours = 6,
+        .same_gem_bias = 0.5,
+        .speed_bias = 1.5,
+        .start_offset = -150
+    }
+};
+
+
+const jewel_type clue_level[] = { 5, 0, 0, 1, 3, 4, 4, 0, 1, 2, 2, 3, 3, 4, 5, 5, 0, 0, 2, 1, 3, 3, 4, 5, 0, 1, 1, 2, 0, 3, 3, 2, 4, 5, 0, 0, 1, 1, 4, 2, 2, 1, 3, 3, 4, 4, 2, 5, 0, 0, 2, 1, 3, 2, 3, 4, 4, 5, 5, 3, 5, 4, 2, 1, 5, 1, 0, 4, 5, 3, 0, 5, 5, 3, 4, 2, 1, 2, 0, 5, 5, 4, 4, 3, 2, 5, 1, 1, 0, 5, 4, 4, 3, 2, 1, 1, 0, 0, 2, 5, 5, 4, 3, 3, 1, 2, 2, 5, 1, 0, 5 };
+const char* clue_letters[] = { "mo4 ji4", "shi1 fu0", "zhi1 jian1", "jin1 ping2", "jin1 zi4 ta3" };
+//ink blot = mo4 ji4, master = shuo4 shi4 or shi1 fu0, between = zhi1 jian1, plum = "jin1 ping2", pyramid = jin1 zi4 ta3
 /* Config data end */
 
 
@@ -167,21 +225,22 @@ void Match3_GameSource_finish_phase(enum EMatch3GamePhase phase)
     }
 }
 
-match3_LevelDefinition_t level_definitions[MATCH3_N_LEVELS] = 
+int Match3_GameSource_is_clue_level()
 {
-    {
-        .field_length = 50,
-        .n_gem_colours = 4,
-        .same_gem_bias = 0.75,
-        .speed_bias = 1,
-        .start_offset = 100
-    }
-};
+    return !(current_level < MATCH3_N_LEVELS);
+}
 
 static void select_phase_init(void)
 {
     Match3_Players_init();
-    match3_announce("Select your roles: X for pitcher, Y for catcher, B for switcher. Press A to highlight your cursor");
+    if (Match3_GameSource_is_clue_level())
+    {
+        match3_announce("This is the final level, everyone is a switcher. Get ready.");
+    }
+    else
+    {
+        match3_announce("Select your roles: X for pitcher, Y for catcher, B for switcher. Press A to highlight your cursor");
+    }
 }
 
 static void select_phase_update(void)
@@ -196,7 +255,10 @@ static void select_phase_update(void)
 
 static void play_phase_init(void)
 {
-    Field_init(level_definitions[current_level]);
+    if(Match3_GameSource_is_clue_level())
+        Field_init_with_clue(clue_level, sizeof(clue_level) / sizeof(jewel_type));
+    else
+        Field_init(level_definitions[current_level]);
     match3_game_source.level_phase = M3LP_IN_PROGRESS;
     match3_announce("Get ready! Go!");
 }

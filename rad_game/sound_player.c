@@ -209,6 +209,11 @@ static void SoundPlayer_init_timers()
     samples_supplied = 0;
 }
 
+enum ESoundEffects SoundPlayer_get_current_effect()
+{
+    return current_effect;
+}
+
 void SoundPlayer_start(char* filename)
 {
     assert(buff == 0);
@@ -240,11 +245,10 @@ void SoundPlayer_init_for_effect()
     is_playing = 2;
 }
 
-//check if we are playing
-//  we can play song or effect or both
-//check if buffer needs feeding
-//if yes
-//  if playing effect only
+//! @brief This function must be called every update to keep updating the buffer
+//! Parameter \p new_effect is effectively optional, if present it will immediately start playing
+//! @param  new_effect Enum of the effect to player or SE_N_EFFECTS when no new effect is required
+//! @return -1 when nothing is playing, -2 when only effect is playing, elapsed time in track in us 
 long SoundPlayer_play(enum ESoundEffects new_effect)
 {
     if (is_playing == 0 && current_effect == SE_N_EFFECTS && new_effect == SE_N_EFFECTS)
@@ -325,6 +329,7 @@ long SoundPlayer_play(enum ESoundEffects new_effect)
         {
              if (current_effect != SE_N_EFFECTS)
              {
+                 printf("unreachable code in SoundPlayer_play reached. Current effect %i, samples read: %i", current_effect, samples_read);
                  is_playing = 2;
                  return -2;
              }
