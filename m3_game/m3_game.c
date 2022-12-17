@@ -307,7 +307,7 @@ static void render_moving_segments(void)
 
             if (pos == hole_position) //we will outptut two leds for this pos, one for the hole, one for the jewel
             {
-                if (zbuffer[led + hole_direction] > 0) //if there is bullet on the hole position, we have to shift even more
+                if (led + hole_direction >= 0 && zbuffer[led + hole_direction] > 0) //if there is bullet on the hole position, we have to shift even more
                 {
                     ASSERT_M3_CONTINUE(zbuffer[led + hole_direction] >= C_BULLET_Z); //we should never render one field over another
                     Match3_Bullets_set_segment_info(zbuffer[led + hole_direction] - C_BULLET_Z, Match3_get_segment_info(segment, pos));

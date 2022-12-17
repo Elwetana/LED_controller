@@ -334,7 +334,7 @@ long SoundPlayer_play(enum ESoundEffects new_effect)
         {
              if (current_effect != SE_N_EFFECTS)
              {
-                 printf("unreachable code in SoundPlayer_play reached. Current effect %i, samples read: %i", current_effect, samples_read);
+                 //printf("unreachable code in SoundPlayer_play reached. Current effect %i, samples read: %i\n", current_effect, samples_read);
                  is_playing = 2;
                  return -2;
              }

@@ -249,7 +249,6 @@ static void update_announcements()
     if (t < 0 && (current_announcement < announcement_queue_end || (announcement_queue_end == 0 && current_announcement > 0)))
     {
         current_announcement = (current_announcement + 1) % C_MAX_ANNOUNCEMENTS;
-        printf("Starting to play %s\n", announcement_queue[current_announcement]);
         SoundPlayer_start(announcement_queue[current_announcement]);
         is_announcement_in_progress = 1;
     }
@@ -260,11 +259,15 @@ static void update_announcements()
     else
     {
         is_announcement_in_progress = 1;
-        printf("Still playing %s, queue length is %i\n", announcement_queue[current_announcement], announcement_queue_end - current_announcement);
     }
 }
 
 /***************** Application Flow **********************/
+
+int Match3_GameSource_get_n_jewels()
+{
+    return level_definitions[current_level].n_gem_colours;
+}
 
 void Match3_GameSource_finish_phase(enum EMatch3GamePhase phase)
 {
@@ -443,6 +446,7 @@ void Match3GameSource_process_message(const char* msg)
 void Match3GameSource_init(int n_leds, int time_speed, uint64_t current_time)
 {
     BasicSource_init(&match3_game_source.basic_source, n_leds, time_speed, source_config.colors[M3_GAME_SOURCE], current_time);
+    SoundPlayer_init(20000);
     Match3_InputHandler_init(); // inits the controller
     Match3_Game_init();
 

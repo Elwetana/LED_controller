@@ -81,7 +81,7 @@ int Match3_Emitor_fire()
 
 int Match3_Emitor_reload(int dir)
 {
-    emitor.jewel_type = (emitor.jewel_type + dir) % N_GEM_COLORS;
+    emitor.jewel_type = (emitor.jewel_type + dir) % Match3_GameSource_get_n_jewels();
     return 1;
 }
 

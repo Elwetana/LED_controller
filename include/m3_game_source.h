@@ -73,6 +73,7 @@ void match3_announce(char* wav, char* message);
 
 int Match3_GameSource_is_clue_level();
 void Match3_GameSource_finish_phase(enum EMatch3GamePhase phase);
+int Match3_GameSource_get_n_jewels();
 
 typedef unsigned char jewel_type;
 

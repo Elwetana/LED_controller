@@ -55,25 +55,6 @@ int Match3_Player_get_highlight(void)
     return -1;
 }
 
-int Match3_Player_is_rendered(int player_index)
-{
-    ASSERT_M3(player_index < match3_game_source.n_players, 1);
-    //return players[player_index].type != PT_Pitcher;
-    return PlayerType_can_move(players[player_index].type);
-}
-
-int Match3_Player_get_position(int player_index)
-{
-    ASSERT_M3(player_index < match3_game_source.n_players, 1);
-    return (int)players[player_index].position;
-}
-
-int Match3_Player_is_moving(int player_index)
-{
-    ASSERT_M3(player_index < match3_game_source.n_players, 0);
-    return (miliseconds_from_start() - players[player_index].last_move) < 2 * match3_config.player_move_cooldown;
-}
-
 static int PlayerType_can_move(enum EPlayerType pt)
 {
     switch (pt)
@@ -94,6 +75,25 @@ static int PlayerType_can_move(enum EPlayerType pt)
         break;
     }
     return 0;
+}
+
+int Match3_Player_is_rendered(int player_index)
+{
+    ASSERT_M3(player_index < match3_game_source.n_players, 1);
+    //return players[player_index].type != PT_Pitcher;
+    return PlayerType_can_move(players[player_index].type);
+}
+
+int Match3_Player_get_position(int player_index)
+{
+    ASSERT_M3(player_index < match3_game_source.n_players, 1);
+    return (int)players[player_index].position;
+}
+
+int Match3_Player_is_moving(int player_index)
+{
+    ASSERT_M3(player_index < match3_game_source.n_players, 0);
+    return (miliseconds_from_start() - players[player_index].last_move) < 2 * match3_config.player_move_cooldown;
 }
 
 /* player input handling */
