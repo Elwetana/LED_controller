@@ -18,6 +18,7 @@
 
 
 #include "controller.h"
+#include "sound_player.h"
 #include "common_source.h"
 #include "m3_game_source.h"
 #include "m3_field.h"
@@ -73,7 +74,8 @@ int Match3_Emitor_fire()
     bullets[n_bullets].segment_info = 0;
     bullets[n_bullets].marked_for_delete = 0;
     n_bullets++;
-    match3_announce("WHAM (bullet fired)");
+    //match3_announce("WHAM (bullet fired)");
+    SoundPlayer_play(SE_M3_BulletFired);
     return 0;
 }
 

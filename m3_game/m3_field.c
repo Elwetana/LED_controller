@@ -19,6 +19,7 @@
 
 #include "colours.h"
 #include "controller.h"
+#include "sound_player.h"
 #include "common_source.h"
 #include "m3_game_source.h"
 #include "m3_field.h"
@@ -458,9 +459,12 @@ static int evaluate_field(const int segment, const int position)
 
     //we have a match, we have to split the segment and start collapse
     printf("Segment %i split at position %i, match length %i\n", segment, pos_end, same_length);
-    char buf[50];
-    sprintf(buf, "DING %i (match found)", same_length - C_MATCH_3_LENGTH + 1);
-    match3_announce(buf);
+    //char buf[50];
+    //sprintf(buf, "DING %i (match found)", same_length - C_MATCH_3_LENGTH + 1);
+    //match3_announce("", buf);
+    int effect = max(same_length - C_MATCH_3_LENGTH + 1, 2);
+    enum ESoundEffects effects[] = { SE_M3_JewelsDing01, SE_M3_JewelsDing02, SE_M3_JewelsDing03 };
+    SoundPlayer_play(effects[effect]);
     collapse_segment(segment, pos_end, same_length);
     return 1;
 }
@@ -506,7 +510,8 @@ void Field_insert_and_evaluate(const int insert_segment, const int position, jew
         }
     }
     assert(deleting);
-    match3_announce("DONG (bullet into jewel)");
+    //match3_announce("THUD (bullet into jewel)");
+    SoundPlayer_play(SE_M3_BallImpact);
     evaluate_field(insert_segment, position);
     Segments_print_info(insert_segment);
 }

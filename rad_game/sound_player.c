@@ -53,7 +53,12 @@ static char* effect_files[SE_N_EFFECTS] =
     "sound/press_start.wav",
     "sound/level_failed.wav",
     "sound/level_cleared.wav",
-    "sound/you_win.wav"
+    "sound/you_win.wav",
+    "sound/m3_bullet_fire.wav",
+    "sound/m3_ball_impact.wav",
+    "sound/m3_jewels_crash_1.wav",
+    "sound/m3_jewels_crash_2.wav",
+    "sound/m3_jewels_crash_3.wav"
 };
 
 #ifdef __linux__

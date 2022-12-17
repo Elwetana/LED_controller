@@ -69,7 +69,7 @@ extern const int C_SEGMENT_SHIFT;
 extern const int C_BULLET_Z;
 
 double miliseconds_from_start(void);
-void match3_announce(char* message);
+void match3_announce(char* wav, char* message);
 
 int Match3_GameSource_is_clue_level();
 void Match3_GameSource_finish_phase(enum EMatch3GamePhase phase);

@@ -349,17 +349,22 @@ static void assign_type(int player_index, enum EPlayerType player_type)
 {
     players[player_index].type = player_type;
     players[player_index].is_ready = 0;
-    char buf[64];
-    sprintf(buf, "Player %i become %i", player_index, (int)player_type);
-    match3_announce(buf);
+    char msg[64];
+    char wav[32];
+    char* types[] = { "Pitcher", "Catcher", "Switcher" };
+    sprintf(msg, "Player %i become %s", player_index, types[(int)player_type]);
+    sprintf(wav, "p%ito%s", player_index + 1, types[(int)player_type]);
+    match3_announce(wav, msg);
 }
 
 static void ready_check(int player_index, enum EMatch3GamePhase phase)
 {
     players[player_index].is_ready = 1;
-    char buf[64];
-    sprintf(buf, "Player %i is ready", player_index);
-    match3_announce(buf);
+    char msg[64];
+    char wav[32];
+    sprintf(msg, "Player %i is ready", player_index);
+    sprintf(wav, "p%iready", player_index + 1);
+    match3_announce(wav, msg);
     if (is_valid_assignment() == 1)
     {
         Match3_GameSource_finish_phase(phase);
@@ -384,10 +389,10 @@ void Select_phase_press_button(int player_index, enum EM3_BUTTONS button)
         assign_type(player_index, PT_Swapper);
         break;
     case M3B_X:
-        assign_type(player_index, PT_Catcher);
+        assign_type(player_index, PT_Pitcher);
         break;
     case M3B_Y:
-        assign_type(player_index, PT_Pitcher);
+        assign_type(player_index, PT_Catcher);
         break;
     case M3B_DUP:
         break;

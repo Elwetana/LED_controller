@@ -124,8 +124,35 @@ match3_LevelDefinition_t level_definitions[MATCH3_N_LEVELS] =
 };
 
 
-const jewel_type clue_level[] = { 5, 0, 0, 1, 3, 4, 4, 0, 1, 2, 2, 3, 3, 4, 5, 5, 0, 0, 2, 1, 3, 3, 4, 5, 0, 1, 1, 2, 0, 3, 3, 2, 4, 5, 0, 0, 1, 1, 4, 2, 2, 1, 3, 3, 4, 4, 2, 5, 0, 0, 2, 1, 3, 2, 3, 4, 4, 5, 5, 3, 5, 4, 2, 1, 5, 1, 0, 4, 5, 3, 0, 5, 5, 3, 4, 2, 1, 2, 0, 5, 5, 4, 4, 3, 2, 5, 1, 1, 0, 5, 4, 4, 3, 2, 1, 1, 0, 0, 2, 5, 5, 4, 3, 3, 1, 2, 2, 5, 1, 0, 5 };
-const char* clue_letters[] = { "mo4 ji4", "shi1 fu0", "zhi1 jian1", "jin1 ping2", "jin1 zi4 ta3" };
+//unambiguous 37 matches
+//const jewel_type clue_level[] = { 5, 0, 0, 1, 3, 4, 4, 0, 1, 2, 2, 3, 3, 4, 5, 5, 0, 0, 2, 1, 3, 3, 4, 5, 0, 1, 1, 2, 0, 3, 3, 2, 4, 5, 0, 0, 1, 1, 4, 2, 2, 1, 3, 3, 4, 4, 2, 5, 0, 0, 2, 1, 3, 2, 3, 4, 4, 5, 5, 3, 5, 4, 2, 1, 5, 1, 0, 4, 5, 3, 0, 5, 5, 3, 4, 2, 1, 2, 0, 5, 5, 4, 4, 3, 2, 5, 1, 1, 0, 5, 4, 4, 3, 2, 1, 1, 0, 0, 2, 5, 5, 4, 3, 3, 1, 2, 2, 5, 1, 0, 5 };
+
+//ambiguous 36 matches -- inverted order
+const jewel_type clue_level[] = { 1, 5, 4, 4, 1, 2, 1, 0, 3, 5, 5, 0, 5, 0, 1, 1, 2, 2, 1, 3, 3, 0, 1, 4, 5, 5, 1, 2, 2, 1, 0, 0, 3, 1, 0, 2, 0, 2, 5, 3, 4, 2, 3, 2, 2, 3, 5, 4, 4, 0, 5, 0, 1, 2, 1, 3, 4, 4, 3, 5, 4, 3, 5, 2, 2, 1, 3, 1, 1, 2, 3, 4, 4, 0, 5, 4, 4, 3, 3, 0, 3, 4, 5, 5, 2, 0, 5, 3, 1, 2, 0, 1, 5, 5, 0, 4, 4, 5, 4, 0, 1, 3, 2, 2, 4, 3, 0, 0 };
+
+//ambiguous 48 matches
+//const jewel_type clue_level[] = { 1, 5, 4, 4, 1, 2, 1, 0, 3, 5, 5, 4, 3, 3, 4, 3, 0, 4, 5, 0, 1, 1, 2, 2, 1, 3, 3, 0, 1, 4, 5, 5, 1, 2, 2, 1, 0, 0, 3, 1, 0, 2, 0, 2, 5, 3, 4, 1, 2, 1, 0, 5, 5, 0, 5, 1, 0, 3, 2, 2, 3, 5, 4, 4, 0, 5, 0, 1, 2, 1, 3, 4, 4, 3, 5, 4, 3, 5, 2, 2, 1, 4, 5, 4, 4, 0, 5, 5, 3, 0, 0, 1, 1, 2, 3, 4, 4, 0, 5, 4, 4, 3, 3, 1, 2, 1, 1, 0, 2, 2, 3, 4, 5, 5, 2, 0, 5, 3, 1, 2, 0, 1, 5, 5, 0, 2, 3, 2, 2, 4, 3, 3, 4, 5, 4, 0, 1, 3, 2, 2, 4, 3, 0, 0 };
+
+//const char* clue_letters[] = { "mo4 ji4", "shi1 fu0", "zhi1 jian1", "jin1 ping2", "jin1 zi4 ta3" };
+
+const char clue_letters[6][6] = { 
+    {'m','h','h','-','n','z'}, 
+    {'o','i','i','j','g','i'}, 
+    {'j','f','j','i','-','t'}, 
+    {'i','u','i','n','j','a'}, 
+    {'-','-','a','p','i','*'},
+    {'s','z','n','i','n','*'}
+};
+const unsigned char clue_letter_types[6][6] = {
+    {1,1,2,0,3,2},
+    {1,1,2,3,3,2},
+    {1,1,2,3,0,2},
+    {1,1,2,3,2,2},
+    {0,0,2,3,2,0},
+    {1,2,2,3,2,0}
+};
+ 
+ 
 //ink blot = mo4 ji4, master = shuo4 shi4 or shi1 fu0, between = zhi1 jian1, plum = "jin1 ping2", pyramid = jin1 zi4 ta3
 /* Config data end */
 
@@ -134,6 +161,11 @@ const char* clue_letters[] = { "mo4 ji4", "shi1 fu0", "zhi1 jian1", "jin1 ping2"
 
 int current_level = 0;
 int end_phase_requested = 0;
+#define C_MAX_ANNOUNCEMENTS 8
+char announcement_queue[C_MAX_ANNOUNCEMENTS][64];
+int current_announcement = 0;
+int announcement_queue_end = 0;
+int is_announcement_in_progress = 0;
 
 /* 
  * General description of rendering moving objects:
@@ -204,15 +236,32 @@ double miliseconds_from_start(void)
     return (double)((match3_game_source.basic_source.current_time - match3_game_source.start_time) / 1000l) / 1e3;
 }
 
-void match3_announce(char* message)
+void match3_announce(char* wav, char* message)
 {
+    announcement_queue_end = (announcement_queue_end + 1) % C_MAX_ANNOUNCEMENTS;
+    sprintf(announcement_queue[announcement_queue_end], "sound/m3_%s.wav", wav);
     printf(ANSI_COLOR_RED "%s\n" ANSI_COLOR_RESET, message);
 }
 
-static int is_announcement_in_progress(void)
+static void update_announcements()
 {
-    //TODO check if sound_player is playing
-    return 0;
+    int t = SoundPlayer_play(SE_N_EFFECTS);
+    if (t < 0 && (current_announcement < announcement_queue_end || (announcement_queue_end == 0 && current_announcement > 0)))
+    {
+        current_announcement = (current_announcement + 1) % C_MAX_ANNOUNCEMENTS;
+        printf("Starting to play %s\n", announcement_queue[current_announcement]);
+        SoundPlayer_start(announcement_queue[current_announcement]);
+        is_announcement_in_progress = 1;
+    }
+    else if (t < 0)
+    {
+        is_announcement_in_progress = 0;
+    }
+    else
+    {
+        is_announcement_in_progress = 1;
+        printf("Still playing %s, queue length is %i\n", announcement_queue[current_announcement], announcement_queue_end - current_announcement);
+    }
 }
 
 /***************** Application Flow **********************/
@@ -235,17 +284,17 @@ static void select_phase_init(void)
     Match3_Players_init();
     if (Match3_GameSource_is_clue_level())
     {
-        match3_announce("This is the final level, everyone is a switcher. Get ready.");
+        match3_announce("finalLevel", "This is the final level, everyone is a switcher. Get ready.");
     }
     else
     {
-        match3_announce("Select your roles: X for pitcher, Y for catcher, B for switcher. Press A to highlight your cursor");
+        match3_announce("selectRoles", "Select your roles: X for pitcher, Y for catcher, B for switcher. Press A to highlight your cursor");
     }
 }
 
 static void select_phase_update(void)
 {
-    if (is_announcement_in_progress())
+    if (is_announcement_in_progress)
         Match3_InputHandler_drain_input();
     else
         Match3_InputHandler_process_input();
@@ -260,7 +309,7 @@ static void play_phase_init(void)
     else
         Field_init(level_definitions[current_level]);
     match3_game_source.level_phase = M3LP_IN_PROGRESS;
-    match3_announce("Get ready! Go!");
+    match3_announce("get_ready", "Get ready! Go!");
 }
 
 static void play_phase_update(void)
@@ -284,16 +333,14 @@ static void end_phase_init(void)
     switch (match3_game_source.level_phase)
     {
     case M3LP_LEVEL_LOST:
-        match3_announce("You lost!");
-        match3_announce("Press start to retry");
+        match3_announce("lostRetry", "You lost!Press Start to retry.");
         break;
     case M3LP_LEVEL_WON:
-        match3_announce("You win!");
-        match3_announce("Press start to continue");
+        match3_announce("winContinue", "You won! Press Start to continue.");
         current_level++;
         if (current_level == MATCH3_N_LEVELS)
         {
-            match3_announce("Game won");
+            match3_announce("you_win", "Game won");
         }
         break;
     case M3LP_IN_PROGRESS:
@@ -342,6 +389,7 @@ struct
 int Match3GameSource_update_leds(int frame, ws2811_t* ledstrip)
 {
     match3_game_source.cur_frame = frame;
+    update_announcements();
     phase_definitions[match3_game_source.game_phase].update();
     Match3_Game_render_leds(frame, ledstrip);
     //check phase/level progress

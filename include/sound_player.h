@@ -17,6 +17,11 @@ enum ESoundEffects
 	SE_Lose,
 	SE_Win,
 	SE_WinGame,
+	SE_M3_BulletFired,
+	SE_M3_BallImpact,
+	SE_M3_JewelsDing01,
+	SE_M3_JewelsDing02,
+	SE_M3_JewelsDing03,
 	SE_N_EFFECTS
 };
 
@@ -33,7 +38,7 @@ void SoundPlayer_init(int frame_time);
 
 /*!
  * @brief keep playing the current file
- * @return current timestamp (i.e. how much of the song was already played) in us
+ * @return -1 when nothing is playing, -2 when only effect is playing, elapsed time in track in us 
  */
 long SoundPlayer_play(enum ESoundEffects new_effect);
 enum ESoundEffects SoundPlayer_get_current_effect();
