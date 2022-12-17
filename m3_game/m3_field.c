@@ -462,7 +462,7 @@ static int evaluate_field(const int segment, const int position)
     //char buf[50];
     //sprintf(buf, "DING %i (match found)", same_length - C_MATCH_3_LENGTH + 1);
     //match3_announce("", buf);
-    int effect = fmax(same_length - C_MATCH_3_LENGTH + 1, 2);
+    int effect = fmin(same_length - C_MATCH_3_LENGTH + 1, 2);
     enum ESoundEffects effects[] = { SE_M3_JewelsDing01, SE_M3_JewelsDing02, SE_M3_JewelsDing03 };
     SoundPlayer_play(effects[effect]);
     collapse_segment(segment, pos_end, same_length);
@@ -705,7 +705,7 @@ static void init_jewel_colors(int n_gem_colours, int offset)
 {
     const int lg = 2 * match3_config.n_half_grad + 1;
     const double w = 0.1;
-    const double o = (1. - w) / 3.;
+    const double o = (1. - w) / 10.;
     hsl_t col;
     int angle = 360 / n_gem_colours;
     for (int a = 0; a < n_gem_colours; ++a)
@@ -717,7 +717,7 @@ static void init_jewel_colors(int n_gem_colours, int offset)
             col.l = o + w * (double)l / (double)(lg - 1);
             match3_game_source.jewel_colors[a * lg + l] = hsl2rgb(&col);
         }
-        col.l = 0.6;
+        col.l = 0.5;
         match3_game_source.bullet_colors[a] = hsl2rgb(&col);
     }
 }
@@ -750,7 +750,7 @@ void Field_init(match3_LevelDefinition_t level_definition)
 {
     assert(level_definition.n_gem_colours <= N_GEM_COLORS);
     assert(level_definition.field_length <= C_MAX_FIELD_LENGTH);
-    init_jewel_colors(level_definition.n_gem_colours, 0);
+    init_jewel_colors(level_definition.n_gem_colours, 30);
     field_length = level_definition.field_length;
     speed_bias = level_definition.speed_bias;
     double same_gem_bias = level_definition.same_gem_bias;

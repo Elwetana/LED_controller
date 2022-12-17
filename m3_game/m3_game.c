@@ -157,6 +157,7 @@ static void render_players(void)
         return;
     }
 
+    ws2811_led_t player_colour = match3_config.player_colour;
     for (int player = 0; player < match3_game_source.n_players; ++player)
     {
         if (!Match3_Player_is_rendered(player)) 
@@ -166,8 +167,12 @@ static void render_players(void)
         if (match3_config.player_patterns[player][dit] || is_moving)
         {
             int pos = Match3_Player_get_position(player);
+            if(zbuffer[pos] > 0 && zbuffer[pos] < C_BULLET_Z && !is_moving)
+            {
+                player_colour = canvas3[pos] & 0xFFFFFF;
+            }
             unsigned char alpha = is_moving ? 0xFF : (unsigned char)(pulse_functions[match3_config.player_patterns[player][dit]](prg) * 0xFF);
-            canvas3[pos] = match3_config.player_colour | alpha << 24;
+            canvas3[pos] = player_colour | alpha << 24;
         }
     }
 }
@@ -179,10 +184,10 @@ static void render_bullets(void)
     {
         double frac = Match3_Bullets_get_position(bullet);
         int led = (int)frac;
-        frac = frac - led;
-        frac *= 2;
-        while (frac > 1.) frac -= 1;
-        double alpha = saw_tooth(frac);
+        //frac = frac - led;
+        //frac *= 2;
+        //while (frac > 1.) frac -= 1;
+        double alpha = 1.; //saw_tooth(frac);
         zbuffer[led] = C_BULLET_Z + bullet;
         ws2811_led_t colour = match3_game_source.bullet_colors[Match3_Bullets_get_jewel_type(bullet)];
         canvas3[led] = colour | (int)(0xFF * alpha) << 24;
@@ -420,6 +425,10 @@ void Match3_Game_render_leds(int frame, ws2811_t* ledstrip)
     for (int led = 0; led < match3_game_source.basic_source.n_leds; ++led)
     {
         double canvas_alpha = (double)((canvas3[led] & 0xFF000000) >> 24) / (double)0xFF;
+        if((led > 0 && zbuffer[led - 1] >= C_BULLET_Z) || (led < match3_game_source.basic_source.n_leds - 2 && zbuffer[led + 1] >= C_BULLET_Z))
+        {
+            canvas_alpha = 0;
+        }
         int canvas_colour = canvas3[led] & 0xFFFFFF;
         ledstrip->channel[0].leds[led] = multiply_rgb_color(canvas_colour, canvas_alpha);
 #ifdef DEBUG_M3
