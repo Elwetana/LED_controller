@@ -184,7 +184,7 @@ static void render_bullets(void)
         while (frac > 1.) frac -= 1;
         double alpha = saw_tooth(frac);
         zbuffer[led] = C_BULLET_Z + bullet;
-        int colour = get_jewel_color(Match3_Bullets_get_jewel_type(bullet));
+        ws2811_led_t colour = match3_game_source.bullet_colors[Match3_Bullets_get_jewel_type(bullet)];
         canvas3[led] = colour | (int)(0xFF * alpha) << 24;
     }
 }

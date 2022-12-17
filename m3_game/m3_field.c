@@ -705,7 +705,7 @@ static void init_jewel_colors(int n_gem_colours, int offset)
 {
     const int lg = 2 * match3_config.n_half_grad + 1;
     const double w = 0.1;
-    const double o = (1. - w) / 2.;
+    const double o = (1. - w) / 3.;
     hsl_t col;
     int angle = 360 / n_gem_colours;
     for (int a = 0; a < n_gem_colours; ++a)
@@ -717,6 +717,8 @@ static void init_jewel_colors(int n_gem_colours, int offset)
             col.l = o + w * (double)l / (double)(lg - 1);
             match3_game_source.jewel_colors[a * lg + l] = hsl2rgb(&col);
         }
+        col.l = 0.6;
+        match3_game_source.bullet_colors[a] = hsl2rgb(&col);
     }
 }
 

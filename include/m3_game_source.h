@@ -47,6 +47,7 @@ typedef struct Match3GameSource
 	enum EMatch3LevelPhase level_phase;	
 	enum EMatch3GamePhase game_phase;
 	ws2811_led_t jewel_colors[N_GEM_COLORS * 9]; //for half_grad == 4
+	ws2811_led_t bullet_colors[N_GEM_COLORS];
 } match3_GameSource_t;
 
 extern match3_GameSource_t match3_game_source;
