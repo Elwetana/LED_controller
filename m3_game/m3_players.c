@@ -132,9 +132,9 @@ static void Player_fire()
     Match3_Emitor_fire();
 }
 
-static void Player_reload(int direction)
+static void Player_reload(enum EM3_BUTTONS button)
 {
-    Match3_Emitor_reload(direction);
+    Match3_Emitor_reload(button);
 }
 
 static void Player_swap_jewels(int player_index, int direction)
@@ -164,14 +164,13 @@ void Pitcher_press_button(int player_index, enum EM3_BUTTONS button)
     case M3B_B:
     case M3B_X:
     case M3B_Y:
+        Player_reload(button);
         break;
     case M3B_DUP:
-        Player_reload(1);
         break;
     case M3B_DRIGHT:
         break;
     case M3B_DDOWN:
-        Player_reload(-1);
         break;
     case M3B_DLEFT:
     case M3B_START:
@@ -271,13 +270,12 @@ void Universal_press_button(int player_index, enum EM3_BUTTONS button)
     case M3B_Y:
         break;
     case M3B_DUP:
-        Player_reload(1);
+        Player_reload(M3B_A);
         break;
     case M3B_DRIGHT:
         Player_swap_jewels(player_index, +1);
         break;
     case M3B_DDOWN:
-        Player_reload(-1);
         break;
     case M3B_DLEFT:
         Player_swap_jewels(player_index, -1);

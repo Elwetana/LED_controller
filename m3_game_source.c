@@ -11,7 +11,7 @@
  [x] Players
  [x] Game phases/levels
  [x] Last level with clues
- [ ] Better pitcher gameplay
+ [x] Better pitcher gameplay
  [x] End level/game screen
  [ ] Playtesting, tune the constants
  [.] Tune colours, rendering of bullets

@@ -23,6 +23,7 @@
 #include "m3_game_source.h"
 #include "m3_field.h"
 #include "m3_game.h"
+#include "m3_players.h"
 #include "m3_bullets.h"
 
 //! Jewels fired by the players
@@ -46,10 +47,14 @@ struct {
     jewel_type jewel_type;
     double last_fire;
     const int length;
+    const ws2811_led_t colours[3]; //B X Y, 3 == number of buttons
+    int reload[3]; //3 == emitor.length
 } emitor = {
     .last_fire = 0,
     .jewel_type = 0,
-    .length = 3
+    .length = 3,
+    .colours = {0xd04242, 0x40ccd0, 0xecdb33},
+    .reload = {0, 1, 2}
 };
 
 
@@ -79,15 +84,47 @@ int Match3_Emitor_fire(void)
     return 0;
 }
 
-int Match3_Emitor_reload(int dir)
+static void emitor_scramble(void)
 {
-    emitor.jewel_type = (emitor.jewel_type + dir) % Match3_GameSource_get_n_jewels();
+    for (int i = 0; i < emitor.length; i++)
+    {
+        emitor.reload[i] = (int)(random_01() * 3);
+    }
+}
+
+int Match3_Emitor_reload(enum EM3_BUTTONS button)
+{
+    int i = 0;
+    while (emitor.reload[i++] == -1);
+    i--;
+    int reload_index = (int)button - 1; //first button is A, we don't want it
+    if (emitor.reload[i] == reload_index || reload_index == -1) // reload_index == -1 for Universal player hack
+    {
+        emitor.reload[i] = -1;
+    }
+    else
+    {
+        emitor_scramble();
+        return 0;
+    }
+    if (i == emitor.length - 1)
+    {
+        emitor.jewel_type = (emitor.jewel_type + 1) % Match3_GameSource_get_n_jewels();
+        emitor_scramble();
+    }
     return 1;
 }
 
 jewel_type Match3_Emitor_get_jewel_type(void)
 {
     return emitor.jewel_type;
+}
+
+int Match3_Emitor_get_colour(int n)
+{
+    assert(n < emitor.length);
+    if (emitor.reload[n] == -1) return 0x0;
+    return emitor.colours[emitor.reload[n]];
 }
 
 /******************** Bullets *****************************/

@@ -404,11 +404,13 @@ static void render_moving_segments(void)
 
 static void render_emitor(void)
 {
-    int from = match3_game_source.basic_source.n_leds - 1 - Match3_Emitor_get_length();
-    int to = match3_game_source.basic_source.n_leds;
-    for (int led = from; led < to; ++led)
+    int emitor_length = Match3_Emitor_get_length();
+    int from = match3_game_source.basic_source.n_leds - 1 - emitor_length;
+
+    canvas3[from] = get_jewel_color(Match3_Emitor_get_jewel_type()) | 0xFF << 24;
+    for (int i = 0; i < emitor_length; ++i)
     {
-        canvas3[led] = get_jewel_color(Match3_Emitor_get_jewel_type()) | 0xFF << 24;
+        canvas3[from + 1 + i] = Match3_Emitor_get_colour(i) | 0xFF << 24;
     }
 }
 

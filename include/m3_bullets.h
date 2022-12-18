@@ -3,8 +3,9 @@
 
 int Match3_Emitor_get_length(void);
 int Match3_Emitor_fire(void);
-int Match3_Emitor_reload(int dir);
+int Match3_Emitor_reload(enum EM3_BUTTONS button); 
 jewel_type Match3_Emitor_get_jewel_type(void);
+int Match3_Emitor_get_colour(int n);
 
 int Match3_Bullets_get_n(void);
 unsigned char Match3_Bullets_is_live(int bullet_index);

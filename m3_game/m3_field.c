@@ -414,7 +414,7 @@ static void merge_segments(const int left_segment, int right_segment)
         right_segment--;
     }
 
-    //we have to shift jewels in the field so that the dead and collapsing jewel in the left segment are overwritten
+    //we have to shift jewels in the field so that the dead and collapsing jewel in the intervening segment are overwritten
     int shift_length = segments[right_segment].start - segments[left_segment].start - Segments_get_length(left_segment);
     if (shift_length > 0)
     {
@@ -676,6 +676,7 @@ int Segments_update(void)
         if (visual_distance < 1.)
         {
             printf("Merging segments: left %i, right %i\n", left_segment, segment);
+            match3_announce("ball_impact", "Merging segments");
             int merge_position = Segments_get_length(left_segment) - 1;
             merge_segments(left_segment, segment);
             evaluate_field(left_segment, merge_position);
