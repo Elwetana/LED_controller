@@ -30,6 +30,7 @@
 #include <unistd.h>
 #include <linux/input.h>
 #include <fcntl.h>
+#include <errno.h>
 #else
 #include "fakeled.h"
 #endif // __linux__
