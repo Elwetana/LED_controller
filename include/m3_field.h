@@ -45,6 +45,7 @@ void Field_init(match3_LevelDefinition_t level_definition);
 void Field_init_with_clue(const jewel_type field_def[], int def_length);
 void Field_insert_and_evaluate(const int insert_segment, const int position, jewel_type jewel_type, int bullet_index);
 int Field_swap_and_evaluate(const int swap_segment, const int left_position);
+jewel_type Field_get_last_match(void);
 void Field_destruct(void);
 
 

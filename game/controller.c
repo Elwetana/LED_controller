@@ -122,12 +122,12 @@ int Controller_check_present_windows(int dwUserIndex)
 }
 #endif
 
-int Controller_get_n_players()
+int Controller_get_n_players(void)
 {
     return n_players;
 }
 
-void Controller_init()
+void Controller_init(void)
 {
     for (int i = 0; i < C_MAX_CONTROLLERS; i++)
     {

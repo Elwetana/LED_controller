@@ -18,6 +18,12 @@
 #include "morse_source.h"
 
 
+void MorseSource_get_code(char* buf, const char c)
+{
+    char* code = morse_source.cmorse[(int)c - 65];
+    strcpy(buf, code);
+}
+
 static void MorseSource_read_font()
 {
     FILE* ffont = fopen("font_5x7.bmp", "r");

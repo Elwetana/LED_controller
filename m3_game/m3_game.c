@@ -157,12 +157,12 @@ static void render_players(void)
         return;
     }
 
-    ws2811_led_t player_colour = match3_config.player_colour;
     for (int player = 0; player < match3_game_source.n_players; ++player)
     {
         if (!Match3_Player_is_rendered(player)) 
             continue;
         //player is displayed when its pattern is on or when it is just moving
+        ws2811_led_t player_colour = match3_config.player_colour;
         int is_moving = Match3_Player_is_moving(player);
         if (match3_config.player_patterns[player][dit] || is_moving)
         {
@@ -212,6 +212,42 @@ static void render_bullets_alpha(void)
     }
 }
 */
+
+static int render_clue(char *morse_char, int char_type)
+{
+    int segment = Segments_get_next_collapsing(-1);
+    if (segment == -1)
+        return 0;
+    int len = 0;
+    int ditsdots[16];
+    char* c = morse_char;
+    do 
+    {
+        if (*c == '-')
+            for (int i = 0; i < 3; i++) ditsdots[len++] = 1;
+        else if (*c == '.')
+            ditsdots[len++] = 1;
+        else assert(0);
+        ditsdots[len++] = 0;
+    } while (*++c);
+    len--;
+    int tot_len = len + 5; //length includin separator
+    int repeats = match3_game_source.basic_source.n_leds / tot_len;
+    int remainder = match3_game_source.basic_source.n_leds - repeats * tot_len;
+    int start = remainder / 2;
+    for (int repeat = 0; repeat < repeats; ++repeat)
+    {
+        canvas3[start + repeat * tot_len] = match3_config.clue_colours[4] | 0xFF << 24;
+        //next two leds remain black
+        for (int i = 0; i < len; ++i)
+        {
+            int led = start + repeat * tot_len + i + 3;
+            canvas3[led] = ditsdots[i] == 1 ? match3_config.clue_colours[char_type] | 0xFF << 24: 0x0;
+        }
+        //next two leds also remain black
+    }
+    return 1;
+}
 
 static void render_collapsing_segments(void)
 {
@@ -376,6 +412,23 @@ static void render_emitor(void)
     }
 }
 
+static void render_something(void)
+{
+    int t = floor(miliseconds_from_start());
+    const int period = 10000; //ms
+    double offset = (t % period) / (double)period;
+    const int n = t / period;
+    int gl = match3_config.n_half_grad * 2 + 1;
+    for (int led = 0; led < match3_game_source.basic_source.n_leds; ++led)
+    {
+        int left_index = ((led + n) % N_GEM_COLORS) * gl + match3_config.n_half_grad;
+        int right_index = ((led + n + 1) % N_GEM_COLORS) * gl + match3_config.n_half_grad;
+        ws2811_led_t left = match3_game_source.basic_source.gradient.colors[left_index];
+        ws2811_led_t right = match3_game_source.basic_source.gradient.colors[right_index];
+        canvas3[led] = mix_rgb_alpha_over_hsl(left, 1 - offset, right, offset) | 0xFF << 24; 
+    }
+}
+
 static void clear_canvas(void)
 {
     //clear z-buffer
@@ -407,6 +460,23 @@ void Match3_Game_render_select(void)
 {
     clear_canvas();
     render_players();
+}
+
+void Match3_Game_render_clue_field(char *morse_char, int char_type)
+{
+    clear_canvas();
+    if (render_clue(morse_char, char_type))
+        return;
+    render_bullets();
+    render_moving_segments();
+    render_players();
+    render_emitor();
+}
+
+void Match3_Game_render_end(void)
+{
+    clear_canvas();
+    render_something();
 }
 
 

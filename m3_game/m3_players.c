@@ -297,7 +297,7 @@ void Universal_press_button(int player_index, enum EM3_BUTTONS button)
 
 /** Select phase handlers **/
 
-static int is_valid_assignment()
+static int is_valid_assignment(int just_ready)
 {
     int n_pitchers = 0;
     int n_catchers = 0;
@@ -321,26 +321,31 @@ static int is_valid_assignment()
             players[pi].type = PT_Swapper;
         return 1;
     }
-#ifndef DEBUG_M3
+#ifdef DEBUG_M3
+    just_ready = 1;
+#endif // !DEBUG_M3
+    if (just_ready)
+        return 1;
+
     char buf[64];
     if (n_pitchers != 1)
     {
-        match3_announce("The level cannot start, there must be exactly one pitcher");
         sprintf(buf, "There is currently %i pitchers", n_pitchers);
-        match3_announce(buf);
+        match3_announce("errorPitchers", buf);
         return -2;
     }
     if (n_catchers == 0)
     {
-        match3_announce("The level cannot start, there must be at least one catcher");
+        sprintf(buf, "There is just %i catchers\n", n_catchers);
+        match3_announce("errorCatchers", buf);
         return -3;
     }
     if (n_universal > 0)
     {
-        match3_announce("The level cannot start, not all players have selected their professions");
+        sprintf(buf, "There is currently %i unassigned players", n_universal);
+        match3_announce("errorNoProfessions", buf);
         return -4;
     }
-#endif // !DEBUG_M3
     return 1;
 }
 
@@ -357,7 +362,7 @@ static void assign_type(int player_index, enum EPlayerType player_type)
     match3_announce(wav, msg);
 }
 
-static void ready_check(int player_index, enum EMatch3GamePhase phase)
+static void ready_check(int player_index, int just_ready)
 {
     players[player_index].is_ready = 1;
     char msg[64];
@@ -365,9 +370,9 @@ static void ready_check(int player_index, enum EMatch3GamePhase phase)
     sprintf(msg, "Player %i is ready", player_index);
     sprintf(wav, "p%iready", player_index + 1);
     match3_announce(wav, msg);
-    if (is_valid_assignment() == 1)
+    if (is_valid_assignment(just_ready) == 1)
     {
-        Match3_GameSource_finish_phase(phase);
+        match3_game_source.level_phase = M3LP_LEVEL_WON;
     }
 }
 
@@ -403,7 +408,7 @@ void Select_phase_press_button(int player_index, enum EM3_BUTTONS button)
     case M3B_DLEFT:
         break;
     case M3B_START:
-        ready_check(player_index, M3GP_SELECT);
+        ready_check(player_index, 0);
         break;
     case M3B_N_BUTTONS:
     default:
@@ -436,7 +441,7 @@ void End_phase_press_button(int player_index, enum EM3_BUTTONS button)
     case M3B_DLEFT:
         break;
     case M3B_START:
-        ready_check(player_index, M3GP_END);
+        ready_check(player_index, 1);
         break;
     case M3B_N_BUTTONS:
     default:

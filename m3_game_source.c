@@ -6,21 +6,22 @@
  
  [x] Splitting and merging game field, moving backwards
  [x] Emittor
- [ ] Sounds
+ [x] Sounds
  [ ] Music
  [x] Players
  [x] Game phases/levels
- [ ] Last level with clues
+ [x] Last level with clues
  [ ] Better pitcher gameplay
- [ ] End level/game screen
+ [x] End level/game screen
  [ ] Playtesting, tune the constants
- [ ] Tune colours, rendering of bullets
+ [.] Tune colours, rendering of bullets
 
 */
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <ctype.h>
 #include <time.h>
 #include <math.h>
 #include <assert.h>
@@ -38,6 +39,7 @@
 #include "source_manager.h"
 #include "sound_player.h"
 #include "controller.h"
+#include "morse_source.h"
 
 #include "m3_game_source.h"
 #include "m3_field.h"
@@ -72,7 +74,8 @@ const struct Match3Config match3_config = {
     .bullet_speed = 5,
     .emitor_cooldown = 500,
     .unswap_timeout = 150,
-    .highlight_timeout = 500
+    .highlight_timeout = 500,
+    .clue_colours = { 0xFFFFFF, 0xC3423F, 0x6E8D2A, 0xCAB302, 0x1686B6} //0=prosign (white), 1=street hint (red), 2=literal direction (green), 3=oblique hint (yellow), 4=separation (blue)
 };
 
 match3_LevelDefinition_t level_definitions[MATCH3_N_LEVELS] =
@@ -136,21 +139,24 @@ const jewel_type clue_level[] = { 1, 5, 4, 4, 1, 2, 1, 0, 3, 5, 5, 0, 5, 0, 1, 1
 //const char* clue_letters[] = { "mo4 ji4", "shi1 fu0", "zhi1 jian1", "jin1 ping2", "jin1 zi4 ta3" };
 
 const char clue_letters[6][6] = { 
-    {'m','h','h','-','n','z'}, 
-    {'o','i','i','j','g','i'}, 
-    {'j','f','j','i','-','t'}, 
-    {'i','u','i','n','j','a'}, 
-    {'-','-','a','p','i','*'},
-    {'s','z','n','i','n','*'}
+    {'*','s','z','n','i','n'},
+    {'m','h','h','-','n','z'},
+    {'o','i','i','j','g','i'},
+    {'j','f','j','i','-','t'},
+    {'i','u','i','n','j','a'},
+    {'-','-','a','p','i','.'}
 };
 const unsigned char clue_letter_types[6][6] = {
+    {0,1,2,2,3,2},
     {1,1,2,0,3,2},
     {1,1,2,3,3,2},
     {1,1,2,3,0,2},
     {1,1,2,3,2,2},
-    {0,0,2,3,2,0},
-    {1,2,2,3,2,0}
+    {0,0,2,3,2,0}
 };
+
+int clue_index[6] = { 0 };
+jewel_type last_clue_type = N_GEM_COLORS;
  
  
 //ink blot = mo4 ji4, master = shuo4 shi4 or shi1 fu0, between = zhi1 jian1, plum = "jin1 ping2", pyramid = jin1 zi4 ta3
@@ -241,9 +247,10 @@ void match3_announce(char* wav, char* message)
     announcement_queue_end = (announcement_queue_end + 1) % C_MAX_ANNOUNCEMENTS;
     sprintf(announcement_queue[announcement_queue_end], "sound/m3_%s.wav", wav);
     printf(ANSI_COLOR_RED "%s\n" ANSI_COLOR_RESET, message);
+    is_announcement_in_progress = 1;
 }
 
-static void update_announcements()
+static void update_announcements(void)
 {
     int t = SoundPlayer_play(SE_N_EFFECTS);
     if (t < 0 && (current_announcement < announcement_queue_end || (announcement_queue_end == 0 && current_announcement > 0)))
@@ -264,22 +271,22 @@ static void update_announcements()
 
 /***************** Application Flow **********************/
 
-int Match3_GameSource_get_n_jewels()
+int Match3_GameSource_get_n_jewels(void)
 {
     return level_definitions[current_level].n_gem_colours;
 }
 
-void Match3_GameSource_finish_phase(enum EMatch3GamePhase phase)
+int Match3_GameSource_is_clue_level(void)
+{
+    return !(current_level < MATCH3_N_LEVELS);
+}
+
+static void finish_phase(enum EMatch3GamePhase phase)
 {
     if (phase == match3_game_source.game_phase)
     {
         end_phase_requested = 1;
     }
-}
-
-int Match3_GameSource_is_clue_level()
-{
-    return !(current_level < MATCH3_N_LEVELS);
 }
 
 static void select_phase_init(void)
@@ -293,6 +300,7 @@ static void select_phase_init(void)
     {
         match3_announce("selectRoles", "Select your roles: X for pitcher, Y for catcher, B for switcher. Press A to highlight your cursor");
     }
+    match3_game_source.level_phase = M3LP_IN_PROGRESS;
 }
 
 static void select_phase_update(void)
@@ -303,16 +311,24 @@ static void select_phase_update(void)
         Match3_InputHandler_process_input();
     Match3_Player_process_event();
     Match3_Game_render_select();
+    if (match3_game_source.level_phase == M3LP_LEVEL_WON && end_phase_requested == 0)
+    {
+        match3_announce("get_ready", "Get ready! Go!");
+        finish_phase(M3GP_SELECT);
+    }
 }
 
 static void play_phase_init(void)
 {
-    if(Match3_GameSource_is_clue_level())
+    if (Match3_GameSource_is_clue_level())
+    {
         Field_init_with_clue(clue_level, sizeof(clue_level) / sizeof(jewel_type));
+    }
     else
+    {
         Field_init(level_definitions[current_level]);
+    }
     match3_game_source.level_phase = M3LP_IN_PROGRESS;
-    match3_announce("get_ready", "Get ready! Go!");
 }
 
 static void play_phase_update(void)
@@ -322,10 +338,41 @@ static void play_phase_update(void)
     if (n > 0) printf("Remaining event queue %i\n", n);
     Match3_Bullets_update();
     Segments_update();
-    Match3_Game_render_field();
-    if (match3_game_source.level_phase == M3LP_LEVEL_LOST || match3_game_source.level_phase == M3LP_LEVEL_WON)
+    if (Match3_GameSource_is_clue_level())
     {
-        Match3_GameSource_finish_phase(M3GP_PLAY);
+        jewel_type t = Field_get_last_match();
+        if (t != last_clue_type)
+        {
+            if(last_clue_type != N_GEM_COLORS)
+                clue_index[last_clue_type]++;
+            last_clue_type = t;
+            printf("New clue will be %i, clue %c\n", t, clue_letters[last_clue_type][clue_index[last_clue_type]]);
+        }
+        char morse_char[6] = ".....";
+        int ct = 0;
+        if (last_clue_type < N_GEM_COLORS)
+        {
+            assert(clue_index[last_clue_type] < N_GEM_COLORS);
+            unsigned char c = clue_letters[last_clue_type][clue_index[last_clue_type]];
+            ct = clue_letter_types[last_clue_type][clue_index[last_clue_type]];
+            if (c == '*')
+                strcpy(morse_char, "-.-.-"); //message start (CT)
+            else if (c == '.')
+                strcpy(morse_char, ".-.-."); //message end (EC)
+            else if (c == '-')
+                strcpy(morse_char, "-...-"); //message break (BT)
+            else
+                MorseSource_get_code(morse_char, toupper(c));
+        }
+        Match3_Game_render_clue_field(morse_char, ct);
+    }
+    else
+    {
+        Match3_Game_render_field();
+    }
+    if ((match3_game_source.level_phase == M3LP_LEVEL_LOST || match3_game_source.level_phase == M3LP_LEVEL_WON) && end_phase_requested == 0)
+    {
+        finish_phase(M3GP_PLAY);
     }
 }
 
@@ -352,19 +399,24 @@ static void end_phase_init(void)
         printf("Level must be either won or lost");
         assert(0);
     }
+    match3_game_source.level_phase = M3LP_IN_PROGRESS;
 }
 
 static void end_phase_update(void)
 {
     if (current_level < MATCH3_N_LEVELS)
     {
-        Match3_InputHandler_process_input();
-        Match3_Player_process_event();
-        //TODO -- render score?
+        Match3_Game_render_end();
     }
     else
     {
-        //TODO -- display clues
+        Match3_Game_render_end(); //TODO display something more fancy
+    }
+    Match3_InputHandler_process_input();
+    Match3_Player_process_event();
+    if (match3_game_source.level_phase == M3LP_LEVEL_WON && end_phase_requested == 0)
+    {
+        finish_phase(M3GP_END);
     }
 }
 
@@ -396,7 +448,7 @@ int Match3GameSource_update_leds(int frame, ws2811_t* ledstrip)
     phase_definitions[match3_game_source.game_phase].update();
     Match3_Game_render_leds(frame, ledstrip);
     //check phase/level progress
-    if (end_phase_requested)
+    if (end_phase_requested && !is_announcement_in_progress)
     {
         enum EMatch3GamePhase phase = match3_game_source.game_phase;
         match3_game_source.game_phase = ((int)phase + 1) % M3GP_N_PHASES;
@@ -406,24 +458,28 @@ int Match3GameSource_update_leds(int frame, ws2811_t* ledstrip)
     return 1;
 }
 
-//msg = mode?xxxxxx
+//! @brief Process messages from HTTP server
+//! All messages have to have format <command>?<parameter>. Available commands are:
+//!     win?<next_level> (0 means current level + 1)
+//!     lose?<next_level> (0 means retry current level)
+//!     clue?0 (starts the final (clue) level)
+//! @param msg 
 void Match3GameSource_process_message(const char* msg)
 {
-    
     char* sep = strchr(msg, '?');
     if (sep == NULL)
     {
-        printf("GameSource: message does not contain target %s\n", msg);
+        printf("Match3GameSource: message does not contain target %s\n", msg);
         return;
     }
     if ((sep - msg) >= 32)
     {
-        printf("GameSource: target is too long or poorly formatted: %s\n", msg);
+        printf("Match3GameSource: target is too long or poorly formatted: %s\n", msg);
         return;
     }
     if ((strlen(sep + 1) >= 64))
     {
-        printf("GameSource: message too long or poorly formatted: %s\n", msg);
+        printf("Match3GameSource: message too long or poorly formatted: %s\n", msg);
         return;
     }
     char target[32];
@@ -432,14 +488,42 @@ void Match3GameSource_process_message(const char* msg)
     strncpy(payload, sep + 1, 64);
     target[sep - msg] = 0x0;
     payload[63] = 0x0;
-    if (!strncasecmp(target, "mode", 5))
+    char* checkPtr;
+    errno = 0;
+    long val = strtol(payload, &checkPtr, 10);
+    if (checkPtr == payload || errno != 0 || !checkPtr || *checkPtr != '\0')
     {
-        //enum GameModes gm_before = GameObjects_get_current_mode();
-        //GameObjects_set_level_by_message(payload);
-        printf("Sent code: %s, game mode before: %i\n", payload, /*gm_before*/0);
+        printf("Message parameter %s could not be converted to number\n", payload);
+        return;
+    }
+    if (!strncasecmp(target, "win", 3))
+    {
+        if (val == 0)
+        {
+            val = current_level + 1;
+        }
+        current_level = val - 1;
+        match3_game_source.level_phase = M3LP_LEVEL_WON;
+        printf("Message WIN, next level will be: %i\n", current_level + 1);
+    }
+    else if (!strncasecmp(target, "lose", 4))
+    {
+        if (val == 0)
+        {
+            val = current_level;
+        }
+        current_level = val;
+        match3_game_source.level_phase = M3LP_LEVEL_LOST;
+        printf("Message LOST, next level will be: %i\n", current_level);
+    }
+    else if (!strncasecmp(target, "clue", 4))
+    {
+        current_level = MATCH3_N_LEVELS - 1;
+        match3_game_source.level_phase = M3LP_LEVEL_WON;
+        printf("Message CLUE\n");
     }
     else
-        printf("GameSource: Unknown target: %s, payload was: %s\n", target, payload);
+        printf("Match3GameSource: Unknown command: %s, parameter was: %s\n", target, payload);
     
 }
 

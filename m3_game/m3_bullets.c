@@ -55,12 +55,12 @@ struct {
 
 /******************* Emitor *****************************/
 
-int Match3_Emitor_get_length()
+int Match3_Emitor_get_length(void)
 {
     return emitor.length;
 }
 
-int Match3_Emitor_fire()
+int Match3_Emitor_fire(void)
 {
     double t = miliseconds_from_start();
     if (t - emitor.last_fire < match3_config.emitor_cooldown)
@@ -85,7 +85,7 @@ int Match3_Emitor_reload(int dir)
     return 1;
 }
 
-jewel_type Match3_Emitor_get_jewel_type()
+jewel_type Match3_Emitor_get_jewel_type(void)
 {
     return emitor.jewel_type;
 }
@@ -112,7 +112,7 @@ unsigned char Match3_Bullets_is_live(int bullet_index)
     return !bullets[bullet_index].marked_for_delete;
 }
 
-int Match3_Bullets_get_n()
+int Match3_Bullets_get_n(void)
 {
     return n_bullets;
 }
@@ -147,7 +147,7 @@ int Match3_Bullets_get_segment_info(int bullet_index)
     return bullets[bullet_index].segment_info;
 }
 
-void Match3_Bullets_update()
+void Match3_Bullets_update(void)
 {
     double time_delta = (double)(match3_game_source.basic_source.time_delta / 1000L) / 1e6;
     int remove_bullet[N_MAX_BULLETS] = { 0 };

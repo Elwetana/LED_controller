@@ -30,6 +30,7 @@ const int C_MATCH_3_LENGTH = 3;
 jewel_t field[C_MAX_FIELD_LENGTH];
 int field_length = 0;
 double speed_bias = 1.;
+jewel_type lastCollapseType = N_GEM_COLORS;
 
 enum ESegmentType {
     ST_MOVING,
@@ -458,14 +459,13 @@ static int evaluate_field(const int segment, const int position)
     }
 
     //we have a match, we have to split the segment and start collapse
-    printf("Segment %i split at position %i, match length %i\n", segment, pos_end, same_length);
-    //char buf[50];
-    //sprintf(buf, "DING %i (match found)", same_length - C_MATCH_3_LENGTH + 1);
-    //match3_announce("", buf);
-    int effect = fmin(same_length - C_MATCH_3_LENGTH + 1, 2);
+    printf("Segment %i split at position %i, match length %i, jewel type %i\n", segment, pos_end, same_length, type);
+    int effect = fmin(same_length - C_MATCH_3_LENGTH, 2);
+    printf(ANSI_COLOR_CYAN "DING %i (match found)\n" ANSI_COLOR_RESET, effect);
     enum ESoundEffects effects[] = { SE_M3_JewelsDing01, SE_M3_JewelsDing02, SE_M3_JewelsDing03 };
     SoundPlayer_play(effects[effect]);
     collapse_segment(segment, pos_end, same_length);
+    lastCollapseType = type;
     return 1;
 }
 
@@ -639,7 +639,7 @@ int Segments_update(void)
     {
         if (segments[segment].segment_type != ST_MOVING)
             continue;
-        double target_speed = calculate_segment_speed(segment);
+        double target_speed = calculate_segment_speed(segment) * speed_bias;
         set_segment_speed(segment, target_speed, time_delta);
         if (segments[segment].moving.speed == 0)
             continue;
@@ -736,14 +736,14 @@ static void make_initial_segment(double start_offset)
 
 void Field_init_with_clue(const jewel_type field_def[], const int def_length)
 {
-    init_jewel_colors(6, 50);
+    init_jewel_colors(6, 0);
     speed_bias = 1;
     field_length = def_length;
     for (int fi = 0; fi < field_length; ++fi)
     {
-        field[fi] = make_jewel(field_def[fi]);
+        field[fi] = make_jewel(N_GEM_COLORS - 1 - field_def[fi]);
     }
-    make_initial_segment((double)(match3_game_source.basic_source.n_leds - field_length) / 2.);
+    make_initial_segment(1.);
 }
 
 void Field_init(match3_LevelDefinition_t level_definition)
@@ -765,6 +765,11 @@ void Field_init(match3_LevelDefinition_t level_definition)
         field[i] = make_jewel(last_type);
     }
     make_initial_segment(level_definition.start_offset);
+}
+
+jewel_type Field_get_last_match(void)
+{
+    return lastCollapseType;
 }
 
 void Field_destruct(void)

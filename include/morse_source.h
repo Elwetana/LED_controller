@@ -30,4 +30,9 @@ typedef struct MorseSource {
 
 extern MorseSource morse_source;
 
+//! @brief Fills buf with string of dashes and dots, i.e a=.-, b=-... and so on
+//! @param buf buffer with length at least 5
+//! @param c uppercase letter A to Z
+void MorseSource_get_code(char* buf, const char c);
+
 #endif /* __MORSE_SOURCE_H__ */

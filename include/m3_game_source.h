@@ -69,12 +69,17 @@ extern const int C_LED_Z;
 extern const int C_SEGMENT_SHIFT;
 extern const int C_BULLET_Z;
 
+/*
+ * The announcement wave files were produced with Typecast, an AI virtual actor service.
+ * Characters casted: Glenda
+ * https://typecast.ai
+ */
+
 double miliseconds_from_start(void);
 void match3_announce(char* wav, char* message);
 
-int Match3_GameSource_is_clue_level();
-void Match3_GameSource_finish_phase(enum EMatch3GamePhase phase);
-int Match3_GameSource_get_n_jewels();
+int Match3_GameSource_is_clue_level(void);
+int Match3_GameSource_get_n_jewels(void);
 
 typedef unsigned char jewel_type;
 
@@ -103,6 +108,7 @@ struct Match3Config
 	double emitor_cooldown;			//in miliseconds
 	double unswap_timeout;			//in miliseconds
 	double highlight_timeout;		//in miliseconds
+	ws2811_led_t clue_colours[5];	//0=prosign, 1=street hint, 2=literal direction, 3=oblique hint, 4=separation leds
 };
 
 extern const struct Match3Config match3_config;
