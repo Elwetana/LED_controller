@@ -20,9 +20,9 @@
 #include "controller.h"
 #include "common_source.h"
 #include "m3_game_source.h"
-#include "m3_bullets.h"
 #include "m3_game.h"
 #include "m3_players.h"
+#include "m3_bullets.h"
 
 enum EPlayerType
 {
