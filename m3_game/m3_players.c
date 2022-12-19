@@ -329,13 +329,13 @@ static int is_valid_assignment(int just_ready)
     if (n_pitchers != 1)
     {
         sprintf(buf, "There is currently %i pitchers", n_pitchers);
-        match3_announce("errorPitchers", buf);
+        match3_announce("errorPitcher", buf);
         return -2;
     }
     if (n_catchers == 0)
     {
         sprintf(buf, "There is just %i catchers\n", n_catchers);
-        match3_announce("errorCatchers", buf);
+        match3_announce("errorCatcher", buf);
         return -3;
     }
     if (n_universal > 0)
