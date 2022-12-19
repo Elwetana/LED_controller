@@ -65,8 +65,8 @@ segment_t segments[N_MAX_SEGMENTS];
 int n_segments = 0;
 
 struct {
-    int segment;
-    int left_position;
+    int left_jewel_id;
+    int right_jewel_id;
     double timeout;
 } unswaps[2 * C_MAX_CONTROLLERS];
 int n_unswaps = 0;
@@ -183,6 +183,18 @@ int Segments_get_field_index(int segment, int position)
     ASSERT_M3(segment < n_segments, segments[0].start);
     ASSERT_M3(position < Segments_get_length(segment), segments[segment].start);
     return segments[segment].start + position;
+}
+
+static int Field_get_segment(int field_index)
+{
+    for (int si = 0; si < n_segments; ++si)
+    {
+        int start = segments[si].start;
+        int len = Segments_get_length(si);
+        if (field_index >= start && field_index < start + len)
+            return si;
+    }
+    return -1;
 }
 
 int Segments_get_jewel_id(int segment, int position)
@@ -516,13 +528,37 @@ void Field_insert_and_evaluate(const int insert_segment, const int position, jew
     Segments_print_info(insert_segment);
 }
 
-static void swap_jewels(const int swap_segment, const int left_position)
+static void swap_jewels(const int swap_segment, const int left_position, int* left_id, int* right_id)
 {
     int left_index = Segments_get_field_index(swap_segment, left_position);
     int right_index = Segments_get_field_index(swap_segment, left_position + 1);
+    *left_id = field[left_index].unique_id;
+    *right_id = field[right_index].unique_id;
     jewel_t tmp = field[left_index];
     field[left_index] = field[right_index];
     field[right_index] = tmp;
+}
+
+static int swap_jewels_by_id(const int left_id, const int right_id)
+{
+    int left_index = -1;
+    int right_index = -1;
+    for (int i = 0; i < field_length; ++i)
+    {
+        if (field[i].unique_id == left_id) left_index = i;
+        if (field[i].unique_id == right_id) right_index = i;
+        if (left_index > -1 && right_index > -1) break;
+    }
+    if (left_index > -1 && right_index > -1)
+    {
+        if (Field_get_segment(left_index) != Field_get_segment(right_index))
+            return 0; //the jewels are now in different segments, one of them si probably collapsing
+        jewel_t tmp = field[left_index];
+        field[left_index] = field[right_index];
+        field[right_index] = tmp;
+        return 1;
+    }
+    return 0; //one of the jewels was probably somehow destroyed in the meantime
 }
 
 int Field_swap_and_evaluate(const int swap_segment, const int left_position)
@@ -535,7 +571,8 @@ int Field_swap_and_evaluate(const int swap_segment, const int left_position)
         return  -1;
     }
 
-    swap_jewels(swap_segment, left_position);
+    int left_id, right_id;
+    swap_jewels(swap_segment, left_position, &left_id, &right_id);
     if (evaluate_field(swap_segment, left_position + 1) || evaluate_field(swap_segment, left_position))
     {
         printf("Swap successful\n");
@@ -544,8 +581,8 @@ int Field_swap_and_evaluate(const int swap_segment, const int left_position)
     else
     {
         unswaps[n_unswaps].timeout = match3_config.unswap_timeout;
-        unswaps[n_unswaps].segment = swap_segment;
-        unswaps[n_unswaps].left_position = left_position;
+        unswaps[n_unswaps].left_jewel_id = left_id;
+        unswaps[n_unswaps].right_jewel_id = right_id;
         n_unswaps++;
         return -1;
     }
@@ -590,7 +627,7 @@ static void unswap_update(double time_delta)
         unswaps[u].timeout -= time_delta * 1000.;
         if (unswaps[u].timeout < 0)
         {
-            swap_jewels(unswaps[u].segment, unswaps[u].left_position);
+            swap_jewels_by_id(unswaps[u].left_jewel_id, unswaps[u].right_jewel_id);
             for (int un = u; un < n_unswaps - 1; ++un)
             {
                 unswaps[un] = unswaps[un + 1];
