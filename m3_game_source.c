@@ -83,47 +83,47 @@ match3_LevelDefinition_t level_definitions[MATCH3_N_LEVELS] =
 {
     //level 1
     {
-        .field_length = 100,
+        .field_length = 50,
         .n_gem_colours = 4,
         .same_gem_bias = 0.75,
         .speed_bias = 1,
-        .start_offset = -50
+        .start_offset = 0
     },
 
     //level 2
     {
-        .field_length = 150,
+        .field_length = 75,
         .n_gem_colours = 4,
         .same_gem_bias = 0.6,
         .speed_bias = 1.1,
-        .start_offset = -100
+        .start_offset = 0
     },
 
     //level 3
     {
-        .field_length = 200,
+        .field_length = 100,
         .n_gem_colours = 5,
         .same_gem_bias = 0.6,
         .speed_bias = 1.2,
-        .start_offset = -100
+        .start_offset = -25
     },
 
     //level 4
     {
-        .field_length = 250,
+        .field_length = 125,
         .n_gem_colours = 5,
         .same_gem_bias = 0.5,
         .speed_bias = 1.3,
-        .start_offset = -150
+        .start_offset = -50
     },
 
     //level 5
     {
-        .field_length = 300,
+        .field_length = 150,
         .n_gem_colours = 6,
         .same_gem_bias = 0.5,
         .speed_bias = 1.5,
-        .start_offset = -150
+        .start_offset = -50
     }
 };
 
@@ -138,6 +138,7 @@ const jewel_type clue_level[] = { 1, 5, 4, 4, 1, 2, 1, 0, 3, 5, 5, 0, 5, 0, 1, 1
 //const jewel_type clue_level[] = { 1, 5, 4, 4, 1, 2, 1, 0, 3, 5, 5, 4, 3, 3, 4, 3, 0, 4, 5, 0, 1, 1, 2, 2, 1, 3, 3, 0, 1, 4, 5, 5, 1, 2, 2, 1, 0, 0, 3, 1, 0, 2, 0, 2, 5, 3, 4, 1, 2, 1, 0, 5, 5, 0, 5, 1, 0, 3, 2, 2, 3, 5, 4, 4, 0, 5, 0, 1, 2, 1, 3, 4, 4, 3, 5, 4, 3, 5, 2, 2, 1, 4, 5, 4, 4, 0, 5, 5, 3, 0, 0, 1, 1, 2, 3, 4, 4, 0, 5, 4, 4, 3, 3, 1, 2, 1, 1, 0, 2, 2, 3, 4, 5, 5, 2, 0, 5, 3, 1, 2, 0, 1, 5, 5, 0, 2, 3, 2, 2, 4, 3, 3, 4, 5, 4, 0, 1, 3, 2, 2, 4, 3, 0, 0 };
 
 //const char* clue_letters[] = { "mo4 ji4", "shi1 fu0", "zhi1 jian1", "jin1 ping2", "jin1 zi4 ta3" };
+//ink blot = mo4 ji4, master = shuo4 shi4 or shi1 fu0, between = zhi1 jian1, plum = "jin1 ping2", pyramid = jin1 zi4 ta3
 
 const char clue_letters[6][6] = { 
     {'*','s','z','n','i','n'},
@@ -159,9 +160,7 @@ const unsigned char clue_letter_types[6][6] = {
 int clue_index[6] = { 0 };
 jewel_type last_clue_type = N_GEM_COLORS;
  
- 
-//ink blot = mo4 ji4, master = shuo4 shi4 or shi1 fu0, between = zhi1 jian1, plum = "jin1 ping2", pyramid = jin1 zi4 ta3
-/* Config data end */
+ /* Config data end */
 
 
 /** Private properties **/
