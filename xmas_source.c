@@ -650,6 +650,7 @@ static int update_leds_icicles(ws2811_t* ledstrip)
 #pragma region Gradient
 
 static const int XMAS_GRAD_START = 12;
+static const int XMAS_GRAD2_START = 45;
 #define XMAS_GRAD_LEN 19
 
 static unsigned long start_time = 0;
@@ -661,6 +662,15 @@ static void Gradient_init()
     for (int i = 0; i < XMAS_GRAD_LEN; ++i)
     {
         rgb2hsl(xmas_source.basic_source.gradient.colors[XMAS_GRAD_START + i], &grad_colors[i]);
+    }
+}
+
+static void Gradient2_init(void)
+{
+    start_time = current_time_in_ms() + 1;
+    for (int i = 0; i < XMAS_GRAD_LEN; ++i)
+    {
+        rgb2hsl(xmas_source.basic_source.gradient.colors[XMAS_GRAD2_START + i], &grad_colors[i]);
     }
 }
 
@@ -1117,6 +1127,8 @@ XMAS_MODE_t string_to_xmas_mode(const char* txt)
         return XM_GLITTER2;
     if (strcasecmp(txt, "gradient") == 0)
         return XM_GRADIENT;
+    if (strcasecmp(txt, "gradient2") == 0)
+        return XM_GRADIENT2;
     if (strcasecmp(txt, "joy_pattern") == 0)
         return XM_JOY_PATTERN;
     if (strcasecmp(txt, "fireworks") == 0)
@@ -1333,6 +1345,7 @@ int XmasSource_update_leds(int frame, ws2811_t* ledstrip)
     case XM_ICICLES:
         return update_leds_icicles(ledstrip);
     case XM_GRADIENT:
+    case XM_GRADIENT2:
         return update_leds_gradient(ledstrip);
     case XM_DEBUG:
         return update_leds_debug(ledstrip);
@@ -1410,6 +1423,9 @@ void XmasSource_init_current_mode()
         break;
     case XM_GRADIENT:
         Gradient_init();
+        break;
+    case XM_GRADIENT2:
+        Gradient2_init();
         break;
     case XM_JOY_PATTERN:
         Pattern_init();
