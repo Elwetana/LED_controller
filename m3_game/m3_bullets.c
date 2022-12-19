@@ -53,7 +53,7 @@ struct {
     .last_fire = 0,
     .jewel_type = 0,
     .length = 3,
-    .colours = {0xd04242, 0x40ccd0, 0xecdb33},
+    .colours = {0x942525, 0x238E92, 0xAF9F10},
     .reload = {0, 1, 2}
 };
 
@@ -63,6 +63,13 @@ struct {
 int Match3_Emitor_get_length(void)
 {
     return emitor.length;
+}
+
+static void emitor_random_new_bullet()
+{
+    jewel_type new_jewel = random_01() * (Match3_GameSource_get_n_jewels() - 1);
+    if (new_jewel == emitor.jewel_type) new_jewel++;
+    emitor.jewel_type = new_jewel;
 }
 
 int Match3_Emitor_fire(void)
@@ -81,6 +88,7 @@ int Match3_Emitor_fire(void)
     n_bullets++;
     //match3_announce("WHAM (bullet fired)");
     SoundPlayer_play(SE_M3_BulletFired);
+    emitor_random_new_bullet();
     return 0;
 }
 
@@ -109,7 +117,7 @@ int Match3_Emitor_reload(enum EM3_BUTTONS button)
     }
     if (i == emitor.length - 1)
     {
-        emitor.jewel_type = (emitor.jewel_type + 1) % Match3_GameSource_get_n_jewels();
+        emitor_random_new_bullet();
         emitor_scramble();
     }
     return 1;
