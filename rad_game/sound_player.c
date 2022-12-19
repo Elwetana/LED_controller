@@ -221,8 +221,6 @@ enum ESoundEffects SoundPlayer_get_current_effect()
 
 void SoundPlayer_start(char* filename)
 {
-    assert(buff == 0);
-    buff = (char*) malloc(samples_in_buffer * channels * 2);
     if (is_hw_init == 0)
         init_hw();
 
@@ -242,8 +240,6 @@ void SoundPlayer_start(char* filename)
 
 void SoundPlayer_init_for_effect()
 {
-    assert(buff == 0);
-    buff = (char*)malloc(samples_in_buffer * channels * 2);
     if(is_hw_init == 0)
         init_hw();
     SoundPlayer_init_timers();
@@ -334,7 +330,6 @@ long SoundPlayer_play(enum ESoundEffects new_effect)
         {
              if (current_effect != SE_N_EFFECTS)
              {
-                 //printf("unreachable code in SoundPlayer_play reached. Current effect %i, samples read: %i\n", current_effect, samples_read);
                  is_playing = 2;
                  return -2;
              }
@@ -344,8 +339,6 @@ long SoundPlayer_play(enum ESoundEffects new_effect)
              snd_pcm_close(pcm_handle);
 #endif
              is_hw_init = 0;
-             free(buff);
-             buff = 0;
              if (is_playing == 1)
                  fclose(fin);
              is_playing = 0;
@@ -389,8 +382,6 @@ void SoundPlayer_stop()
      snd_pcm_close(pcm_handle);
 #endif
     is_hw_init = 0;
-    free(buff);
-    buff = 0;
     is_playing = 0;
     printf("Sound player stopped\n");
 }
@@ -438,6 +429,7 @@ void SoundPlayer_init(int frame_time)
     printf("Multiplier set to: %i\n", periods_per_frame);
 #endif
     samples_in_buffer = periods_per_frame * period_size;  /* 2 -> sample size */;
+    buff = (char*) malloc(samples_in_buffer * channels * 2);
 }
 
 void SoundPlayer_destruct()
@@ -446,4 +438,5 @@ void SoundPlayer_destruct()
     {
         free(effects[i].data);
     }
+    free(buff);
 }

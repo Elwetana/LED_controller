@@ -319,9 +319,9 @@ static int is_valid_assignment(int just_ready)
             players[pi].type = PT_Swapper;
         return 1;
     }
-#ifdef DEBUG_M3
-    just_ready = 1;
-#endif // !DEBUG_M3
+//#ifdef DEBUG_M3
+//    just_ready = 1;
+//#endif // !DEBUG_M3
     if (just_ready)
         return 1;
 
