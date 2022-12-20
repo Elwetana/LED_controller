@@ -11,10 +11,14 @@
  [x] Players
  [x] Game phases/levels
  [x] Last level with clues
- [x] Better pitcher gameplay
+ [.] Better pitcher gameplay
  [x] End level/game screen
  [ ] Playtesting, tune the constants
  [.] Tune colours, rendering of bullets
+ [ ] Fanfare at the end of level
+ [ ] Player highlight during game, teleport to start
+ [ ] Clue level, longer display, bigger spacing
+ [ ] Revert random bullets
 
 */
 #include <stdint.h>
