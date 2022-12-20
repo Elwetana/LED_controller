@@ -37,6 +37,24 @@ static void Player_move_right(int player, enum EM3_BUTTONS button)
     Match3_Player_move(player, +1);
 }
 
+static void Player_start_highlight(int player, enum EM3_BUTTONS button)
+{
+    (void)button;
+    Match3_Player_start_highlight(player);
+}
+
+static void Player_end_highlight(int player, enum EM3_BUTTONS button)
+{
+    (void)button;
+    Match3_Player_end_highlight(player);
+}
+
+static void Player_reset_position(int player, enum EM3_BUTTONS button)
+{
+    (void)button;
+    Match3_Player_reset_position(player);
+}
+
 void Match3_InputHandler_init(void)
 {
     button_names[XBTN_A] = M3B_A;
@@ -60,13 +78,9 @@ void Match3_InputHandler_init(void)
     button_handlers[C_MAX_XBTN + XBTN_X] = Match3_Player_press_button;
     button_handlers[C_MAX_XBTN + XBTN_Y] = Match3_Player_press_button;
     button_handlers[C_MAX_XBTN + XBTN_Start] = Match3_Player_press_button;
-    /*
-    button_handlers[C_MAX_XBTN + XBTN_L3] = Player_freq_dec;
-    button_handlers[C_MAX_XBTN + XBTN_R3] = Player_freq_inc;
-    button_handlers[C_MAX_XBTN + XBTN_LB] = Player_time_offset_dec;
-    button_handlers[C_MAX_XBTN + XBTN_RB] = Player_time_offset_inc;
-    button_handlers[C_MAX_XBTN + XBTN_Start] = Player_start_pressed;
-    */
+    button_handlers[C_MAX_XBTN + XBTN_RB] = Player_start_highlight;
+    button_handlers[XBTN_RB] = Player_end_highlight;
+    button_handlers[C_MAX_XBTN + XBTN_LB] = Player_reset_position;
 
     Controller_init();
 }

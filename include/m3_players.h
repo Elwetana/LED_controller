@@ -23,6 +23,10 @@ int Match3_Player_is_rendered(int player_index);
 int Match3_Player_process_event(void);
 void Match3_Player_move(int player, signed char direction);
 void Match3_Player_press_button(int player, enum EM3_BUTTONS button);
+void Match3_Player_start_highlight(int player);
+void Match3_Player_end_highlight(int player);
+void Match3_Player_reset_position(int player);
+
 void Match3_Players_init(void);
 
 #endif /* __M3_PLAYERS_H__ */

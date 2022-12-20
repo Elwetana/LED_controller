@@ -231,17 +231,18 @@ static int render_clue(char *morse_char, int char_type)
         ditsdots[len++] = 0;
     } while (*++c);
     len--;
-    int tot_len = len + 5; //length includin separator
+    const int sep_len = 5;
+    int tot_len = len + 2 * sep_len + 1; //length including separator
     int repeats = match3_game_source.basic_source.n_leds / tot_len;
     int remainder = match3_game_source.basic_source.n_leds - repeats * tot_len;
     int start = remainder / 2;
     for (int repeat = 0; repeat < repeats; ++repeat)
     {
         canvas3[start + repeat * tot_len] = match3_config.clue_colours[4] | 0xFF << 24;
-        //next two leds remain black
+        //next sep_len leds remain black
         for (int i = 0; i < len; ++i)
         {
-            int led = start + repeat * tot_len + i + 3;
+            int led = start + repeat * tot_len + i + sep_len + 1;
             canvas3[led] = ditsdots[i] == 1 ? match3_config.clue_colours[char_type] | 0xFF << 24: 0x0;
         }
         //next two leds also remain black

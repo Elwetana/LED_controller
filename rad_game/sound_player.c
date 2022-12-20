@@ -35,7 +35,9 @@ static long samples_supplied = 0;
 static int samples_in_buffer;
 static FILE* fin;
 static unsigned char is_playing = 0;    //0 not playing at all, 1 playing song, 2 playing effect only
+static unsigned char is_looped = 0;
 static unsigned char is_hw_init = 0;
+static char queued_file[255] = { 0 };
 
 static struct SoundEffect effects[SE_N_EFFECTS];
 static enum ESoundEffects current_effect = SE_N_EFFECTS;
@@ -58,7 +60,9 @@ static char* effect_files[SE_N_EFFECTS] =
     "sound/m3_ball_impact.wav",
     "sound/m3_jewels_crash_1.wav",
     "sound/m3_jewels_crash_2.wav",
-    "sound/m3_jewels_crash_3.wav"
+    "sound/m3_jewels_crash_3.wav",
+    "sound/m3_tick.wav",
+    "sound/m3_fanfare.wav"
 };
 
 #ifdef __linux__
@@ -219,11 +223,12 @@ enum ESoundEffects SoundPlayer_get_current_effect()
     return current_effect;
 }
 
-void SoundPlayer_start(char* filename)
+static void start_playing(char* filename)
 {
+    if (is_playing == 1)
+        fclose(fin);
     if (is_hw_init == 0)
         init_hw();
-
     //open input file
     //FILE* fin = fopen("GodRestYeMerryGentlemen.wav", "rb");
     fin = fopen(filename, "rb");
@@ -236,6 +241,26 @@ void SoundPlayer_start(char* filename)
     SoundPlayer_init_timers();
     is_playing = 1;
     printf("Starting to play song %s\n", filename);
+}
+
+void SoundPlayer_start(char* filename)
+{
+    is_looped = 0;
+    queued_file[0] = 0;
+    start_playing(filename);
+}
+
+void SoundPlayer_start_looped(char* filename)
+{
+    is_looped = 1;
+    queued_file[0] = 0;
+    start_playing(filename);
+}
+
+void SoundPlayer_queue_looped(char* filename)
+{
+    is_looped = 1;
+    strcpy(queued_file, filename);
 }
 
 void SoundPlayer_init_for_effect()
@@ -279,6 +304,26 @@ long SoundPlayer_play(enum ESoundEffects new_effect)
         if (is_playing == 1)
         {
             samples_read = fread(buff, channels * 2, samples_in_buffer, fin);
+            if (samples_read < samples_in_buffer && is_looped)
+            {
+                if (queued_file[0] == 0)
+                {
+                    fseek(fin, 0, SEEK_SET);
+                }
+                else
+                {
+                    fclose(fin);
+                    fin = fopen(queued_file, "rb");
+                    if (fin == NULL)
+                    {
+                        fprintf(stderr, "FATAL ERROR: cannot open file %s to play\n", queued_file);
+                        exit(-19);
+                    }
+                    queued_file[0] = 0;
+                }
+                samples_read += fread(buff + samples_read, channels * 2, samples_in_buffer - samples_read, fin);
+                assert(samples_read == samples_in_buffer);
+            }
         }
         else
         {

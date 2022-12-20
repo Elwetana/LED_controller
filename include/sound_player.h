@@ -22,6 +22,8 @@ enum ESoundEffects
 	SE_M3_JewelsDing01,
 	SE_M3_JewelsDing02,
 	SE_M3_JewelsDing03,
+	SE_M3_Tick,
+	SE_M3_Fanfare,
 	SE_N_EFFECTS
 };
 
@@ -33,6 +35,7 @@ enum ESoundEffects
  * @param fileToPlay path to the file to starty playing
  */
 void SoundPlayer_start(char* filename);
+void SoundPlayer_start_looped(char* filename);
 
 void SoundPlayer_init(int frame_time);
 
