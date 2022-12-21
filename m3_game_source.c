@@ -334,6 +334,8 @@ static void play_phase_init(void)
         Field_init(level_definitions[current_level]);
     }
     match3_game_source.level_phase = M3LP_IN_PROGRESS;
+    printf("Starting music\n");
+    SoundPlayer_start_looped("sound/KingdomZumeDeliveranceCE_loop.wav");
 }
 
 static void play_phase_update(void)
@@ -378,6 +380,8 @@ static void play_phase_update(void)
     if ((match3_game_source.level_phase == M3LP_LEVEL_LOST || match3_game_source.level_phase == M3LP_LEVEL_WON) && end_phase_requested == 0)
     {
         finish_phase(M3GP_PLAY);
+        printf("Stopping music\n");
+        SoundPlayer_stop();
     }
 }
 
