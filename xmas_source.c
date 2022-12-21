@@ -1386,6 +1386,7 @@ void XmasSource_destruct_current_mode()
     case XM_FIREWORKS:
         free(static_flares);
     case XM_GRADIENT:
+    case XM_GRADIENT2:
     case XM_JOY_PATTERN:
     case XM_SLEDGES:
     case XM_VALERIA:

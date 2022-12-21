@@ -499,7 +499,8 @@ void Match3_Player_start_highlight(int player)
 
 void Match3_Player_end_highlight(int player)
 {
-    player_highlight.player_index = -1;
+    if(player_highlight.player_index == player)
+        player_highlight.player_index = -1;
 }
 
 void Match3_Player_reset_position(int player)

@@ -308,7 +308,7 @@ long SoundPlayer_play(enum ESoundEffects new_effect)
             {
                 if (queued_file[0] == 0)
                 {
-                    fseek(fin, 0, SEEK_SET);
+                    rewind(fin);
                 }
                 else
                 {
@@ -321,7 +321,9 @@ long SoundPlayer_play(enum ESoundEffects new_effect)
                     }
                     queued_file[0] = 0;
                 }
-                samples_read += fread(buff + samples_read, channels * 2, samples_in_buffer - samples_read, fin);
+                fseek(fin, 44, SEEK_SET);
+                int ptr_offset = samples_read * channels * 2;
+                samples_read += fread(buff + ptr_offset, channels * 2, samples_in_buffer - samples_read, fin);
                 assert(samples_read == samples_in_buffer);
             }
         }

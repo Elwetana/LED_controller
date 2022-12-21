@@ -265,8 +265,8 @@ double Segments_get_collapse_progress(int segment)
 int Segments_get_hole_position(int segment)
 {
     ASSERT_M3(segment < n_segments, 0);
-    double segment_position = Segments_get_position(segment);
-    double offset = segment_position - (int)floor(segment_position);
+    //double segment_position = Segments_get_position(segment);
+    //double offset = segment_position - (int)floor(segment_position);
     int length = Segments_get_length(segment);
     //return length > 2 ? (int)(length * (1 - offset)) : length;
     return length;
