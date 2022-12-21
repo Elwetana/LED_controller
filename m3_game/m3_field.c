@@ -30,6 +30,7 @@ const int C_MATCH_3_LENGTH = 3;
 jewel_t field[C_MAX_FIELD_LENGTH];
 int field_length = 0;
 double speed_bias = 1.;
+double round_collapse_time;
 jewel_type lastCollapseType = N_GEM_COLORS;
 
 enum ESegmentType {
@@ -658,7 +659,7 @@ int Segments_update(void)
     {
         if (segments[segment].segment_type != ST_COLLAPSING)
             continue;
-        segments[segment].collapsing.collapse_progress -= time_delta / match3_config.collapse_time;
+        segments[segment].collapsing.collapse_progress -= time_delta / round_collapse_time;
         if (segments[segment].collapsing.collapse_progress < 0)
         {
             printf("Removing segment %i, length is %i\n", segment, segments[segment].length);
@@ -672,7 +673,14 @@ int Segments_update(void)
     if (is_collapse > 0)
         return 1;
 
+    if (n_segments == 0)
+    {
+        match3_game_source.level_phase = M3LP_LEVEL_WON;
+        return 0;
+    }
+
     //check speed of all segments and update as needed
+    int last_segment_old_pos = floor(segments[0].shift);
     for (int segment = 0; segment < n_segments; ++segment)
     {
         if (segments[segment].segment_type != ST_MOVING)
@@ -682,6 +690,10 @@ int Segments_update(void)
         if (segments[segment].moving.speed == 0)
             continue;
         segments[segment].shift += segments[segment].moving.speed * time_delta;
+    }
+    if (last_segment_old_pos != floor(segments[0].shift))
+    {
+        SoundPlayer_play(SE_M3_Tick);
     }
 
     //finally, we can check for segments to merge and delete
@@ -777,6 +789,7 @@ void Field_init_with_clue(const jewel_type field_def[], const int def_length)
 {
     init_jewel_colors(6, 0);
     speed_bias = 1;
+    round_collapse_time = match3_config.clue_collapse_time;
     field_length = def_length;
     for (int fi = 0; fi < field_length; ++fi)
     {
@@ -789,6 +802,7 @@ void Field_init(match3_LevelDefinition_t level_definition)
 {
     assert(level_definition.n_gem_colours <= N_GEM_COLORS);
     assert(level_definition.field_length <= C_MAX_FIELD_LENGTH);
+    round_collapse_time = match3_config.collapse_time;
     init_jewel_colors(level_definition.n_gem_colours, 30);
     field_length = level_definition.field_length;
     speed_bias = level_definition.speed_bias;

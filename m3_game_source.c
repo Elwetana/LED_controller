@@ -11,14 +11,14 @@
  [x] Players
  [x] Game phases/levels
  [x] Last level with clues
- [.] Better pitcher gameplay
+ [x] Better pitcher gameplay
  [x] End level/game screen
- [ ] Playtesting, tune the constants
- [.] Tune colours, rendering of bullets
- [ ] Fanfare at the end of level
- [ ] Player highlight during game, teleport to start
- [ ] Clue level, longer display, bigger spacing
- [ ] Revert random bullets
+ [x] Playtesting, tune the constants
+ [x] Tune colours, rendering of bullets
+ [x] Fanfare at the end of level
+ [x] Player highlight during game, teleport to start
+ [x] Clue level, longer display, bigger spacing
+ [x] Revert random bullets
 
 */
 #include <stdint.h>
@@ -56,8 +56,9 @@
 
 /* Config data */
 const struct Match3Config match3_config = {
-    .n_half_grad = 4,
     .collapse_time = 2,
+    .clue_collapse_time = 6,
+    .n_half_grad = 4,
     .gem_freq = { 0.5, 0.75, 1.0, 1.5, 1.25 },
     .player_colour = 0xFFFFFF,
     .collapse_colour = 0xFFD700,
@@ -387,10 +388,11 @@ static void end_phase_init(void)
     switch (match3_game_source.level_phase)
     {
     case M3LP_LEVEL_LOST:
-        match3_announce("lostRetry", "You lost!Press Start to retry.");
+        match3_announce("lostRetry", "You lost! Press Start to retry.");
         break;
     case M3LP_LEVEL_WON:
         match3_announce("winContinue", "You won! Press Start to continue.");
+        SoundPlayer_play(SE_M3_Fanfare);
         current_level++;
         if (current_level == MATCH3_N_LEVELS)
         {

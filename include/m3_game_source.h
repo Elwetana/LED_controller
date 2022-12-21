@@ -85,12 +85,13 @@ typedef unsigned char jewel_type;
 
 struct Match3Config
 {
+	double collapse_time;			//in seconds
+	double clue_collapse_time;		//also in seconds
 	int n_half_grad;				//!< the whole gradient is 2 * half_grad + 1 colours long, with the basic colour in the middle
 									//i.e. 0  1 .. N_HALF_GRAD  N_HALF_GRAD+1 .. 2 * N_HALF_GRAD
 									//     |           ^this is the basic colour              |
 									//     ^ this is the darkest colour                       |
 									//                                                        ^ this is the lightest colour
-	double collapse_time;			//in seconds
 	double gem_freq[N_GEM_COLORS];  //in Hertz
 	int player_colour;				//0xAARRGGBB
 	int collapse_colour;

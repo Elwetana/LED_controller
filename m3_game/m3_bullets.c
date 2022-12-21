@@ -88,7 +88,7 @@ int Match3_Emitor_fire(void)
     n_bullets++;
     //match3_announce("WHAM (bullet fired)");
     SoundPlayer_play(SE_M3_BulletFired);
-    emitor_random_new_bullet();
+    //emitor_random_new_bullet();
     return 0;
 }
 

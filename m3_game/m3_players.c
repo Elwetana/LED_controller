@@ -46,13 +46,17 @@ player_t players[C_MAX_CONTROLLERS];
 struct {
     int player_index;
     double highlight_start;
-} player_highlight;
+} player_highlight = 
+{
+    .highlight_start = 0,
+    .player_index = -1
+};
 
 int Match3_Player_get_highlight(void)
 {
-    if (miliseconds_from_start() - player_highlight.highlight_start < match3_config.highlight_timeout)
-        return player_highlight.player_index;
-    return -1;
+//    if (miliseconds_from_start() - player_highlight.highlight_start < match3_config.highlight_timeout)
+    return player_highlight.player_index;
+//    return -1;
 }
 
 static int PlayerType_can_move(enum EPlayerType pt)
@@ -374,19 +378,19 @@ static void ready_check(int player_index, int just_ready)
     }
 }
 
-static void highlight_me(int player_index)
+/*static void highlight_me(int player_index)
 {
     player_highlight.player_index = player_index;
     player_highlight.highlight_start = miliseconds_from_start();
-}
 
+}*/
 
 void Select_phase_press_button(int player_index, enum EM3_BUTTONS button)
 {
     switch (button)
     {
     case M3B_A:
-        highlight_me(player_index);
+        //highlight_me(player_index);
         break;
     case M3B_B:
         assign_type(player_index, PT_Swapper);
@@ -486,6 +490,21 @@ void Match3_Player_press_button(int player, enum EM3_BUTTONS button)
 {
     assert(players[player].type < PT_N_PlayerTypes);
     push_event_to_queue(player, button);
+}
+
+void Match3_Player_start_highlight(int player)
+{
+    player_highlight.player_index = player;
+}
+
+void Match3_Player_end_highlight(int player)
+{
+    player_highlight.player_index = -1;
+}
+
+void Match3_Player_reset_position(int player)
+{
+    players[player].position = match3_game_source.basic_source.n_leds - 1 - Match3_Emitor_get_length() - 1;
 }
 
 void Match3_Players_init(void)
