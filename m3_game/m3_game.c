@@ -411,7 +411,7 @@ static void render_emitor(void)
     canvas3[from] = get_jewel_color(Match3_Emitor_get_jewel_type()) | 0xFF << 24;
     for (int i = 0; i < emitor_length; ++i)
     {
-        canvas3[from + 1 + i] = Match3_Emitor_get_colour(i) | 0xFF << 24;
+        canvas3[from + emitor_length - i] = Match3_Emitor_get_colour(i) | 0xFF << 24;
     }
 }
 
