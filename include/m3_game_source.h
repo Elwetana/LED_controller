@@ -61,7 +61,7 @@ typedef struct Match3LevelDefinition
 	const double speed_bias;
 } match3_LevelDefinition_t;
 
-#define MATCH3_N_LEVELS 5
+#define MATCH3_N_LEVELS 4
 #define N_MAX_SEGMENTS 32
 #define N_MAX_BULLETS 16
 

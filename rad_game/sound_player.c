@@ -420,10 +420,7 @@ void SoundPlayer_stop()
     {
         fclose(fin);
     }
-    else
-    {
-        current_effect = SE_N_EFFECTS;
-    }
+    current_effect = SE_N_EFFECTS;
 #ifdef __linux__
      snd_pcm_drain(pcm_handle);
      snd_pcm_close(pcm_handle);

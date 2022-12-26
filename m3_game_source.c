@@ -57,7 +57,7 @@
 /* Config data */
 const struct Match3Config match3_config = {
     .collapse_time = 2,
-    .clue_collapse_time = 6,
+    .clue_collapse_time = 15,
     .n_half_grad = 4,
     .gem_freq = { 0.5, 0.75, 1.0, 1.5, 1.25 },
     .player_colour = 0xFFFFFF,
@@ -120,7 +120,7 @@ match3_LevelDefinition_t level_definitions[MATCH3_N_LEVELS] =
         .same_gem_bias = 0.5,
         .speed_bias = 1.3,
         .start_offset = -50
-    },
+    }/*,
 
     //level 5
     {
@@ -129,7 +129,7 @@ match3_LevelDefinition_t level_definitions[MATCH3_N_LEVELS] =
         .same_gem_bias = 0.5,
         .speed_bias = 1.5,
         .start_offset = -50
-    }
+    }*/
 };
 
 
