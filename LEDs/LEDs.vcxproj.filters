@@ -118,6 +118,12 @@
     <ClCompile Include="..\m3_game\m3_bullets.c">
       <Filter>Games</Filter>
     </ClCompile>
+    <ClCompile Include="..\spng.c">
+      <Filter>SourceCommon</Filter>
+    </ClCompile>
+    <ClCompile Include="..\miniz.c">
+      <Filter>SourceCommon</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\include\color_source.h">
@@ -241,6 +247,9 @@
       <Filter>Include</Filter>
     </ClInclude>
     <ClInclude Include="..\include\m3_bullets.h">
+      <Filter>Include</Filter>
+    </ClInclude>
+    <ClInclude Include="..\include\miniz.h">
       <Filter>Include</Filter>
     </ClInclude>
   </ItemGroup>

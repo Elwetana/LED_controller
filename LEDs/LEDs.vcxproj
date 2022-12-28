@@ -185,6 +185,7 @@ xcopy /y $(ProjectDir)..\rad_game\config_rad  $(ProjectDir)\rad_game\</Command>
     <ClCompile Include="..\m3_game\m3_input_handler.c" />
     <ClCompile Include="..\m3_game\m3_players.c" />
     <ClCompile Include="..\m3_game_source.c" />
+    <ClCompile Include="..\miniz.c" />
     <ClCompile Include="..\rad_game\ddr_game.c" />
     <ClCompile Include="..\rad_game\nonplaying_states.c" />
     <ClCompile Include="..\rad_game\oscillators.c" />
@@ -200,6 +201,7 @@ xcopy /y $(ProjectDir)..\rad_game\config_rad  $(ProjectDir)\rad_game\</Command>
     <ClCompile Include="..\perlin_source.c" />
     <ClCompile Include="..\sound\test.c" />
     <ClCompile Include="..\source_manager.c" />
+    <ClCompile Include="..\spng.c" />
     <ClCompile Include="..\xmas_source.c" />
   </ItemGroup>
   <ItemGroup>
@@ -239,6 +241,7 @@ xcopy /y $(ProjectDir)..\rad_game\config_rad  $(ProjectDir)\rad_game\</Command>
     <ClInclude Include="..\include\m3_game_source.h" />
     <ClInclude Include="..\include\m3_input_handler.h" />
     <ClInclude Include="..\include\m3_players.h" />
+    <ClInclude Include="..\include\miniz.h" />
     <ClInclude Include="..\include\nonplaying_states.h" />
     <ClInclude Include="..\include\oscillators.h" />
     <ClInclude Include="..\include\rad_game_source.h" />
