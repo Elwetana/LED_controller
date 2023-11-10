@@ -17,7 +17,9 @@ of music from analogue input (you need extra sound card on Raspberry Pi for that
 colour of LEDs depends on tempo, dominant frequency and phase of the beat.
 
 Even more finally, I added some colourful modes for decorating a Christmas tree and I
-added a simple 1-D game with four levels that uses Xbox controller connected to the RPi.
+added few simple 1-D games that uses Xbox controller connected to the RPi.
+
+## Colour config
 
 The colours used by the application are in the `config` file, the interpretation varies
 slightly in different modes, but basically its hex colours that are end points in a 
@@ -30,6 +32,32 @@ is followed by 0, so `0x00FF00 3 0x000000 0 0x...` will generate gradient with t
 pure green, 50% green and black, while `0x00FF00 3 0x000000 3 0x...` will generate three
 colours: pure green, 66% green, 33% green; black will be the first colour of the next
 gradient.
+
+## 1D Games
+
+There are currently three games:
+
+* Shooter (`GAME_SOURCE`) -- single player side scrolling shooter game. There are three levels,
+you control a ship that moves along the LED chain, you can shoot projectiles with faceplate
+buttons and you have to evade the incoming projectiles by ducking under/jumping over them with
+D-pad buttons. Red projectiles move through the lower space, green move through middle (default)
+space and blue ones move through the upper layer. In the first two levels the goal is to reach
+the stargate before it closes, in the last level there is a boss fight.
+
+* Rhythm'n'Dance (`RAD_GAME_SOURCE`) -- game for up to four players. There are two modes, one is
+straightforward copy of _Dance Dance Revolution_: colour bullets are emitted from the beginning
+of the chain, you have to press the corresponding colour button on the controller when it passes
+over your 'wicket'. In the other mode you have to press buttons in the rhythm of the music, if you
+hit the beat, the neigbouring LEDs will start to blink. Move along the chain and try to get as
+many LEDs to blink to rhythm as possible.
+
+* Match 3 (`M3_GAME_SOURCE`) -- cooperative game for 4 players. This is a cross of Zuma and any
+match-three game. In the playing field, there are strings of coloured LEDs (jewels), the task of
+players it to collapse them by either swapping two neighbouring jewels, or by firing a new jewel
+from a gun at the end of the chain. The players can have one of three roles:
+ * Pitcher: selects the colour of the jewel in the gun and fires it
+ * Catcher: moves along the chain and catches the jewels fired by the pitcher
+ * Swapper: moves along the chain and swaps the neighbouring jewels
 
 ## Requirements
 
