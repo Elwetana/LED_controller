@@ -55,9 +55,9 @@ many LEDs to blink to rhythm as possible.
 match-three game. In the playing field, there are strings of coloured LEDs (jewels), the task of
 players it to collapse them by either swapping two neighbouring jewels, or by firing a new jewel
 from a gun at the end of the chain. The players can have one of three roles:
- * Pitcher: selects the colour of the jewel in the gun and fires it
- * Catcher: moves along the chain and catches the jewels fired by the pitcher
- * Swapper: moves along the chain and swaps the neighbouring jewels
+  * Pitcher: selects the colour of the jewel in the gun and fires it
+  * Catcher: moves along the chain and catches the jewels fired by the pitcher
+  * Swapper: moves along the chain and swaps the neighbouring jewels
 
 ## Requirements
 
