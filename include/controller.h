@@ -34,11 +34,24 @@ enum EButtons
 	XBTN_L3		= 17,
 	XBTN_R3		= 18,
 
+	//left stick
     XBTN_LST_L  = 19,
-    XBTN_LST_R  = 20
+    XBTN_LST_R  = 20,
+	XBTN_LST_U  = 21,
+	XBTN_LST_D  = 22,
+
+	//right stick
+	XBTN_RST_L  = 23,
+	XBTN_RST_R  = 24,
+	XBTN_RST_U  = 25,
+	XBTN_RST_D  = 26,
+
+	//analog triggers
+	XBTN_LT		= 27,
+	XBTN_RT		= 28
 };
 
-#define C_MAX_XBTN  21 //this must be define for statically allocated arrays
+#define C_MAX_XBTN  29 //this must be define for statically allocated arrays
 
 /*! Released = 0, Pressed = 1 */
 enum EState

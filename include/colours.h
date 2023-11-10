@@ -20,9 +20,9 @@ extern "C" {
 typedef union
 {
 	struct {
-		float h;
-		float s;
-		float l;
+		float h; // <0,1>
+		float s; // <0,1>
+		float l; // <0,1>
 	};
 	float f[3];
 } hsl_t;

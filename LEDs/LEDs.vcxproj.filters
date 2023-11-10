@@ -124,6 +124,15 @@
     <ClCompile Include="..\miniz.c">
       <Filter>SourceCommon</Filter>
     </ClCompile>
+    <ClCompile Include="..\paint_source.c">
+      <Filter>Games</Filter>
+    </ClCompile>
+    <ClCompile Include="..\paint\paint_input_handler.c">
+      <Filter>Games</Filter>
+    </ClCompile>
+    <ClCompile Include="..\base64.c">
+      <Filter>SourceCommon</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\include\color_source.h">
@@ -250,6 +259,15 @@
       <Filter>Include</Filter>
     </ClInclude>
     <ClInclude Include="..\include\miniz.h">
+      <Filter>Include</Filter>
+    </ClInclude>
+    <ClInclude Include="..\include\paint_source.h">
+      <Filter>Include</Filter>
+    </ClInclude>
+    <ClInclude Include="..\include\paint_input_handler.h">
+      <Filter>Include</Filter>
+    </ClInclude>
+    <ClInclude Include="..\include\base64.h">
       <Filter>Include</Filter>
     </ClInclude>
   </ItemGroup>

@@ -7,7 +7,7 @@
  [x] Splitting and merging game field, moving backwards
  [x] Emittor
  [x] Sounds
- [ ] Music
+ [x] Music
  [x] Players
  [x] Game phases/levels
  [x] Last level with clues

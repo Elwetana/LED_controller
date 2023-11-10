@@ -22,6 +22,7 @@ enum SourceType {
     GAME_SOURCE,
     RAD_GAME_SOURCE,
     M3_GAME_SOURCE,
+    PAINT_SOURCE,
     N_SOURCE_TYPES
 };
 

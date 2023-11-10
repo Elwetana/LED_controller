@@ -22,7 +22,11 @@
 static int input[C_MAX_CONTROLLERS];
 static int n_players;
 static int dpad_pressed = 200;
-static int left_stick_pressed = XBTN_LST_L;
+//sensitivity for left stick l/r, u/d, left trigger, right stick l/r, u/d, right trigger
+static const int stick_sensitivity[] = { 16383, 16383, 128, 16383, 16383, 128 };
+
+static enum EButtons last_stick_direction[ABS_RZ + 1] = { XBTN_LST_L, XBTN_LST_U, XBTN_LT, XBTN_RST_L, XBTN_RST_U, XBTN_RT };
+static enum EButtons stick_buttons[ABS_RZ + 1][2] = { {XBTN_LST_L, XBTN_LST_R}, {XBTN_LST_U, XBTN_LST_D}, {0, XBTN_LT}, {XBTN_RST_L, XBTN_RST_R}, {XBTN_RST_U, XBTN_RST_D}, {0, XBTN_RT} };
 static uint64_t down_timeout = 100 * 1e6; //in ns
 static char* button_names[] = {
     "DPAD LEFT", "DPAD RIGHT", "DPAD UP", "DPAD DOWN", //300 - 303
@@ -34,7 +38,7 @@ static uint64_t button_states[C_MAX_CONTROLLERS][C_MAX_XBTN];
 
 #ifndef __linux__
 static WORD current_state[C_MAX_CONTROLLERS];
-static SHORT current_stick[5][C_MAX_CONTROLLERS];
+static SHORT current_stick[ABS_RZ + 2][C_MAX_CONTROLLERS];
 static WORD last_state[C_MAX_CONTROLLERS];
 static WORD processed[C_MAX_CONTROLLERS];
 static enum EButtons xMap[] = { 
@@ -43,6 +47,7 @@ static enum EButtons xMap[] = {
     XBTN_LB,    XBTN_RB,    XBTN_ERROR, XBTN_ERROR, 
     XBTN_A,     XBTN_B,     XBTN_X,     XBTN_Y 
 };
+
 /*
 XINPUT_GAMEPAD_DPAD_UP	    0x0001
 XINPUT_GAMEPAD_DPAD_DOWN	0x0002
@@ -70,16 +75,18 @@ char* Controller_get_button_name(enum EButtons button)
 int Controller_get_button_windows(enum EButtons* button, enum EState* state, DWORD dwUserIndex)
 {
     XINPUT_STATE xstate;
-    if (processed[dwUserIndex] == 0 && current_stick[4][dwUserIndex] == 0)
+    if (processed[dwUserIndex] == 0 && current_stick[ABS_RZ + 1][dwUserIndex] == 0)
     {
         DWORD dwResult = XInputGetState(dwUserIndex, &xstate);
         if (dwResult == ERROR_SUCCESS)
         {
             current_state[dwUserIndex] = xstate.Gamepad.wButtons;
-            current_stick[0][dwUserIndex] = xstate.Gamepad.sThumbLX;
-            current_stick[1][dwUserIndex] = xstate.Gamepad.sThumbLY;
-            current_stick[2][dwUserIndex] = xstate.Gamepad.sThumbRX;
-            current_stick[3][dwUserIndex] = xstate.Gamepad.sThumbRY;
+            current_stick[ABS_X][dwUserIndex] = xstate.Gamepad.sThumbLX;
+            current_stick[ABS_Y][dwUserIndex] = xstate.Gamepad.sThumbLY;
+            current_stick[ABS_Z][dwUserIndex] = (SHORT)xstate.Gamepad.bLeftTrigger;
+            current_stick[ABS_RX][dwUserIndex] = xstate.Gamepad.sThumbRX;
+            current_stick[ABS_RY][dwUserIndex] = xstate.Gamepad.sThumbRY;
+            current_stick[ABS_RZ][dwUserIndex] = (SHORT)xstate.Gamepad.bRightTrigger;
         }
         else
             return -1;
@@ -99,18 +106,23 @@ int Controller_get_button_windows(enum EButtons* button, enum EState* state, DWO
             }
         }
     }
-    if (current_stick[0][dwUserIndex] > 16383 || current_stick[0][dwUserIndex] <- 16383)
+    int stick_index = current_stick[ABS_RZ + 1][dwUserIndex];
+    while (stick_index <= ABS_RZ)
     {
-        *state = BT_pressed;
-        *button = (current_stick[0][dwUserIndex] > 16383) ? XBTN_LST_R : XBTN_LST_L;
-        current_stick[0][dwUserIndex] = 0;
-        current_stick[4][dwUserIndex] = 1;
-        return 1;
+        if (current_stick[stick_index][dwUserIndex] > stick_sensitivity[stick_index] || current_stick[stick_index][dwUserIndex] < -stick_sensitivity[stick_index])
+        {
+            *state = BT_pressed;
+            *button = (current_stick[stick_index][dwUserIndex] < -stick_sensitivity[stick_index]) ? stick_buttons[stick_index][0] : stick_buttons[stick_index][1];
+            current_stick[stick_index][dwUserIndex] = 0;
+            current_stick[ABS_RZ + 1][dwUserIndex] = stick_index++;
+            return 1;
+        }
+        stick_index++;
     }
 
     last_state[dwUserIndex] = current_state[dwUserIndex];
     processed[dwUserIndex] = 0;
-    current_stick[4][dwUserIndex] = 0;
+    current_stick[ABS_RZ + 1][dwUserIndex] = 0;
     return 0;
 }
 
@@ -202,24 +214,24 @@ int Controller_get_button(uint64_t t, enum EButtons* button, enum EState* state,
                 process_d_pad(button, state, ie.value, DPAD_U, DPAD_D);
                 goto update;
             }
-            else if(ie.code == ABS_X)
+            if(ie.code == ABS_X || ie.code == ABS_Y || ie.code == ABS_RX || ie.code == ABS_RY)
             {
-                if (ie.value > 16383)
+                if (ie.value > stick_sensitivity[ie.code])
                 {
                     *state = BT_pressed;
-                    *button = XBTN_LST_R;
-                    left_stick_pressed = XBTN_LST_R;
+                    *button = stick_buttons[ie.code][1];
+                    last_stick_direction[ie.code] = stick_buttons[ie.code][1];
                     goto update;
                 }
-                if (ie.value < -16383)
+                if (ie.value < -stick_sensitivity[ie.code])
                 {
                     *state = BT_pressed;
-                    *button = XBTN_LST_L;
-                    left_stick_pressed = XBTN_LST_L;
+                    *button = stick_buttons[ie.code][0];
+                    last_stick_direction[ie.code] = stick_buttons[ie.code][0];
                     goto update;
                 }
                 *state = BT_released;
-                *button = left_stick_pressed;
+                *button = last_stick_direction[ie.code];
                 goto update;
             }
         }

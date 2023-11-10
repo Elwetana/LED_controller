@@ -20,6 +20,9 @@ srcs = Split('''
     colours.c
     listener.c
     ini.c
+    miniz.c
+    spng.c
+    base64.c
     game_source.c
     game/controller.c
     game/game_object.c
@@ -41,6 +44,8 @@ srcs = Split('''
     m3_game/m3_field.c
     m3_game/m3_players.c
     m3_game/m3_bullets.c
+    paint_source.c
+    paint/paint_input_handler.c
 ''')
 
 

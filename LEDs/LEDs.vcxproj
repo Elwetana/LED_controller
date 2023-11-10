@@ -162,6 +162,7 @@ xcopy /y $(ProjectDir)..\rad_game\config_rad  $(ProjectDir)\rad_game\</Command>
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClCompile Include="..\base64.c" />
     <ClCompile Include="..\chaser_source.c" />
     <ClCompile Include="..\color_source.c" />
     <ClCompile Include="..\colours.c" />
@@ -186,6 +187,8 @@ xcopy /y $(ProjectDir)..\rad_game\config_rad  $(ProjectDir)\rad_game\</Command>
     <ClCompile Include="..\m3_game\m3_players.c" />
     <ClCompile Include="..\m3_game_source.c" />
     <ClCompile Include="..\miniz.c" />
+    <ClCompile Include="..\paint\paint_input_handler.c" />
+    <ClCompile Include="..\paint_source.c" />
     <ClCompile Include="..\rad_game\ddr_game.c" />
     <ClCompile Include="..\rad_game\nonplaying_states.c" />
     <ClCompile Include="..\rad_game\oscillators.c" />
@@ -221,6 +224,7 @@ xcopy /y $(ProjectDir)..\rad_game\config_rad  $(ProjectDir)\rad_game\</Command>
     </None>
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="..\include\base64.h" />
     <ClInclude Include="..\include\callbacks.h" />
     <ClInclude Include="..\include\chaser_source.h" />
     <ClInclude Include="..\include\color_source.h" />
@@ -244,6 +248,8 @@ xcopy /y $(ProjectDir)..\rad_game\config_rad  $(ProjectDir)\rad_game\</Command>
     <ClInclude Include="..\include\miniz.h" />
     <ClInclude Include="..\include\nonplaying_states.h" />
     <ClInclude Include="..\include\oscillators.h" />
+    <ClInclude Include="..\include\paint_input_handler.h" />
+    <ClInclude Include="..\include\paint_source.h" />
     <ClInclude Include="..\include\rad_game_source.h" />
     <ClInclude Include="..\include\game_source.h" />
     <ClInclude Include="..\include\game_object.h" />
