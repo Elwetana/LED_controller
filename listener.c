@@ -28,12 +28,12 @@ void Listener_destruct()
 
 char* Listener_poll_message()
 {
-    char buffer[256];
-    int size = zmq_recv(listener.subscriber, buffer, 255, ZMQ_DONTWAIT);
+    char buffer[1024];
+    int size = zmq_recv(listener.subscriber, buffer, 1023, ZMQ_DONTWAIT);
     if (size == -1)
         return NULL;
-    if (size > 255)
-        size = 255;
+    if (size > 1023)
+        size = 1023;
     buffer[size] = 0x0;
 #ifdef __linux__
     return strndup(buffer, sizeof(buffer) - 1);

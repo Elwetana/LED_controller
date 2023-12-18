@@ -3,6 +3,10 @@
 
 #include "common_source.h"
 
+#define MAX_MSG_LENGTH 1024
+#define MAX_CMD_LENGTH 64
+
+
 enum SourceType string_to_SourceType(const char*);
 void SourceConfig_add_color(char* source_name, SourceColors* source_colors);
 void SourceConfig_destruct();

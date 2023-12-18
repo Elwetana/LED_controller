@@ -14,7 +14,7 @@ DISCO 3
 IP 1
 0xA0A0A0 1 0xA0A0A0
 XMAS 24
-#0:debug  1:glt1 green       3:glt1 orange/glt2 star       5:glt1 blue           9:Icicle end                                      23:Grad mid         31:pattern1 start                                                                                            45:Grad2 start           63:Grad2 end
+;0:debug  1:glt1 green       3:glt1 orange/glt2 star       5:glt1 blue           9:Icicle end                                      23:Grad mid         31:pattern1 start                                                                                            45:Grad2 start           63:Grad2 end
 ;                      2:glt1 red         4:glt1 purple/glt2 sky    6:Icicle start           10:Snowflake  11:SF ray 12:Grad start            30:Grad end          33:pattern1 end  34:black  35:fw start 39:fw mid    41:fw end  42:val_lft   43:val_rgt  44:val_uni           56:Grad2 mid
 0xA0A0A0  1 0x1f5b08  1 0x550508  1 0xDD992C  1 0x080920  1 0x16083b  1 0x05344a  4 0x080011  0 0x1a3c80  2 0x0d1e40  0 0xcc0010 11 0xe68b00  8 0x166600  0 0xff0000  3 0xffff00  0 0x000000  1 0x542e88  4 0xf8000a  3 0xffb039  0 0xff5500  1 0x440066  2 0xff0000  0 0x00524c 11 0x00317a  8 0x400052
 GAME 17

@@ -156,8 +156,8 @@ static int64_t decode(const char* s, char* dec)
     for (o = dec; s <= end; o++) 
     {
         c = *s++;
-        if (c == '+') c = ' ';
-        else if (c == '%' && (!ishex(*s++) || !ishex(*s++) || !sscanf(s - 2, "%2x", &c)))
+        /*if (c == '+') c = ' ';
+        else*/ if (c == '%' && (!ishex(*s++) || !ishex(*s++) || !sscanf(s - 2, "%2x", &c)))
             return -1;
         if (dec) *o = (char)c;
     }
@@ -207,13 +207,13 @@ void check_message()
     {
         return;
     }
-    if (strlen(msg) > 64) 
+    if (strlen(msg) >= MAX_MSG_LENGTH) 
     {
         printf("Message too long: %s, %zi", msg, strlen(msg));
         goto quit;
     }
-    char command[64];
-    char param[64];
+    char command[MAX_CMD_LENGTH];
+    char param[MAX_MSG_LENGTH];
     int n = sscanf(msg, "LED %s %s", command, param);
     if (n != 2)
     {
@@ -221,15 +221,15 @@ void check_message()
         goto quit;
     }
     //make sure strings are null-terminated
-    command[63] = 0x0;
-    param[63] = 0x0;
+    command[MAX_CMD_LENGTH - 1] = 0x0;
+    param[MAX_MSG_LENGTH - 1] = 0x0;
     if (!strncasecmp(command, "SOURCE", 6))
     {
         process_source_message(param);
     }
     else if (!strncasecmp(command, "MSG", 3))
     {
-        char message[64];
+        char message[MAX_MSG_LENGTH];
         if (decode(param, message) < 0)
         {
             printf("Malformatted URL-encoded text: %s\n", param);
