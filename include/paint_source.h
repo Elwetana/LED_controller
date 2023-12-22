@@ -48,7 +48,6 @@ typedef struct paint_SPaintSource
 	BasicSource basic_source;
 	uint64_t start_time;
 	int cur_frame;
-	int* leds;
 } paint_PaintSource_t;
 
 extern paint_PaintSource_t paint_source;

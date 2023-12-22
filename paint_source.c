@@ -38,6 +38,32 @@ typedef struct paint_SBrush
 
 static paint_Brush_t brush;
 
+enum EAnimMode 
+{
+    AM_NONE,
+    AM_MOVE_NO_AA,
+    AM_MOVE_AA,
+    AM_SHIMMER,
+    AM_MOVE_SHIMMER
+};
+
+typedef struct SAmpPhase
+{
+    float amp;
+    float phase;
+} AmpPhase_t;
+
+static enum EAnimMode animation_mode = AM_NONE;
+static double animation_speed;
+static uint64_t animation_start;
+static hsl_t* leds;
+static int* canvas;
+static AmpPhase_t* coeffs;
+
+static const char* secret = "VESELEVANOCEASTASTNYNOVYROKVESELEVANOCE";
+static const double resonance_frequence = 70.0; //BPM
+static const double resonance_decay = 0.9; //how quickly resonance fades when no match is found
+
 
 void Paint_BrushMove(int direction)
 {
@@ -59,16 +85,20 @@ void Paint_LightnessChange(int direction)
 
 }
 
-
-static const int PAINT_CODE_R = 1;
-static const int PAINT_CODE_G = 2;
-static const int PAINT_CODE_B = 3;
-static const int PAINT_CODE_Y = 4;
+enum EPaintCodeColours
+{
+    PAINT_CODE_R,
+    PAINT_CODE_Y,
+    PAINT_CODE_G,
+    PAINT_CODE_B,
+    N_PAINT_CODES
+};
+static const float PAINT_RYGB_HUE[] = {0.0f / 360.0f, 50.0f / 360.0f, 120.0f / 360.0f, 240.0f / 360.0f};
 
 /*
 * Encodes letter to RGBY code as per https://www.tmou.cz/24/page/cheatsheet
 */
-static void Paint_letter2rgby(char* rgby, const char c)
+void Paint_letter2rygb(char* rygb, const char c)
 {
     //order is R, Y, G, B
     int order[] = { PAINT_CODE_R, PAINT_CODE_Y, PAINT_CODE_G, PAINT_CODE_B };
@@ -78,34 +108,180 @@ static void Paint_letter2rgby(char* rgby, const char c)
     if (n > 15) n--; //removes Q
     if (n > 20) n--; //removes W
     int o = n / 6; // 0-5 -> 0, 6-11 -> 1, etc.
-    rgby[0] = order[o];
+    rygb[0] = order[o];
     for (int i = o; i < 3; i++) order[i] = order[i + 1];
-    o = (n % 6) / 2;  // (n % 6) -> order in second column; 0-5; 0-1 -> 0, 2-3 -> 1, 4-5 -> 2
-    rgby[1] = order[o];
+    o = (n % 6) / 2;  // (n % 6) -> order in second column; 0-5: 0-1 -> 0, 2-3 -> 1, 4-5 -> 2
+    rygb[1] = order[o];
     for (int i = o; i < 3; i++) order[i] = order[i + 1];
     o = (n % 6) % 2; //order in the third column
-    rgby[2] = order[o];
-    rgby[3] = order[(o + 1) % 2];
+    rygb[2] = order[o];
+    rygb[3] = order[(o + 1) % 2];
+}
+
+static void show_secret()
+{
+    int n = strlen(secret);
+    char rygb[4];
+    assert(n * 4 < paint_source.basic_source.n_leds);
+    for (int letter = 0; letter < n; letter++)
+    {
+        Paint_letter2rygb(rygb, secret[letter]);
+        for (int led = 0; led < N_PAINT_CODES; led++)
+        {
+            leds[letter * N_PAINT_CODES + led].h = PAINT_RYGB_HUE[rygb[led]];
+            leds[letter * N_PAINT_CODES + led].s = 1.0f;
+            leds[letter * N_PAINT_CODES + led].l = 0.4f;
+        }
+    }
+    animation_mode = AM_NONE;
+}
+
+/* dist will be <0, 0.5> */
+static enum EPaintCodeColours get_colour_distance(hsl_t* col, float* dist)
+{
+    int iFrom = 0;
+    //for (iFrom = 0; iFrom < N_PAINT_CODES; iFrom++)
+    while (col->h >= PAINT_RYGB_HUE[iFrom]) iFrom++;
+    iFrom--;
+    assert(iFrom < N_PAINT_CODES);
+    assert(iFrom >= 0);
+    int iTo = (iFrom + 1) % N_PAINT_CODES;
+    float interval = PAINT_RYGB_HUE[iTo] - PAINT_RYGB_HUE[iFrom];
+    if (interval < 0) // this blue -> red
+        interval += 1;
+    assert(interval >= 0);
+    *dist = (col->h - PAINT_RYGB_HUE[iFrom]) / interval;
+    int closest = *dist < 0.5f ? iFrom : iTo;
+    if (*dist > 0.5)
+        *dist = 1 - *dist;
+    assert(dist >= 0);
+    return (enum EPaintCodeColours)(closest);
+}
+
+static double add_resonance(hsl_t* col, int led, double time_seconds, double strength)
+{
+    int letter = led / N_PAINT_CODES;
+    if (letter >= strlen(secret))
+        return 0;
+    //if saturation or lightness are under certain thresholds, we cannot resonante
+    if (col->s < 0.1 || col->l < 0.1)
+    {
+        return strength * resonance_decay;
+    }
+
+    int rygb_index = led % N_PAINT_CODES;
+    char rygb[4];
+    Paint_letter2rygb(rygb, secret[letter]);
+    float dist;
+    enum EPaintCodeColours led_closest = get_colour_distance(col, &dist);
+    if (led_closest != rygb[rygb_index]) //there is no match in hue -> colour is unchanged, resonance fades
+    {
+        return strength * resonance_decay;
+    }
+    printf("d %f\n", strength);
+    double amp = strength * 2 * (0.5 - dist) * sin(time_seconds * resonance_frequence / 60.0); //amp = <-1, 1>
+    if (amp < 0)
+        col->l *= (1 + amp); //in lowest phase, amp == -1, then col->l = 0
+    else
+        col->l = col->l + (1 - col->l) * amp; //in highest phase, amp == 1, then col->l = 1; for amp == 0, col->l is unchanged
+    return strength;
+}
+
+static void generate_led_phases(speed)
+{
+    for (int led = 0; led < paint_source.basic_source.n_leds; led++)
+    {
+        coeffs[led].amp = random_01() * 0.5;
+        coeffs[led].phase = random_01() * M_PI;
+    }
+}
+
+static void switch_animation_mode(enum EAnimMode new_mode, double new_speed)
+{
+    if (animation_mode != new_mode)
+    {
+        animation_start = paint_source.basic_source.current_time;
+    }
+
+    switch (new_mode)
+    {
+    case AM_NONE:
+    case AM_MOVE_NO_AA:
+    case AM_MOVE_AA:
+        break;
+    case AM_SHIMMER:
+    case AM_MOVE_SHIMMER:
+        generate_led_phases(new_speed);
+        break;
+    default:
+        break;
+    }
+    animation_mode = new_mode;
+    animation_speed = new_speed;
+}
+
+
+static void draw_leds_to_canvas()
+{
+    double time_seconds = ((paint_source.basic_source.current_time - animation_start) / (long)1e3) / (double)1e6;
+    double distance = animation_speed * time_seconds;
+    double resonance_strength = 1.0;
+    for (int led = 0; led < paint_source.basic_source.n_leds; led++)
+    {
+        int index_before = (led + (int)floor(distance)) % paint_source.basic_source.n_leds;
+        // -10 % 7 = -3
+        if (index_before < 0)
+            index_before += paint_source.basic_source.n_leds;
+        int index_after = (index_before + 1) % paint_source.basic_source.n_leds;
+
+        assert(index_before >= 0 && index_before < paint_source.basic_source.n_leds);
+        assert(index_after >= 0 && index_after < paint_source.basic_source.n_leds);
+        
+        hsl_t col;
+        switch (animation_mode)
+        {
+        case AM_NONE:
+            col = leds[led];
+            if(resonance_strength > 0)
+                resonance_strength = add_resonance(&col, led, time_seconds, resonance_strength);
+            break;
+        case AM_MOVE_NO_AA:
+            col = leds[index_before];
+            break;
+        case AM_MOVE_AA:
+            lerp_hsl(&leds[index_before], &leds[index_after], distance - floor(distance), &col);
+            break;
+        case AM_SHIMMER:
+            col = leds[led];
+            col.l = max(min(col.l + coeffs[led].amp * sin(coeffs[led].phase + distance), 1), 0);
+            break;
+        case AM_MOVE_SHIMMER:
+            lerp_hsl(&leds[index_before], &leds[index_after], distance - floor(distance), &col);
+            col.l = max(min(col.l + coeffs[led].amp * sin(coeffs[led].phase + distance), 1), 0);
+            break;
+        default:
+            break;
+        }
+        canvas[led] = hsl2rgb(&col);
+    }
 }
 
 int PaintSource_update_leds(int frame, ws2811_t* ledstrip)
 {
     paint_source.cur_frame = frame;
+    draw_leds_to_canvas();
     for (int led = 0; led < paint_source.basic_source.n_leds; led++)
     {
-        ledstrip->channel[0].leds[led] = paint_source.leds[led];
+        ledstrip->channel[0].leds[led] = canvas[led];
     }
-
     return 1;
 }
 
 //! @brief Process messages from HTTP server
 //! All messages have to have format <command>?<parameter>. Available commands are:
-//!     win?<next_level> (0 means current level + 1)
-//!     lose?<next_level> (0 means retry current level)
-//!     clue?0 (starts the final (clue) level)
 //! 
 //!     set?<base64 encoded RGB values>
+//!     anim?<mode>=<speed>
 //! @param msg 
 void PaintSource_process_message(const char* msg)
 {
@@ -138,20 +314,36 @@ void PaintSource_process_message(const char* msg)
         assert(bytes_decoded == 3 * paint_source.basic_source.n_leds);
         for (int led = 0; led < paint_source.basic_source.n_leds; led++)
         {
-            paint_source.leds[led] = decoded[3 * led] << 16 | decoded[3 * led + 1] << 8 | decoded[3 * led + 2];
+            int rgb = decoded[3 * led] << 16 | decoded[3 * led + 1] << 8 | decoded[3 * led + 2];
+            rgb2hsl(rgb, &leds[led]);
         }
+        return;
+    }
+    if (!strncasecmp(target, "anim", 4))
+    {
+        int new_mode;
+        double new_speed;
+        int n = sscanf(payload, "%d=%lf", &new_mode, &new_speed);
+        if (n != 2)
+        {
+            printf("Trying to set animation, but format is inalid %s\n", payload);
+            return;
+        }
+        if (new_mode > (int)AM_MOVE_SHIMMER || new_mode < 0)
+        {
+            printf("Invalid number for new mode: %s\n", payload);
+            return;
+        }
+        switch_animation_mode((enum EAnimMode)new_mode, new_speed);
+        return;
     }
 
-
-
-
-
+    /*
     char* checkPtr;
     errno = 0;
     long val = strtol(payload, &checkPtr, 10);
 
 
-    /*
     if (checkPtr == payload || errno != 0 || !checkPtr || *checkPtr != '\0')
     {
         printf("Message parameter %s could not be converted to number\n", payload);
@@ -191,16 +383,24 @@ void PaintSource_process_message(const char* msg)
 void PaintSource_init(int n_leds, int time_speed, uint64_t current_time)
 {
     BasicSource_init(&paint_source.basic_source, n_leds, time_speed, source_config.colors[PAINT_SOURCE], current_time);
-    paint_source.leds = malloc(n_leds * sizeof(int));
+    leds = malloc(n_leds * sizeof(hsl_t));
+    for (int led = 0; led < n_leds; led++) rgb2hsl(0, &leds[led]);
+    canvas = malloc(n_leds * sizeof(int));
+    coeffs = malloc(n_leds * sizeof(AmpPhase_t));
+    paint_source.start_time = current_time;
     //SoundPlayer_init(20000);
-    //Match3_InputHandler_init(); // inits the controller
-    //match3_game_source.start_time = current_time;
-    //match3_game_source.n_players = Controller_get_n_players();
+    //Paint_InputHandler_init(); // inits the controller
+    //paint_game_source.n_players = Controller_get_n_players();
+
+    //switch_animation_mode(AM_MOVE_SHIMMER, 1.1);
+    //show_secret();
 }
 
 void PaintSource_destruct(void)
 {
-    free(paint_source.leds);
+    free(leds);
+    free(canvas);
+    free(coeffs);
 }
 
 void PaintSource_construct(void)
