@@ -20,8 +20,6 @@ srcs = Split('''
     colours.c
     listener.c
     ini.c
-    miniz.c
-    spng.c
     base64.c
     game_source.c
     game/controller.c

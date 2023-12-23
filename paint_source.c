@@ -62,27 +62,27 @@ static AmpPhase_t* coeffs;
 
 static const char* secret = "VESELEVANOCEASTASTNYNOVYROKVESELEVANOCE";
 static const double resonance_frequence = 70.0; //BPM
-static const double resonance_decay = 0.9; //how quickly resonance fades when no match is found
+static const double resonance_decay = 0.5; //how quickly resonance fades when no match is found
 
 
 void Paint_BrushMove(int direction)
 {
-    //brush.position += direction;
+    brush.position += direction;
 }
 
 void Paint_HueChange(int direction)
 {
-    //brush.colour.h += (float)direction / 128.0f;
+    brush.colour.h += (float)direction / 128.0f;
 }
 
 void Paint_SaturationChange(int direction)
 {
-
+    brush.colour.s += (float)direction / 128.0f;
 }
 
 void Paint_LightnessChange(int direction)
 {
-
+    brush.colour.l += (float)direction / 128.0f;
 }
 
 enum EPaintCodeColours
@@ -93,7 +93,7 @@ enum EPaintCodeColours
     PAINT_CODE_B,
     N_PAINT_CODES
 };
-static const float PAINT_RYGB_HUE[] = {0.0f / 360.0f, 50.0f / 360.0f, 120.0f / 360.0f, 240.0f / 360.0f};
+static const float PAINT_RYGB_HUE[] = {0.0f / 360.0f, 50.0f / 360.0f, 120.0f / 360.0f, 240.0f / 360.0f, 1.1};
 
 /*
 * Encodes letter to RGBY code as per https://www.tmou.cz/24/page/cheatsheet
@@ -128,7 +128,7 @@ static void show_secret()
         Paint_letter2rygb(rygb, secret[letter]);
         for (int led = 0; led < N_PAINT_CODES; led++)
         {
-            leds[letter * N_PAINT_CODES + led].h = PAINT_RYGB_HUE[rygb[led]];
+            leds[letter * N_PAINT_CODES + led].h = PAINT_RYGB_HUE[(int)rygb[led]];
             leds[letter * N_PAINT_CODES + led].s = 1.0f;
             leds[letter * N_PAINT_CODES + led].l = 0.4f;
         }
@@ -143,6 +143,8 @@ static enum EPaintCodeColours get_colour_distance(hsl_t* col, float* dist)
     //for (iFrom = 0; iFrom < N_PAINT_CODES; iFrom++)
     while (col->h >= PAINT_RYGB_HUE[iFrom]) iFrom++;
     iFrom--;
+    //printf("iFrom %i, col.h %f hue from %f\n", iFrom, col->h, PAINT_RYGB_HUE[iFrom]);
+    //assert(col->h > PAINT_RYGB_HUE[iFrom]);
     assert(iFrom < N_PAINT_CODES);
     assert(iFrom >= 0);
     int iTo = (iFrom + 1) % N_PAINT_CODES;
@@ -151,16 +153,19 @@ static enum EPaintCodeColours get_colour_distance(hsl_t* col, float* dist)
         interval += 1;
     assert(interval >= 0);
     *dist = (col->h - PAINT_RYGB_HUE[iFrom]) / interval;
+    if(*dist > 1) printf("d %f, iFrom %i, iTo %i col.h %f int %f\n", *dist, iFrom, iTo, col->h, interval);
+    assert(*dist <= 1);
+    assert(*dist >= 0);
     int closest = *dist < 0.5f ? iFrom : iTo;
     if (*dist > 0.5)
         *dist = 1 - *dist;
-    assert(dist >= 0);
+    assert(*dist >= 0);
     return (enum EPaintCodeColours)(closest);
 }
 
 static double add_resonance(hsl_t* col, int led, double time_seconds, double strength)
 {
-    int letter = led / N_PAINT_CODES;
+    unsigned int letter = led / N_PAINT_CODES;
     if (letter >= strlen(secret))
         return 0;
     //if saturation or lightness are under certain thresholds, we cannot resonante
@@ -178,7 +183,7 @@ static double add_resonance(hsl_t* col, int led, double time_seconds, double str
     {
         return strength * resonance_decay;
     }
-    printf("d %f\n", strength);
+    //printf("d %f\n", strength);
     double amp = strength * 2 * (0.5 - dist) * sin(time_seconds * resonance_frequence / 60.0); //amp = <-1, 1>
     if (amp < 0)
         col->l *= (1 + amp); //in lowest phase, amp == -1, then col->l = 0
@@ -187,11 +192,15 @@ static double add_resonance(hsl_t* col, int led, double time_seconds, double str
     return strength;
 }
 
-static void generate_led_phases(speed)
+static void generate_led_phases(float max_amp)
 {
+    if(max_amp < 0.0f)
+        max_amp *= -1.0f;
+    if(max_amp > 1.0f)
+        max_amp = 1.0f;
     for (int led = 0; led < paint_source.basic_source.n_leds; led++)
     {
-        coeffs[led].amp = random_01() * 0.5;
+        coeffs[led].amp = max_amp * random_01() * 0.5;
         coeffs[led].phase = random_01() * M_PI;
     }
 }
@@ -211,7 +220,7 @@ static void switch_animation_mode(enum EAnimMode new_mode, double new_speed)
         break;
     case AM_SHIMMER:
     case AM_MOVE_SHIMMER:
-        generate_led_phases(new_speed);
+        generate_led_phases((float)new_speed / 10.0f);
         break;
     default:
         break;
@@ -253,11 +262,11 @@ static void draw_leds_to_canvas()
             break;
         case AM_SHIMMER:
             col = leds[led];
-            col.l = max(min(col.l + coeffs[led].amp * sin(coeffs[led].phase + distance), 1), 0);
+            col.l = fmax(fmin(col.l + coeffs[led].amp * sin(coeffs[led].phase + distance), 1), 0);
             break;
         case AM_MOVE_SHIMMER:
             lerp_hsl(&leds[index_before], &leds[index_after], distance - floor(distance), &col);
-            col.l = max(min(col.l + coeffs[led].amp * sin(coeffs[led].phase + distance), 1), 0);
+            col.l = fmax(fmin(col.l + coeffs[led].amp * sin(coeffs[led].phase + distance), 1), 0);
             break;
         default:
             break;
@@ -336,6 +345,10 @@ void PaintSource_process_message(const char* msg)
         }
         switch_animation_mode((enum EAnimMode)new_mode, new_speed);
         return;
+    }
+    if (!strncasecmp(target, "secret", 6))
+    {
+        show_secret();
     }
 
     /*

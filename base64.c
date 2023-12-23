@@ -123,7 +123,7 @@ int Base64decode_len(const char* bufcoded)
     return nbytesdecoded + 1;
 }
 
-int Base64decode(char* bufplain, const char* bufcoded)
+int Base64decode(unsigned char* bufplain, const char* bufcoded)
 {
     int nbytesdecoded;
     register const unsigned char* bufin;
