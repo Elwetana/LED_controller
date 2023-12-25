@@ -60,9 +60,9 @@ static hsl_t* leds;
 static int* canvas;
 static AmpPhase_t* coeffs;
 
-static const char* secret = "VESELEVANOCEASTASTNYNOVYROKVESELEVANOCE";
+static const char* secret = "VESELEVANOCEHLEDEJTAMKDEJETEPLOAPORADEK";
 static const double resonance_frequence = 70.0; //BPM
-static const double resonance_decay = 0.5; //how quickly resonance fades when no match is found
+static const double resonance_decay = 0.9; //how quickly resonance fades when no match is found
 
 
 void Paint_BrushMove(int direction)
@@ -163,14 +163,17 @@ static enum EPaintCodeColours get_colour_distance(hsl_t* col, float* dist)
     return (enum EPaintCodeColours)(closest);
 }
 
-static double add_resonance(hsl_t* col, int led, double time_seconds, double strength)
+static double add_resonance(hsl_t* col, int led_index, double time_seconds, double strength)
 {
+    int led = paint_source.basic_source.n_leds - 1 - led_index;
     unsigned int letter = led / N_PAINT_CODES;
+    //printf("letter %i\n", letter);
     if (letter >= strlen(secret))
         return 0;
     //if saturation or lightness are under certain thresholds, we cannot resonante
     if (col->s < 0.1 || col->l < 0.1)
     {
+        //printf("no sl h %f, s %f, l %f\n", col->h, col->s, col->l);
         return strength * resonance_decay;
     }
 
@@ -179,6 +182,7 @@ static double add_resonance(hsl_t* col, int led, double time_seconds, double str
     Paint_letter2rygb(rygb, secret[letter]);
     float dist;
     enum EPaintCodeColours led_closest = get_colour_distance(col, &dist);
+    //printf("lc %i %i\n", (int)led_closest, rygb_index);
     if (led_closest != rygb[rygb_index]) //there is no match in hue -> colour is unchanged, resonance fades
     {
         return strength * resonance_decay;
@@ -235,7 +239,7 @@ static void draw_leds_to_canvas()
     double time_seconds = ((paint_source.basic_source.current_time - animation_start) / (long)1e3) / (double)1e6;
     double distance = animation_speed * time_seconds;
     double resonance_strength = 1.0;
-    for (int led = 0; led < paint_source.basic_source.n_leds; led++)
+    for (int led = paint_source.basic_source.n_leds - 1; led >= 0; led--)
     {
         int index_before = (led + (int)floor(distance)) % paint_source.basic_source.n_leds;
         // -10 % 7 = -3
@@ -251,8 +255,11 @@ static void draw_leds_to_canvas()
         {
         case AM_NONE:
             col = leds[led];
-            if(resonance_strength > 0)
+            if(resonance_strength > 0.001)
+            {
+                //printf("res %f\n", resonance_strength);
                 resonance_strength = add_resonance(&col, led, time_seconds, resonance_strength);
+            }
             break;
         case AM_MOVE_NO_AA:
             col = leds[index_before];
@@ -324,7 +331,7 @@ void PaintSource_process_message(const char* msg)
         for (int led = 0; led < paint_source.basic_source.n_leds; led++)
         {
             int rgb = decoded[3 * led] << 16 | decoded[3 * led + 1] << 8 | decoded[3 * led + 2];
-            rgb2hsl(rgb, &leds[led]);
+            rgb2hsl(rgb, &leds[paint_source.basic_source.n_leds - led - 1]);
         }
         return;
     }
