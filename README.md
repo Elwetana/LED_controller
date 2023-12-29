@@ -58,6 +58,14 @@ from a gun at the end of the chain. The players can have one of three roles:
   * Pitcher: selects the colour of the jewel in the gun and fires it
   * Catcher: moves along the chain and catches the jewels fired by the pitcher
   * Swapper: moves along the chain and swaps the neighbouring jewels
+ 
+* LED painter (`PAINT_SOURCE`) -- not really a game but a way of painting on the LEDs on the tree.
+The editor is written in JavaScript and is in the repo LED_programs. The flow of the "application"
+is JS in web browser (usually on a mobile phone) -> Python HTTP server -> LED controller. The JS
+editor supports things like painting in any RGB colour, gradients, selections, moving the pattern,
+globally adjusting HLS values, saving the state to server and so on. Any number of people can
+collaborate on the most beautiful Christmas tree pattern possible. Also, there is a secret message
+encoded in the LED chain that tries to get out...
 
 ## Requirements
 
