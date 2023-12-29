@@ -342,7 +342,7 @@ void PaintSource_process_message(const char* msg)
         int n = sscanf(payload, "%d=%lf", &new_mode, &new_speed);
         if (n != 2)
         {
-            printf("Trying to set animation, but format is inalid %s\n", payload);
+            printf("Trying to set animation, but format is invalid %s\n", payload);
             return;
         }
         if (new_mode > (int)AM_MOVE_SHIMMER || new_mode < 0)
