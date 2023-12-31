@@ -63,6 +63,7 @@ static AmpPhase_t* coeffs;
 
 static const char* secret = "STASTNYADOBRYNOVYROKDIKYZEJSTETUSNAMIMARTINAVILMA";
 static const char* hint = "TMOUDVACETCTYRI";
+static int hint_length;
 static struct MorseChar hint_mc[16]; //this must be increased if hint is longer
 static const double resonance_frequence = 70.0; //BPM
 static const double resonance_decay = 0.9; //how quickly resonance fades when no match is found
@@ -194,7 +195,7 @@ static double add_resonance(hsl_t* col, int led_index, double time_seconds, doub
 
     double amp = strength * 2 * (0.5 - dist);
     
-    if (led < strlen(hint)) 
+    if (led < hint_length) 
     {
         double dit_length = 60.0 / resonance_frequence / 2.0; //resonance frequency for dits is too slow, we shall make it twice the speed
         struct MorseChar* mc = &hint_mc[led];
@@ -445,9 +446,9 @@ void PaintSource_process_message(const char* msg)
 
 static void hint_mc_init()
 {
-    char* buff[5];
-    int l = strlen(hint);
-    for (int i = 0; i < l; ++i)
+    hint_length = strlen(hint);
+    char buff[5];
+    for (int i = 0; i < hint_length; ++i)
     {
         MorseSource_get_code(buff, hint[i]);
         MorseSource_make_morse_char(&hint_mc[i], buff, 1);
