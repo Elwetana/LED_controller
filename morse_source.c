@@ -48,27 +48,40 @@ static void MorseSource_read_font()
     }
 }
 
+void MorseSource_make_morse_char(struct MorseChar* mc, char* m, int add_padding)
+{
+    mc->len = 0;
+    int ml = strlen(m);
+    for (int i = 0; i < ml; ++i)
+    {
+        if (m[i] == '-') {
+            for (int j = 0; j < 3; ++j) {
+                mc->data[mc->len++] = 2;
+            }
+        }
+        else {
+            mc->data[mc->len++] = 1;
+        }
+        mc->data[mc->len++] = 0;
+    }
+    mc->len -= 1;
+    if (add_padding != 0)
+    {
+        for (int j = 0; j < 3; ++j) 
+        {
+            mc->data[mc->len++] = 0;
+        }
+
+    }
+}
+
 static void MorseSource_convert_morse()
 {
     for (int mi = 0; mi < 26; mi++)
     {
         char* m = morse_source.cmorse[mi];
         struct MorseChar* mc = &morse_source.morse[mi];
-        mc->len = 0;
-        int ml = strlen(m);
-        for (int i = 0; i < ml; ++i)
-        {
-            if (m[i] == '-') {
-                for (int j = 0; j < 3; ++j) {
-                    mc->data[mc->len++] = 2;
-                }
-            }
-            else {
-                mc->data[mc->len++] = 1;
-            }
-            mc->data[mc->len++] = 0;
-        }
-        mc->len -= 1;
+        MorseSource_make_morse_char(mc, m, 0);
     }
 }
 

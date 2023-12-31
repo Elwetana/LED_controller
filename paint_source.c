@@ -27,6 +27,7 @@
 
 #include "paint_source.h"
 #include "spng.h"
+#include "morse_source.h"
 
 typedef struct paint_SBrush
 {
@@ -60,7 +61,9 @@ static hsl_t* leds;
 static int* canvas;
 static AmpPhase_t* coeffs;
 
-static const char* secret = "VESELEVANOCEHLEDEJTAMKDEJETEPLOAPORADEK";
+static const char* secret = "STASTNYADOBRYNOVYROKDIKYZEJSTETUSNAMIMARTINAVILMA";
+static const char* hint = "TMOUDVACETCTYRI";
+static struct MorseChar hint_mc[16]; //this must be increased if hint is longer
 static const double resonance_frequence = 70.0; //BPM
 static const double resonance_decay = 0.9; //how quickly resonance fades when no match is found
 
@@ -188,7 +191,47 @@ static double add_resonance(hsl_t* col, int led_index, double time_seconds, doub
         return strength * resonance_decay;
     }
     //printf("d %f\n", strength);
-    double amp = strength * 2 * (0.5 - dist) * sin(time_seconds * resonance_frequence / 60.0); //amp = <-1, 1>
+
+    double amp = strength * 2 * (0.5 - dist);
+    
+    if (led < strlen(hint)) 
+    {
+        double dit_length = 60.0 / resonance_frequence / 2.0; //resonance frequency for dits is too slow, we shall make it twice the speed
+        struct MorseChar* mc = &hint_mc[led];
+        double char_duration = mc->len * dit_length;
+        int q = (int)(time_seconds / char_duration);
+        double dit_position = (time_seconds - q * char_duration) / dit_length;
+        int dit_index = (int)dit_position;
+        double dit_frac = dit_position - dit_index;
+        assert(dit_index < mc->len);
+        int dit_index_from, dit_index_to;
+        if (dit_frac >= 0.5)
+        {
+            dit_index_from = dit_index;
+            dit_index_to = (dit_index + 1) % mc->len;
+            dit_frac -= 0.5;
+        }
+        else
+        {
+            dit_index_to = dit_index;
+            dit_index_from = (dit_index - 1 + mc->len) % mc->len;
+            dit_frac += 0.5;
+        }
+        if (mc->data[dit_index_from] > 0 && mc->data[dit_index_to] > 0)
+            amp *= +1;
+        else if (mc->data[dit_index_from] == 0 && mc->data[dit_index_to] == 0)
+            amp *= -1;
+        else if (mc->data[dit_index_from] == 0 && mc->data[dit_index_to] > 0) //
+            amp *= -cos(M_PI * dit_frac);
+        else
+            amp *= +cos(M_PI * dit_frac);
+        //if (led == 0) printf("from %i, to %i, frac %f, amp %f\n", dit_index_from, dit_index_to, dit_frac, amp);
+    }
+    else
+    {
+        amp *= sin(2 * M_PI * time_seconds * resonance_frequence / 60.0); //amp = <-1, 1>
+    }
+    
     if (amp < 0)
         col->l *= (1 + amp); //in lowest phase, amp == -1, then col->l = 0
     else
@@ -400,6 +443,17 @@ void PaintSource_process_message(const char* msg)
     */   
 }
 
+static void hint_mc_init()
+{
+    char* buff[5];
+    int l = strlen(hint);
+    for (int i = 0; i < l; ++i)
+    {
+        MorseSource_get_code(buff, hint[i]);
+        MorseSource_make_morse_char(&hint_mc[i], buff, 1);
+    }
+}
+
 void PaintSource_init(int n_leds, int time_speed, uint64_t current_time)
 {
     BasicSource_init(&paint_source.basic_source, n_leds, time_speed, source_config.colors[PAINT_SOURCE], current_time);
@@ -408,6 +462,8 @@ void PaintSource_init(int n_leds, int time_speed, uint64_t current_time)
     canvas = malloc(n_leds * sizeof(int));
     coeffs = malloc(n_leds * sizeof(AmpPhase_t));
     paint_source.start_time = current_time;
+    animation_start = current_time;
+    hint_mc_init();
     //SoundPlayer_init(20000);
     //Paint_InputHandler_init(); // inits the controller
     //paint_game_source.n_players = Controller_get_n_players();

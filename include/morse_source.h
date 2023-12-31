@@ -7,7 +7,7 @@
 
 struct MorseChar {
     int len;
-    char data[16]; //<- no character has more than 4 dashes: 4*3 + 4 spaces = 16
+    char data[19]; //<- no character has more than 4 dashes: 4*3 + 4 spaces = 16 + 3 dits as right padding
 };
 
 enum EMorseMode
@@ -34,5 +34,6 @@ extern MorseSource morse_source;
 //! @param buf buffer with length at least 5
 //! @param c uppercase letter A to Z
 void MorseSource_get_code(char* buf, const char c);
+void MorseSource_make_morse_char(struct MorseChar* mc, char* m, int add_padding);
 
 #endif /* __MORSE_SOURCE_H__ */
