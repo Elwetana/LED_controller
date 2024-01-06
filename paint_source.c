@@ -62,9 +62,9 @@ static int* canvas;
 static AmpPhase_t* coeffs;
 
 static const char* secret = "STASTNYADOBRYNOVYROKDIKYZEJSTETUSNAMIMARTINAVILMA";
-static const char* hint = "TMOUDVACETCTYRI";
+static const char* hint = "TMOUDVACETCTYRIPOMUCKA";
 static int hint_length;
-static struct MorseChar hint_mc[16]; //this must be increased if hint is longer
+static struct MorseChar hint_mc[24]; //this must be increased if hint is longer
 static const double resonance_frequence = 70.0; //BPM
 static const double resonance_decay = 0.9; //how quickly resonance fades when no match is found
 
