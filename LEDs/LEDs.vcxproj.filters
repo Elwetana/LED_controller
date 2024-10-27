@@ -4,62 +4,17 @@
     <ClCompile Include="..\game\callbacks.c">
       <Filter>Games</Filter>
     </ClCompile>
-    <ClCompile Include="..\color_source.c">
-      <Filter>SourceCommon</Filter>
-    </ClCompile>
-    <ClCompile Include="..\colours.c">
-      <Filter>SourceCommon</Filter>
-    </ClCompile>
-    <ClCompile Include="..\common_source.c">
-      <Filter>SourceCommon</Filter>
-    </ClCompile>
     <ClCompile Include="..\game\controller.c">
-      <Filter>Games</Filter>
-    </ClCompile>
-    <ClCompile Include="..\disco_source.c">
-      <Filter>SourceCommon</Filter>
-    </ClCompile>
-    <ClCompile Include="..\fakeled.c">
-      <Filter>SourceCommon</Filter>
-    </ClCompile>
-    <ClCompile Include="..\faketime.c">
-      <Filter>SourceCommon</Filter>
-    </ClCompile>
-    <ClCompile Include="..\fire_source.c">
-      <Filter>SourceCommon</Filter>
-    </ClCompile>
-    <ClCompile Include="..\game_source.c">
       <Filter>Games</Filter>
     </ClCompile>
     <ClCompile Include="..\game\game_object.c">
       <Filter>Games</Filter>
     </ClCompile>
-    <ClCompile Include="..\getopt.c">
-      <Filter>SourceCommon</Filter>
-    </ClCompile>
-    <ClCompile Include="..\chaser_source.c">
-      <Filter>SourceCommon</Filter>
-    </ClCompile>
-    <ClCompile Include="..\ini.c">
-      <Filter>SourceCommon</Filter>
-    </ClCompile>
     <ClCompile Include="..\game\input_handler.c">
       <Filter>Games</Filter>
     </ClCompile>
-    <ClCompile Include="..\led_main.c">
-      <Filter>SourceCommon</Filter>
-    </ClCompile>
-    <ClCompile Include="..\listener.c">
-      <Filter>SourceCommon</Filter>
-    </ClCompile>
-    <ClCompile Include="..\morse_source.c">
-      <Filter>SourceCommon</Filter>
-    </ClCompile>
     <ClCompile Include="..\game\moving_object.c">
       <Filter>Games</Filter>
-    </ClCompile>
-    <ClCompile Include="..\perlin_source.c">
-      <Filter>SourceCommon</Filter>
     </ClCompile>
     <ClCompile Include="..\game\player_object.c">
       <Filter>Games</Filter>
@@ -73,17 +28,8 @@
     <ClCompile Include="..\rad_game\sound_player.c">
       <Filter>Games</Filter>
     </ClCompile>
-    <ClCompile Include="..\xmas_source.c">
-      <Filter>SourceCommon</Filter>
-    </ClCompile>
-    <ClCompile Include="..\rad_game_source.c">
-      <Filter>Games</Filter>
-    </ClCompile>
     <ClCompile Include="..\game\stencil_handler.c">
       <Filter>Games</Filter>
-    </ClCompile>
-    <ClCompile Include="..\source_manager.c">
-      <Filter>SourceCommon</Filter>
     </ClCompile>
     <ClCompile Include="..\sound\test.c">
       <Filter>Games</Filter>
@@ -96,9 +42,6 @@
     </ClCompile>
     <ClCompile Include="..\rad_game\nonplaying_states.c">
       <Filter>Games</Filter>
-    </ClCompile>
-    <ClCompile Include="..\ip_source.c">
-      <Filter>SourceCommon</Filter>
     </ClCompile>
     <ClCompile Include="..\m3_game\m3_game.c">
       <Filter>Games</Filter>
@@ -118,19 +61,67 @@
     <ClCompile Include="..\m3_game\m3_bullets.c">
       <Filter>Games</Filter>
     </ClCompile>
-    <ClCompile Include="..\spng.c">
+    <ClCompile Include="..\common\base64.c">
       <Filter>SourceCommon</Filter>
     </ClCompile>
-    <ClCompile Include="..\miniz.c">
+    <ClCompile Include="..\common\color_source.c">
       <Filter>SourceCommon</Filter>
     </ClCompile>
-    <ClCompile Include="..\paint_source.c">
-      <Filter>Games</Filter>
+    <ClCompile Include="..\common\colours.c">
+      <Filter>SourceCommon</Filter>
     </ClCompile>
-    <ClCompile Include="..\paint\paint_input_handler.c">
-      <Filter>Games</Filter>
+    <ClCompile Include="..\common\common_source.c">
+      <Filter>SourceCommon</Filter>
     </ClCompile>
-    <ClCompile Include="..\base64.c">
+    <ClCompile Include="..\common\disco_source.c">
+      <Filter>SourceCommon</Filter>
+    </ClCompile>
+    <ClCompile Include="..\common\fakeled.c">
+      <Filter>SourceCommon</Filter>
+    </ClCompile>
+    <ClCompile Include="..\common\faketime.c">
+      <Filter>SourceCommon</Filter>
+    </ClCompile>
+    <ClCompile Include="..\common\fire_source.c">
+      <Filter>SourceCommon</Filter>
+    </ClCompile>
+    <ClCompile Include="..\common\game_source.c">
+      <Filter>SourceCommon</Filter>
+    </ClCompile>
+    <ClCompile Include="..\common\getopt.c">
+      <Filter>SourceCommon</Filter>
+    </ClCompile>
+    <ClCompile Include="..\common\chaser_source.c">
+      <Filter>SourceCommon</Filter>
+    </ClCompile>
+    <ClCompile Include="..\common\ini.c">
+      <Filter>SourceCommon</Filter>
+    </ClCompile>
+    <ClCompile Include="..\common\ip_source.c">
+      <Filter>SourceCommon</Filter>
+    </ClCompile>
+    <ClCompile Include="..\common\led_main.c">
+      <Filter>SourceCommon</Filter>
+    </ClCompile>
+    <ClCompile Include="..\common\listener.c">
+      <Filter>SourceCommon</Filter>
+    </ClCompile>
+    <ClCompile Include="..\common\morse_source.c">
+      <Filter>SourceCommon</Filter>
+    </ClCompile>
+    <ClCompile Include="..\common\paint_source.c">
+      <Filter>SourceCommon</Filter>
+    </ClCompile>
+    <ClCompile Include="..\common\perlin_source.c">
+      <Filter>SourceCommon</Filter>
+    </ClCompile>
+    <ClCompile Include="..\common\rad_game_source.c">
+      <Filter>SourceCommon</Filter>
+    </ClCompile>
+    <ClCompile Include="..\common\source_manager.c">
+      <Filter>SourceCommon</Filter>
+    </ClCompile>
+    <ClCompile Include="..\common\xmas_source.c">
       <Filter>SourceCommon</Filter>
     </ClCompile>
   </ItemGroup>

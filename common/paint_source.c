@@ -26,18 +26,7 @@
 #include "base64.h"
 
 #include "paint_source.h"
-#include "spng.h"
 #include "morse_source.h"
-
-typedef struct paint_SBrush
-{
-    int position;
-    int size;
-    hsl_t colour;
-    ws2811_led_t rgb;
-} paint_Brush_t;
-
-static paint_Brush_t brush;
 
 enum EAnimMode 
 {
@@ -68,26 +57,6 @@ static struct MorseChar hint_mc[24]; //this must be increased if hint is longer
 static const double resonance_frequence = 70.0; //BPM
 static const double resonance_decay = 0.9; //how quickly resonance fades when no match is found
 
-
-void Paint_BrushMove(int direction)
-{
-    brush.position += direction;
-}
-
-void Paint_HueChange(int direction)
-{
-    brush.colour.h += (float)direction / 128.0f;
-}
-
-void Paint_SaturationChange(int direction)
-{
-    brush.colour.s += (float)direction / 128.0f;
-}
-
-void Paint_LightnessChange(int direction)
-{
-    brush.colour.l += (float)direction / 128.0f;
-}
 
 enum EPaintCodeColours
 {
@@ -465,9 +434,6 @@ void PaintSource_init(int n_leds, int time_speed, uint64_t current_time)
     paint_source.start_time = current_time;
     animation_start = current_time;
     hint_mc_init();
-    //SoundPlayer_init(20000);
-    //Paint_InputHandler_init(); // inits the controller
-    //paint_game_source.n_players = Controller_get_n_players();
 
     //switch_animation_mode(AM_MOVE_SHIMMER, 1.1);
     //show_secret();

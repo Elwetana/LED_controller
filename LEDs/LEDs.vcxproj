@@ -162,15 +162,28 @@ xcopy /y $(ProjectDir)..\rad_game\config_rad  $(ProjectDir)\rad_game\</Command>
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <ClCompile Include="..\base64.c" />
-    <ClCompile Include="..\chaser_source.c" />
-    <ClCompile Include="..\color_source.c" />
-    <ClCompile Include="..\colours.c" />
-    <ClCompile Include="..\common_source.c" />
-    <ClCompile Include="..\disco_source.c" />
-    <ClCompile Include="..\fakeled.c" />
-    <ClCompile Include="..\faketime.c" />
-    <ClCompile Include="..\fire_source.c" />
+    <ClCompile Include="..\common\base64.c" />
+    <ClCompile Include="..\common\chaser_source.c" />
+    <ClCompile Include="..\common\color_source.c" />
+    <ClCompile Include="..\common\colours.c" />
+    <ClCompile Include="..\common\common_source.c" />
+    <ClCompile Include="..\common\disco_source.c" />
+    <ClCompile Include="..\common\fakeled.c" />
+    <ClCompile Include="..\common\faketime.c" />
+    <ClCompile Include="..\common\fire_source.c" />
+    <ClCompile Include="..\common\ip_source.c" />
+    <ClCompile Include="..\common\paint_source.c" />
+    <ClCompile Include="..\common\rad_game_source.c" />
+    <ClCompile Include="..\common\game_source.c" />
+    <ClCompile Include="..\common\getopt.c" />
+    <ClCompile Include="..\common\ini.c" />
+    <ClCompile Include="..\common\led_main.c" />
+    <ClCompile Include="..\common\listener.c" />
+    <ClCompile Include="..\common\m3_game_source.c" />
+    <ClCompile Include="..\common\morse_source.c" />
+    <ClCompile Include="..\common\perlin_source.c" />
+    <ClCompile Include="..\common\source_manager.c" />
+    <ClCompile Include="..\common\xmas_source.c" />
     <ClCompile Include="..\game\callbacks.c" />
     <ClCompile Include="..\game\controller.c" />
     <ClCompile Include="..\game\game_object.c" />
@@ -179,33 +192,17 @@ xcopy /y $(ProjectDir)..\rad_game\config_rad  $(ProjectDir)\rad_game\</Command>
     <ClCompile Include="..\game\player_object.c" />
     <ClCompile Include="..\game\pulse_object.c" />
     <ClCompile Include="..\game\stencil_handler.c" />
-    <ClCompile Include="..\ip_source.c" />
     <ClCompile Include="..\m3_game\m3_bullets.c" />
     <ClCompile Include="..\m3_game\m3_field.c" />
     <ClCompile Include="..\m3_game\m3_game.c" />
     <ClCompile Include="..\m3_game\m3_input_handler.c" />
     <ClCompile Include="..\m3_game\m3_players.c" />
-    <ClCompile Include="..\m3_game_source.c" />
-    <ClCompile Include="..\miniz.c" />
-    <ClCompile Include="..\paint\paint_input_handler.c" />
-    <ClCompile Include="..\paint_source.c" />
     <ClCompile Include="..\rad_game\ddr_game.c" />
     <ClCompile Include="..\rad_game\nonplaying_states.c" />
     <ClCompile Include="..\rad_game\oscillators.c" />
     <ClCompile Include="..\rad_game\rad_input_handler.c" />
     <ClCompile Include="..\rad_game\sound_player.c" />
-    <ClCompile Include="..\rad_game_source.c" />
-    <ClCompile Include="..\game_source.c" />
-    <ClCompile Include="..\getopt.c" />
-    <ClCompile Include="..\ini.c" />
-    <ClCompile Include="..\led_main.c" />
-    <ClCompile Include="..\listener.c" />
-    <ClCompile Include="..\morse_source.c" />
-    <ClCompile Include="..\perlin_source.c" />
     <ClCompile Include="..\sound\test.c" />
-    <ClCompile Include="..\source_manager.c" />
-    <ClCompile Include="..\spng.c" />
-    <ClCompile Include="..\xmas_source.c" />
   </ItemGroup>
   <ItemGroup>
     <Text Include="..\config">

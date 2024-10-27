@@ -6,22 +6,22 @@ env.Append(CPPFLAGS=['-fPIC', '-g', '-O2', '-Wall', '-Wextra', '-Werror'])
 
 
 srcs = Split('''
-    led_main.c
-    common_source.c
-    fire_source.c
-    perlin_source.c
-    color_source.c
-    chaser_source.c
-    morse_source.c
-    disco_source.c
-    xmas_source.c
-    ip_source.c
-    source_manager.c    
-    colours.c
-    listener.c
-    ini.c
-    base64.c
-    game_source.c
+    common/led_main.c
+    common/common_source.c
+    common/fire_source.c
+    common/perlin_source.c
+    common/color_source.c
+    common/chaser_source.c
+    common/morse_source.c
+    common/disco_source.c
+    common/xmas_source.c
+    common/ip_source.c
+    common/source_manager.c    
+    common/colours.c
+    common/listener.c
+    common/ini.c
+    common/base64.c
+    common/game_source.c
     game/controller.c
     game/game_object.c
     game/moving_object.c
@@ -30,20 +30,19 @@ srcs = Split('''
     game/input_handler.c
     game/pulse_object.c
     game/callbacks.c
-    rad_game_source.c
+    common/rad_game_source.c
     rad_game/sound_player.c
     rad_game/rad_input_handler.c
     rad_game/oscillators.c
     rad_game/ddr_game.c
     rad_game/nonplaying_states.c
-    m3_game_source.c
+    common/m3_game_source.c
     m3_game/m3_game.c
     m3_game/m3_input_handler.c
     m3_game/m3_field.c
     m3_game/m3_players.c
     m3_game/m3_bullets.c
-    paint_source.c
-    paint/paint_input_handler.c
+    common/paint_source.c
 ''')
 
 

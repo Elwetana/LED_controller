@@ -5,7 +5,7 @@
 #include <alsa/asoundlib.h>
 #include <aubio/aubio.h>
 #else
-#include "sound/fakealsa.h"
+#include "../sound/fakealsa.h"
 #include "aubio.h"
 #endif // __linux__
 

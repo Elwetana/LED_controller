@@ -7,7 +7,7 @@ The original idea was that the players/users will be using a gamepad to paint on
 colour of the brush, and size of the brush and transparency and what not, and set state of the brush as an animation keyframe and
 then create another one... The remnants of that idea can still be seen around, I did not have time to properly extirpate them all. 
 
-Fortunately, I told about that to my wife and she said she couldn't be bothered to learn sucha a complicated control scheme and so
+Fortunately, I told about that to my wife and she said she couldn't be bothered to learn such a complicated control scheme and so
 I wrote a control panel in JavaScript and it is part of the other repostitory, LED_programs. So everything this source does is to 
 listen to the message from the Python server and then updates all the LEDs. The only thing it does on its own is animation, but we
 have no fancy keyframes and such, we can just run the pattern along the chain and/or change the lightness slighlty.
@@ -25,10 +25,5 @@ typedef struct paint_SPaintSource
 } paint_PaintSource_t;
 
 extern paint_PaintSource_t paint_source;
-
-void Paint_BrushMove(int direction);
-void Paint_HueChange(int direction);
-void Paint_SaturationChange(int direction);
-void Paint_LightnessChange(int direction);
 
 #endif /* __PAINT_SOURCE_H__ */
