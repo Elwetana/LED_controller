@@ -147,6 +147,7 @@ inline int ishex(int x)
 
 // Decode URL-encoded strings
 // https://rosettacode.org/wiki/URL_decoding#C
+// If dec is null, it returns the length of the buffer that would be required to decode s
 static int64_t decode(const char* s, char* dec)
 {
     char* o;
@@ -207,7 +208,7 @@ void check_message()
     {
         return;
     }
-    if (strlen(msg) >= MAX_MSG_LENGTH) 
+    if (strnlen(msg, MAX_MSG_LENGTH) >= MAX_MSG_LENGTH) 
     {
         printf("Message too long: %s, %zi", msg, strlen(msg));
         goto quit;

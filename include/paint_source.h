@@ -16,6 +16,7 @@ Originally, I intended this to be really just a painting application, no games, 
 always does.
  */
 
+#define C_N_KEY_FRAMES 255
 
 typedef struct paint_SPaintSource
 {
