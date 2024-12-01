@@ -418,6 +418,7 @@ static void push_frame(char* encoded_state)
 
     // Decode the encoded state into the new frame
     decode_led_state(encoded_state, key_frames[new_index]);
+    frame_intervals[new_index] = 100;
 
     // Find the end of the list and add the new frame
     if (head_frame_index == KF_LAST_FRAME)
