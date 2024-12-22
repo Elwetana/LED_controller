@@ -2,7 +2,7 @@
 
 env = Environment()
 env.Append(LINKFLAGS=['-Wl,-rpath,"/usr/local/lib"', '-Wall', '-lm'])
-env.Append(CPPFLAGS=['-fPIC', '-g', '-O2', '-Wall', '-Wextra', '-Werror'])
+env.Append(CPPFLAGS=['-fPIC', '-g', '-O2', '-Wall', '-Wextra', '-Werror', '-fcommon'])
 
 
 srcs = Split('''
@@ -46,5 +46,5 @@ srcs = Split('''
 ''')
 
 
-env.Program(srcs, LIBS=['asound', 'aubio', 'zmq', 'ws2811'], LIBPATH=['/usr/local/lib','/home/pi/rpi_ws281x'], CPPPATH=['/home/pi/rpi_ws281x', 'include'])
+env.Program(target='./led_main.c', source=srcs, LIBS=['asound', 'aubio', 'zmq', 'ws2811', 'm'], LIBPATH=['/usr/local/lib','/home/pi/rpi_ws281x'], CPPPATH=['/home/pi/rpi_ws281x', 'include'])
 

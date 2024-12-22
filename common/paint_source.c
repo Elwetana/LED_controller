@@ -477,6 +477,9 @@ static void remove_frame(int index)
     }
 }
 
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wunused-function"
+
 //! @brief Insert a frame at a specific position
 //! @param index Position in the linked list
 //! @param encoded_state base64 encoded RGB values
@@ -514,6 +517,8 @@ static void insert_frame(int index, char* encoded_state)
     next_frame[new_index] = next_frame[current];
     next_frame[current] = new_index;
 }
+
+#pragma GCC diagnostic pop
 
 //! @brief Swap two frames, see also https://www.mycompiler.io/view/5YCknkvWCEr
 //! @param index1 first position, 0 based
