@@ -58,6 +58,7 @@ static int is_secret_frame;
 static uint64_t frame_start;
 static const int KF_EMPTY_FRAME = -2;
 static const int KF_LAST_FRAME = -1;
+static const int LEDS_BACKUP = C_N_KEY_FRAMES - 3; //last two are for secret
 
 static const char* secret = "STASTNYADOBRYNOVYROKDIKYZEJSTETUSNAMIMARTINAVILMA";
 static const char* hint = "TMOUDVACETCTYRIPOMUCKA";
@@ -264,14 +265,14 @@ static void update_leds_from_keyframes()
         current_frame_index = next_frame[current_frame_index];
         if (current_frame_index == KF_LAST_FRAME)
         {
-            current_frame_index = is_secret_frame ? C_N_KEY_FRAMES - 1 : head_frame_index;
+            current_frame_index = is_secret_frame ? C_N_KEY_FRAMES - 2 : head_frame_index;
         }
         frame_start = paint_source.basic_source.current_time - time_ms * 1000l;
     }
     int next_frame_index = next_frame[current_frame_index];
     if (next_frame_index == KF_LAST_FRAME)
     {
-        next_frame_index = is_secret_frame ? C_N_KEY_FRAMES - 1 : head_frame_index;
+        next_frame_index = is_secret_frame ? C_N_KEY_FRAMES - 2 : head_frame_index;
     }
     double blend = (double)time_ms / (double)frame_intervals[current_frame_index];
     for (int led = 0; led < paint_source.basic_source.n_leds; led++)
@@ -290,7 +291,7 @@ static void draw_leds_to_canvas()
         update_leds_from_keyframes();
     } 
     double resonance_strength = 1.0;
-    if (is_secret_frame && current_frame_index == C_N_KEY_FRAMES - 1)
+    if (is_secret_frame && current_frame_index > C_N_KEY_FRAMES - 3)
     {
         resonance_strength = 0.0;
     }
@@ -381,6 +382,13 @@ static void start_key_frame_animation(int force_start)
 {
     if (force_start || (current_frame_index == KF_LAST_FRAME))
     {
+        if (current_frame_index == KF_LAST_FRAME) //backup LEDs
+        {
+            for (int i = 0; i < paint_source.basic_source.n_leds; i++)
+            {
+                key_frames[LEDS_BACKUP][i] = leds[i];
+            }
+        }
         current_frame_index = head_frame_index;
         frame_start = paint_source.basic_source.current_time;
     }
@@ -389,6 +397,10 @@ static void start_key_frame_animation(int force_start)
 static void stop_key_frame_animation()
 {
     current_frame_index = KF_LAST_FRAME;
+    for (int i = 0; i < paint_source.basic_source.n_leds; i++)
+    {
+        leds[i] = key_frames[LEDS_BACKUP][i];
+    }
 }
 
 //! @brief Utitlity function to find an empty key frame
@@ -397,7 +409,7 @@ static int get_empty_frame_index()
 {
     int new_index = -1;
     // Find an empty slot in key_frames
-    for (int i = 0; i < C_N_KEY_FRAMES - 1; i++) //C_N_KEY_FRAMES - 1 is reserved for secret frame
+    for (int i = 0; i < C_N_KEY_FRAMES - 2; i++) //last two frames are reserved for secret frame
     {
         if (next_frame[i] == KF_EMPTY_FRAME)
         {
@@ -644,8 +656,11 @@ void PaintSource_process_message(const char* msg)
     }
     if (!strncasecmp(target, "sct", 3))
     {
+        decode_led_state(payload, key_frames[C_N_KEY_FRAMES - 2]);
         decode_led_state(payload, key_frames[C_N_KEY_FRAMES - 1]);
-        frame_intervals[C_N_KEY_FRAMES - 1] = 3000;
+        frame_intervals[C_N_KEY_FRAMES - 2] = 30000;
+        frame_intervals[C_N_KEY_FRAMES - 1] = 1000;
+        next_frame[C_N_KEY_FRAMES - 2] = C_N_KEY_FRAMES - 1;
         is_secret_frame = 1;
         return;
     }
