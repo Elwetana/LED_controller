@@ -54,6 +54,7 @@ static int frame_intervals[C_N_KEY_FRAMES]; //intervals between frames in milise
 static int next_frame[C_N_KEY_FRAMES];
 static int head_frame_index;
 static int current_frame_index;
+static int is_secret_frame;
 static uint64_t frame_start;
 static const int KF_EMPTY_FRAME = -2;
 static const int KF_LAST_FRAME = -1;
@@ -263,12 +264,15 @@ static void update_leds_from_keyframes()
         current_frame_index = next_frame[current_frame_index];
         if (current_frame_index == KF_LAST_FRAME)
         {
-            current_frame_index = head_frame_index;
+            current_frame_index = is_secret_frame ? C_N_KEY_FRAMES - 1 : head_frame_index;
         }
         frame_start = paint_source.basic_source.current_time - time_ms * 1000l;
     }
     int next_frame_index = next_frame[current_frame_index];
-    if (next_frame_index == KF_LAST_FRAME) next_frame_index = head_frame_index;
+    if (next_frame_index == KF_LAST_FRAME)
+    {
+        next_frame_index = is_secret_frame ? C_N_KEY_FRAMES - 1 : head_frame_index;
+    }
     double blend = (double)time_ms / (double)frame_intervals[current_frame_index];
     for (int led = 0; led < paint_source.basic_source.n_leds; led++)
     {
@@ -284,8 +288,12 @@ static void draw_leds_to_canvas()
     if (current_frame_index != KF_LAST_FRAME)
     {
         update_leds_from_keyframes();
-    }
+    } 
     double resonance_strength = 1.0;
+    if (is_secret_frame && current_frame_index == C_N_KEY_FRAMES - 1)
+    {
+        resonance_strength = 0.0;
+    }
     for (int led = paint_source.basic_source.n_leds - 1; led >= 0; led--)
     {
         int index_before = (led + (int)floor(distance)) % paint_source.basic_source.n_leds;
@@ -366,12 +374,16 @@ static void init_frames()
     }
     head_frame_index = KF_LAST_FRAME;
     current_frame_index = KF_LAST_FRAME;
+    is_secret_frame = 0;
 }
 
-static void start_key_frame_animation()
+static void start_key_frame_animation(int force_start)
 {
-    current_frame_index = head_frame_index;
-    frame_start = paint_source.basic_source.current_time;
+    if (force_start || (current_frame_index == KF_LAST_FRAME))
+    {
+        current_frame_index = head_frame_index;
+        frame_start = paint_source.basic_source.current_time;
+    }
 }
 
 static void stop_key_frame_animation()
@@ -385,7 +397,7 @@ static int get_empty_frame_index()
 {
     int new_index = -1;
     // Find an empty slot in key_frames
-    for (int i = 0; i < C_N_KEY_FRAMES; i++)
+    for (int i = 0; i < C_N_KEY_FRAMES - 1; i++) //C_N_KEY_FRAMES - 1 is reserved for secret frame
     {
         if (next_frame[i] == KF_EMPTY_FRAME)
         {
@@ -424,6 +436,7 @@ static void push_frame(char* encoded_state)
     if (head_frame_index == KF_LAST_FRAME)
     {
         head_frame_index = new_index;
+        next_frame[C_N_KEY_FRAMES - 1] = head_frame_index; //next frame of the secret frame is the head frame
     }
     else 
     {
@@ -447,6 +460,7 @@ static void remove_frame(int index)
         int to_remove = head_frame_index;
         head_frame_index = next_frame[to_remove];
         next_frame[to_remove] = KF_EMPTY_FRAME; // Mark as empty
+        next_frame[C_N_KEY_FRAMES - 1] = head_frame_index; //next frame of the secret frame is the head frame
         return;
     }
 
@@ -492,6 +506,7 @@ static void insert_frame(int index, char* encoded_state)
     {
         next_frame[new_index] = head_frame_index;
         head_frame_index = new_index;
+        next_frame[C_N_KEY_FRAMES - 1] = head_frame_index; //next frame of the secret frame is the head frame
         return;
     }
 
@@ -524,6 +539,7 @@ static void swap_frames(int index1, int index2)
         next_frame[kf_index2] = next_frame[head_frame_index];
         next_frame[head_frame_index] = tmp;
         head_frame_index = kf_index2;
+        next_frame[C_N_KEY_FRAMES - 1] = head_frame_index; //next frame of the secret frame is the head frame
     }
     else
     {
@@ -554,7 +570,6 @@ static void update_timing(int index, int timing)
     if (kf_index < 0) return;
     frame_intervals[kf_index] = timing;
 }
-
 
 
 //! @brief Process messages from HTTP server
@@ -619,7 +634,14 @@ void PaintSource_process_message(const char* msg)
     if (!strncasecmp(target, "add", 3))
     {
         push_frame(payload);
-        start_key_frame_animation();
+        start_key_frame_animation(0);
+        return;
+    }
+    if (!strncasecmp(target, "sct", 3))
+    {
+        decode_led_state(payload, key_frames[C_N_KEY_FRAMES - 1]);
+        frame_intervals[C_N_KEY_FRAMES - 1] = 3000;
+        is_secret_frame = 1;
         return;
     }
     if (!strncasecmp(target, "del", 3))
@@ -632,7 +654,15 @@ void PaintSource_process_message(const char* msg)
             return;
         }
         remove_frame(index);
-        start_key_frame_animation();
+        if(head_frame_index != KF_LAST_FRAME)
+            start_key_frame_animation(1);
+        else
+            stop_key_frame_animation();
+        return;
+    }
+    if (!strncasecmp(target, "tcs", 3))
+    {
+        is_secret_frame = 0;
         return;
     }
     if (!strncasecmp(target, "update", 6))
@@ -646,7 +676,7 @@ void PaintSource_process_message(const char* msg)
             return;
         }
         update_frame(index, encoded);
-        start_key_frame_animation();
+        start_key_frame_animation(0);
         return;
     }
     if (!strncasecmp(target, "time", 4))
@@ -660,7 +690,7 @@ void PaintSource_process_message(const char* msg)
             return;
         }
         update_timing(index, timing);
-        start_key_frame_animation();
+        start_key_frame_animation(0);
         return;
     }
     if (!strncasecmp(target, "swap", 4))
@@ -674,7 +704,7 @@ void PaintSource_process_message(const char* msg)
             return;
         }
         swap_frames(index1, index2);
-        start_key_frame_animation();
+        start_key_frame_animation(1);
         return;
     }
     if (!strncasecmp(target, "secret", 6))
