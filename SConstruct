@@ -46,5 +46,5 @@ srcs = Split('''
 ''')
 
 
-env.Program(target='./led_main.c', source=srcs, LIBS=['asound', 'aubio', 'zmq', 'ws2811', 'm'], LIBPATH=['/usr/local/lib','/home/pi/rpi_ws281x'], CPPPATH=['/home/pi/rpi_ws281x', 'include'])
+env.Program(target='./led_main', source=srcs, LIBS=['asound', 'aubio', 'zmq', 'ws2811', 'm'], LIBPATH=['/usr/local/lib','/home/pi/rpi_ws281x'], CPPPATH=['/home/pi/rpi_ws281x', 'include'])
 

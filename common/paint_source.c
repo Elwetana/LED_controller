@@ -60,7 +60,7 @@ static const int KF_EMPTY_FRAME = -2;
 static const int KF_LAST_FRAME = -1;
 static const int LEDS_BACKUP = C_N_KEY_FRAMES - 3; //last two are for secret
 
-static const char* secret = "STASTNYADOBRYNOVYROKDIKYZEJSTETUSNAMIMARTINAVILMA";
+static const char* secret = "POMOZTEVILMENAJITDAREKVICLIDIVANIMACIVIDIKOHOUTKY";
 static const char* hint = "TMOUDVACETCTYRIPOMUCKA";
 static int hint_length;
 static struct MorseChar hint_mc[24]; //this must be increased if hint is longer
@@ -658,7 +658,7 @@ void PaintSource_process_message(const char* msg)
     {
         decode_led_state(payload, key_frames[C_N_KEY_FRAMES - 2]);
         decode_led_state(payload, key_frames[C_N_KEY_FRAMES - 1]);
-        frame_intervals[C_N_KEY_FRAMES - 2] = 30000;
+        frame_intervals[C_N_KEY_FRAMES - 2] = 1000;
         frame_intervals[C_N_KEY_FRAMES - 1] = 1000;
         next_frame[C_N_KEY_FRAMES - 2] = C_N_KEY_FRAMES - 1;
         is_secret_frame = 1;
@@ -711,6 +711,12 @@ void PaintSource_process_message(const char* msg)
         }
         update_timing(index, timing);
         start_key_frame_animation(0);
+        return;
+    }
+    if (!strncasecmp(target, "stt", 3))
+    {
+        int timing = atoi(payload);
+        frame_intervals[C_N_KEY_FRAMES - 2] = timing;
         return;
     }
     if (!strncasecmp(target, "swap", 4))
